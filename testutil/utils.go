@@ -5,8 +5,8 @@ import (
 
 	"github.com/golang/mock/gomock"
 
-	"github.com/babylonchain/covenant-emulator/testutil/mocks"
-	"github.com/babylonchain/covenant-emulator/types"
+	"github.com/babylonlabs-io/covenant-emulator/testutil/mocks"
+	"github.com/babylonlabs-io/covenant-emulator/types"
 )
 
 func PrepareMockedClientController(t *testing.T, params *types.StakingParams) *mocks.MockClientController {

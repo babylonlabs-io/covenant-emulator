@@ -9,22 +9,21 @@ import (
 	"github.com/btcsuite/btcd/btcec/v2"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 
-	bbnclient "github.com/babylonchain/babylon/client/client"
-	bbntypes "github.com/babylonchain/babylon/types"
-	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
-	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
-	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
+	bbnclient "github.com/babylonlabs-io/babylon/client/client"
+	bbntypes "github.com/babylonlabs-io/babylon/types"
+	btcctypes "github.com/babylonlabs-io/babylon/x/btccheckpoint/types"
+	btclctypes "github.com/babylonlabs-io/babylon/x/btclightclient/types"
+	btcstakingtypes "github.com/babylonlabs-io/babylon/x/btcstaking/types"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	sdkclient "github.com/cosmos/cosmos-sdk/client"
-	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkquery "github.com/cosmos/cosmos-sdk/types/query"
 	"github.com/cosmos/relayer/v2/relayer/provider"
 	"go.uber.org/zap"
 
-	"github.com/babylonchain/covenant-emulator/config"
-	"github.com/babylonchain/covenant-emulator/types"
+	"github.com/babylonlabs-io/covenant-emulator/config"
+	"github.com/babylonlabs-io/covenant-emulator/types"
 )
 
 var _ ClientController = &BabylonController{}
@@ -363,12 +362,11 @@ func (bc *BabylonController) CreateBTCDelegation(
 // Register a finality provider to Babylon
 // Currently this is only used for e2e tests, probably does not need to add it into the interface
 func (bc *BabylonController) RegisterFinalityProvider(
-	bbnPubKey *secp256k1.PubKey, btcPubKey *bbntypes.BIP340PubKey, commission *sdkmath.LegacyDec,
-	description *stakingtypes.Description, pop *btcstakingtypes.ProofOfPossession) (*provider.RelayerTxResponse, error) {
+	btcPubKey *bbntypes.BIP340PubKey, commission *sdkmath.LegacyDec,
+	description *stakingtypes.Description, pop *btcstakingtypes.ProofOfPossessionBTC) (*provider.RelayerTxResponse, error) {
 	registerMsg := &btcstakingtypes.MsgCreateFinalityProvider{
-		Signer:      bc.mustGetTxSigner(),
+		Addr:        bc.mustGetTxSigner(),
 		Commission:  commission,
-		BabylonPk:   bbnPubKey,
 		BtcPk:       btcPubKey,
 		Description: description,
 		Pop:         pop,

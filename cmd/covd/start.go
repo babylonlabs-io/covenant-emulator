@@ -4,16 +4,16 @@ import (
 	"fmt"
 	"path/filepath"
 
-	covcfg "github.com/babylonchain/covenant-emulator/config"
-	"github.com/babylonchain/covenant-emulator/log"
-	"github.com/babylonchain/covenant-emulator/util"
+	covcfg "github.com/babylonlabs-io/covenant-emulator/config"
+	"github.com/babylonlabs-io/covenant-emulator/log"
+	"github.com/babylonlabs-io/covenant-emulator/util"
 
 	"github.com/lightningnetwork/lnd/signal"
 	"github.com/urfave/cli"
 
-	"github.com/babylonchain/covenant-emulator/clientcontroller"
-	"github.com/babylonchain/covenant-emulator/covenant"
-	covsrv "github.com/babylonchain/covenant-emulator/covenant/service"
+	"github.com/babylonlabs-io/covenant-emulator/clientcontroller"
+	"github.com/babylonlabs-io/covenant-emulator/covenant"
+	covsrv "github.com/babylonlabs-io/covenant-emulator/covenant/service"
 )
 
 var startCommand = cli.Command{

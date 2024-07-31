@@ -5,19 +5,19 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/babylonchain/babylon/btcstaking"
-	asig "github.com/babylonchain/babylon/crypto/schnorr-adaptor-signature"
-	"github.com/babylonchain/babylon/testutil/datagen"
-	bbntypes "github.com/babylonchain/babylon/types"
+	"github.com/babylonlabs-io/babylon/btcstaking"
+	asig "github.com/babylonlabs-io/babylon/crypto/schnorr-adaptor-signature"
+	"github.com/babylonlabs-io/babylon/testutil/datagen"
+	bbntypes "github.com/babylonlabs-io/babylon/types"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 
-	covcfg "github.com/babylonchain/covenant-emulator/config"
-	"github.com/babylonchain/covenant-emulator/covenant"
-	"github.com/babylonchain/covenant-emulator/testutil"
-	"github.com/babylonchain/covenant-emulator/types"
+	covcfg "github.com/babylonlabs-io/covenant-emulator/config"
+	"github.com/babylonlabs-io/covenant-emulator/covenant"
+	"github.com/babylonlabs-io/covenant-emulator/testutil"
+	"github.com/babylonlabs-io/covenant-emulator/types"
 )
 
 const (

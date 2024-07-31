@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/babylonchain/covenant-emulator/util"
+	"github.com/babylonlabs-io/covenant-emulator/util"
 
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
