@@ -129,7 +129,7 @@ func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*btc
 
 	var btcPks []*btcec.PublicKey
 	for i := 0; i < n; i++ {
-		fpData := genTestFinalityProviderData(t)
+		fpData := genTestFinalityProviderData(t, tm.CovBBNClient.GetKeyAddress())
 		btcPubKey := bbntypes.NewBIP340PubKeyFromBTCPK(fpData.BtcKey)
 		_, err := tm.CovBBNClient.RegisterFinalityProvider(
 			btcPubKey,
@@ -160,15 +160,14 @@ func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*btc
 	return tm, btcPks
 }
 
-func genTestFinalityProviderData(t *testing.T) *testFinalityProviderData {
+func genTestFinalityProviderData(t *testing.T, babylonAddr sdk.AccAddress) *testFinalityProviderData {
 	finalityProviderEOTSPrivKey, err := btcec.NewPrivateKey()
 	require.NoError(t, err)
-	finalityProviderBabylonAccAddress := datagen.GenRandomAccount().GetAddress()
-	pop, err := bstypes.NewPoPBTC(finalityProviderBabylonAccAddress, finalityProviderEOTSPrivKey)
+	pop, err := bstypes.NewPoPBTC(babylonAddr, finalityProviderEOTSPrivKey)
 	require.NoError(t, err)
 
 	return &testFinalityProviderData{
-		BabylonAddress: finalityProviderBabylonAccAddress,
+		BabylonAddress: babylonAddr,
 		BtcPrivKey:     finalityProviderEOTSPrivKey,
 		BtcKey:         finalityProviderEOTSPrivKey.PubKey(),
 		PoP:            pop,
