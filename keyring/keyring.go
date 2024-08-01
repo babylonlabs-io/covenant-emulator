@@ -9,7 +9,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 
-	"github.com/babylonchain/covenant-emulator/codec"
+	"github.com/babylonlabs-io/covenant-emulator/codec"
 )
 
 func CreateKeyring(keyringDir string, chainId string, backend string, input *strings.Reader) (keyring.Keyring, error) {

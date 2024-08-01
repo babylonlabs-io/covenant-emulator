@@ -7,7 +7,7 @@ package mocks
 import (
 	reflect "reflect"
 
-	types "github.com/babylonchain/covenant-emulator/types"
+	types "github.com/babylonlabs-io/covenant-emulator/types"
 	gomock "github.com/golang/mock/gomock"
 )
 

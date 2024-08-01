@@ -2,7 +2,7 @@ package clientcontroller
 
 import (
 	sdkErr "cosmossdk.io/errors"
-	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
+	btcstakingtypes "github.com/babylonlabs-io/babylon/x/btcstaking/types"
 )
 
 // these errors are considered unrecoverable because these indicate

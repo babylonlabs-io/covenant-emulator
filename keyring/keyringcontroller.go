@@ -10,7 +10,7 @@ import (
 	sdksecp256k1 "github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/cosmos/go-bip39"
 
-	"github.com/babylonchain/covenant-emulator/types"
+	"github.com/babylonlabs-io/covenant-emulator/types"
 )
 
 const (

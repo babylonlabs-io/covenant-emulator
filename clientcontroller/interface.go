@@ -6,8 +6,8 @@ import (
 	"github.com/btcsuite/btcd/chaincfg"
 	"go.uber.org/zap"
 
-	"github.com/babylonchain/covenant-emulator/config"
-	"github.com/babylonchain/covenant-emulator/types"
+	"github.com/babylonlabs-io/covenant-emulator/config"
+	"github.com/babylonlabs-io/covenant-emulator/types"
 )
 
 const (

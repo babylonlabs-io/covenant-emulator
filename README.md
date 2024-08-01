@@ -72,7 +72,7 @@ verified the validity of the transactions and sent corresponding signatures.
 
 Upon a pending staking request being found, the covenant emulation daemon 
 (`covd`), validates it against the spending rules defined in
-[Staking Script specification](https://github.com/babylonchain/babylon/blob/dev/docs/staking-script.md),
+[Staking Script specification](https://github.com/babylonlabs-io/babylon/blob/dev/docs/staking-script.md),
 and sends three types of signatures to the Babylon chain:
 
 1. **Slashing signature**. This signature is an [adaptor signature](https://bitcoinops.org/en/topics/adaptor-signatures/),
@@ -100,11 +100,11 @@ the [official Go installation guide](https://golang.org/doc/install).
 To get started, clone the repository to your local machine from Github:
 
 ```bash
-$ git clone git@github.com:babylonchain/covenant-emulator.git
+$ git clone git@github.com:babylonlabs-io/covenant-emulator.git
 ```
 
 You can choose a specific version from
-the [official releases page](https://github.com/babylonchain/covenant-emulator/releases):
+the [official releases page](https://github.com/babylonlabs-io/covenant-emulator/releases):
 
 ```bash
 $ cd covenant-emulator # cd into the project directory

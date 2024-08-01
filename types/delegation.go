@@ -3,7 +3,7 @@ package types
 import (
 	"math"
 
-	bbn "github.com/babylonchain/babylon/types"
+	bbn "github.com/babylonlabs-io/babylon/types"
 
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
