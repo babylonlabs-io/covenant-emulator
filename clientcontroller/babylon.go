@@ -2,7 +2,6 @@ package clientcontroller
 
 import (
 	"context"
-	"encoding/hex"
 	"fmt"
 	"time"
 
@@ -10,22 +9,21 @@ import (
 	"github.com/btcsuite/btcd/btcec/v2"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 
-	bbntypes "github.com/babylonchain/babylon/types"
-	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
-	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
-	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
-	bbnclient "github.com/babylonchain/rpc-client/client"
+	bbnclient "github.com/babylonlabs-io/babylon/client/client"
+	bbntypes "github.com/babylonlabs-io/babylon/types"
+	btcctypes "github.com/babylonlabs-io/babylon/x/btccheckpoint/types"
+	btclctypes "github.com/babylonlabs-io/babylon/x/btclightclient/types"
+	btcstakingtypes "github.com/babylonlabs-io/babylon/x/btcstaking/types"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	sdkclient "github.com/cosmos/cosmos-sdk/client"
-	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkquery "github.com/cosmos/cosmos-sdk/types/query"
 	"github.com/cosmos/relayer/v2/relayer/provider"
 	"go.uber.org/zap"
 
-	"github.com/babylonchain/covenant-emulator/config"
-	"github.com/babylonchain/covenant-emulator/types"
+	"github.com/babylonlabs-io/covenant-emulator/config"
+	"github.com/babylonlabs-io/covenant-emulator/types"
 )
 
 var _ ClientController = &BabylonController{}
@@ -92,7 +90,7 @@ func (bc *BabylonController) GetKeyAddress() sdk.AccAddress {
 	return addr
 }
 
-func (bc *BabylonController) QueryStakingParams() (*types.StakingParams, error) {
+func (bc *BabylonController) QueryStakingParamsByVersion(version uint32) (*types.StakingParams, error) {
 	// query btc checkpoint params
 	ckptParamRes, err := bc.bbnClient.QueryClient.BTCCheckpointParams()
 	if err != nil {
@@ -100,9 +98,9 @@ func (bc *BabylonController) QueryStakingParams() (*types.StakingParams, error) 
 	}
 
 	// query btc staking params
-	stakingParamRes, err := bc.bbnClient.QueryClient.BTCStakingParams()
+	stakingParamRes, err := bc.bbnClient.QueryClient.BTCStakingParamsByVersion(version)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query staking params: %v", err)
+		return nil, fmt.Errorf("failed to query staking params with version %d: %v", version, err)
 	}
 
 	covenantPks := make([]*btcec.PublicKey, 0, len(stakingParamRes.Params.CovenantPks))
@@ -189,8 +187,13 @@ func (bc *BabylonController) queryDelegationsWithStatus(status btcstakingtypes.B
 	}
 
 	dels := make([]*types.Delegation, 0, len(res.BtcDelegations))
-	for _, d := range res.BtcDelegations {
-		dels = append(dels, ConvertDelegationType(d))
+	for _, delResp := range res.BtcDelegations {
+		del, err := DelegationRespToDelegation(delResp)
+		if err != nil {
+			return nil, err
+		}
+
+		dels = append(dels, del)
 	}
 
 	return dels, nil
@@ -209,25 +212,20 @@ func (bc *BabylonController) Close() error {
 	return bc.bbnClient.Stop()
 }
 
-func ConvertDelegationType(del *btcstakingtypes.BTCDelegation) *types.Delegation {
+func DelegationRespToDelegation(del *btcstakingtypes.BTCDelegationResponse) (*types.Delegation, error) {
 	var (
-		stakingTxHex  string
-		slashingTxHex string
-		covenantSigs  []*types.CovenantAdaptorSigInfo
-		undelegation  *types.Undelegation
+		covenantSigs []*types.CovenantAdaptorSigInfo
+		undelegation *types.Undelegation
+		err          error
 	)
 
-	if del.StakingTx == nil {
-		panic(fmt.Errorf("staking tx should not be empty in delegation"))
+	if del.StakingTxHex == "" {
+		return nil, fmt.Errorf("staking tx should not be empty in delegation")
 	}
 
-	if del.SlashingTx == nil {
-		panic(fmt.Errorf("slashing tx should not be empty in delegation"))
+	if del.SlashingTxHex == "" {
+		return nil, fmt.Errorf("slashing tx should not be empty in delegation")
 	}
-
-	stakingTxHex = hex.EncodeToString(del.StakingTx)
-
-	slashingTxHex = del.SlashingTx.ToHexStr()
 
 	for _, s := range del.CovenantSigs {
 		covSigInfo := &types.CovenantAdaptorSigInfo{
@@ -237,8 +235,11 @@ func ConvertDelegationType(del *btcstakingtypes.BTCDelegation) *types.Delegation
 		covenantSigs = append(covenantSigs, covSigInfo)
 	}
 
-	if del.BtcUndelegation != nil {
-		undelegation = ConvertUndelegationType(del.BtcUndelegation)
+	if del.UndelegationResponse != nil {
+		undelegation, err = UndelegationRespToUndelegation(del.UndelegationResponse)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	fpBtcPks := make([]*btcec.PublicKey, 0, len(del.FpBtcPkList))
@@ -252,39 +253,34 @@ func ConvertDelegationType(del *btcstakingtypes.BTCDelegation) *types.Delegation
 		TotalSat:         del.TotalSat,
 		StartHeight:      del.StartHeight,
 		EndHeight:        del.EndHeight,
-		StakingTxHex:     stakingTxHex,
-		SlashingTxHex:    slashingTxHex,
+		StakingTxHex:     del.StakingTxHex,
+		SlashingTxHex:    del.SlashingTxHex,
 		StakingOutputIdx: del.StakingOutputIdx,
 		CovenantSigs:     covenantSigs,
 		UnbondingTime:    del.UnbondingTime,
 		BtcUndelegation:  undelegation,
-	}
+	}, nil
 }
 
-func ConvertUndelegationType(undel *btcstakingtypes.BTCUndelegation) *types.Undelegation {
+func UndelegationRespToUndelegation(undel *btcstakingtypes.BTCUndelegationResponse) (*types.Undelegation, error) {
 	var (
-		unbondingTxHex        string
-		slashingTxHex         string
 		covenantSlashingSigs  []*types.CovenantAdaptorSigInfo
 		covenantUnbondingSigs []*types.CovenantSchnorrSigInfo
+		err                   error
 	)
 
-	if undel.UnbondingTx == nil {
-		panic(fmt.Errorf("staking tx should not be empty in undelegation"))
+	if undel.UnbondingTxHex == "" {
+		return nil, fmt.Errorf("staking tx should not be empty in undelegation")
 	}
 
-	if undel.SlashingTx == nil {
-		panic(fmt.Errorf("slashing tx should not be empty in undelegation"))
+	if undel.SlashingTxHex == "" {
+		return nil, fmt.Errorf("slashing tx should not be empty in undelegation")
 	}
-
-	unbondingTxHex = hex.EncodeToString(undel.UnbondingTx)
-
-	slashingTxHex = undel.SlashingTx.ToHexStr()
 
 	for _, unbondingSig := range undel.CovenantUnbondingSigList {
 		sig, err := unbondingSig.Sig.ToBTCSig()
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 		sigInfo := &types.CovenantSchnorrSigInfo{
 			Pk:  unbondingSig.Pk.MustToBTCPK(),
@@ -301,21 +297,28 @@ func ConvertUndelegationType(undel *btcstakingtypes.BTCUndelegation) *types.Unde
 		covenantSlashingSigs = append(covenantSlashingSigs, covSigInfo)
 	}
 
+	delegatorUnbondingSig := new(bbntypes.BIP340Signature)
+	if undel.DelegatorUnbondingSigHex != "" {
+		delegatorUnbondingSig, err = bbntypes.NewBIP340SignatureFromHex(undel.DelegatorUnbondingSigHex)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return &types.Undelegation{
-		UnbondingTxHex:        unbondingTxHex,
-		SlashingTxHex:         slashingTxHex,
+		UnbondingTxHex:        undel.UnbondingTxHex,
+		SlashingTxHex:         undel.SlashingTxHex,
 		CovenantSlashingSigs:  covenantSlashingSigs,
 		CovenantUnbondingSigs: covenantUnbondingSigs,
-		DelegatorUnbondingSig: undel.DelegatorUnbondingSig,
-	}
+		DelegatorUnbondingSig: delegatorUnbondingSig,
+	}, nil
 }
 
 // Currently this is only used for e2e tests, probably does not need to add it into the interface
 func (bc *BabylonController) CreateBTCDelegation(
-	delBabylonPk *secp256k1.PubKey,
 	delBtcPk *bbntypes.BIP340PubKey,
 	fpPks []*btcec.PublicKey,
-	pop *btcstakingtypes.ProofOfPossession,
+	pop *btcstakingtypes.ProofOfPossessionBTC,
 	stakingTime uint32,
 	stakingValue int64,
 	stakingTxInfo *btcctypes.TransactionInfo,
@@ -332,8 +335,7 @@ func (bc *BabylonController) CreateBTCDelegation(
 		fpBtcPks = append(fpBtcPks, *bbntypes.NewBIP340PubKeyFromBTCPK(v))
 	}
 	msg := &btcstakingtypes.MsgCreateBTCDelegation{
-		Signer:                        bc.mustGetTxSigner(),
-		BabylonPk:                     delBabylonPk,
+		StakerAddr:                    bc.mustGetTxSigner(),
 		Pop:                           pop,
 		BtcPk:                         delBtcPk,
 		FpBtcPkList:                   fpBtcPks,
@@ -360,12 +362,11 @@ func (bc *BabylonController) CreateBTCDelegation(
 // Register a finality provider to Babylon
 // Currently this is only used for e2e tests, probably does not need to add it into the interface
 func (bc *BabylonController) RegisterFinalityProvider(
-	bbnPubKey *secp256k1.PubKey, btcPubKey *bbntypes.BIP340PubKey, commission *sdkmath.LegacyDec,
-	description *stakingtypes.Description, pop *btcstakingtypes.ProofOfPossession) (*provider.RelayerTxResponse, error) {
+	btcPubKey *bbntypes.BIP340PubKey, commission *sdkmath.LegacyDec,
+	description *stakingtypes.Description, pop *btcstakingtypes.ProofOfPossessionBTC) (*provider.RelayerTxResponse, error) {
 	registerMsg := &btcstakingtypes.MsgCreateFinalityProvider{
-		Signer:      bc.mustGetTxSigner(),
+		Addr:        bc.mustGetTxSigner(),
 		Commission:  commission,
-		BabylonPk:   bbnPubKey,
 		BtcPk:       btcPubKey,
 		Description: description,
 		Pop:         pop,
@@ -392,8 +393,8 @@ func (bc *BabylonController) InsertBtcBlockHeaders(headers []bbntypes.BTCHeaderB
 
 // QueryFinalityProvider queries finality providers
 // Currently this is only used for e2e tests, probably does not need to add this into the interface
-func (bc *BabylonController) QueryFinalityProviders() ([]*btcstakingtypes.FinalityProvider, error) {
-	var fps []*btcstakingtypes.FinalityProvider
+func (bc *BabylonController) QueryFinalityProviders() ([]*btcstakingtypes.FinalityProviderResponse, error) {
+	var fps []*btcstakingtypes.FinalityProviderResponse
 	pagination := &sdkquery.PageRequest{
 		Limit: 100,
 	}
@@ -425,7 +426,7 @@ func (bc *BabylonController) QueryFinalityProviders() ([]*btcstakingtypes.Finali
 }
 
 // Currently this is only used for e2e tests, probably does not need to add this into the interface
-func (bc *BabylonController) QueryBtcLightClientTip() (*btclctypes.BTCHeaderInfo, error) {
+func (bc *BabylonController) QueryBtcLightClientTip() (*btclctypes.BTCHeaderInfoResponse, error) {
 	ctx, cancel := getContextWithCancel(bc.cfg.Timeout)
 	defer cancel()
 

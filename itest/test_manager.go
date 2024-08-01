@@ -7,25 +7,25 @@ import (
 	"testing"
 	"time"
 
-	"github.com/babylonchain/babylon/testutil/datagen"
-	bbntypes "github.com/babylonchain/babylon/types"
-	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
-	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
-	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
+	"github.com/babylonlabs-io/babylon/testutil/datagen"
+	bbntypes "github.com/babylonlabs-io/babylon/types"
+	btcctypes "github.com/babylonlabs-io/babylon/x/btccheckpoint/types"
+	btclctypes "github.com/babylonlabs-io/babylon/x/btclightclient/types"
+	bstypes "github.com/babylonlabs-io/babylon/x/btcstaking/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
-	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 
-	covcc "github.com/babylonchain/covenant-emulator/clientcontroller"
-	covcfg "github.com/babylonchain/covenant-emulator/config"
-	"github.com/babylonchain/covenant-emulator/covenant"
-	"github.com/babylonchain/covenant-emulator/testutil"
-	"github.com/babylonchain/covenant-emulator/types"
+	covcc "github.com/babylonlabs-io/covenant-emulator/clientcontroller"
+	covcfg "github.com/babylonlabs-io/covenant-emulator/config"
+	"github.com/babylonlabs-io/covenant-emulator/covenant"
+	"github.com/babylonlabs-io/covenant-emulator/testutil"
+	"github.com/babylonlabs-io/covenant-emulator/types"
 )
 
 var (
@@ -50,15 +50,13 @@ type TestManager struct {
 }
 
 type TestDelegationData struct {
-	DelegatorPrivKey        *btcec.PrivateKey
-	DelegatorKey            *btcec.PublicKey
-	DelegatorBabylonPrivKey *secp256k1.PrivKey
-	DelegatorBabylonKey     *secp256k1.PubKey
-	SlashingTx              *bstypes.BTCSlashingTx
-	StakingTx               *wire.MsgTx
-	StakingTxInfo           *btcctypes.TransactionInfo
-	DelegatorSig            *bbntypes.BIP340Signature
-	FpPks                   []*btcec.PublicKey
+	DelegatorPrivKey *btcec.PrivateKey
+	DelegatorKey     *btcec.PublicKey
+	SlashingTx       *bstypes.BTCSlashingTx
+	StakingTx        *wire.MsgTx
+	StakingTxInfo    *btcctypes.TransactionInfo
+	DelegatorSig     *bbntypes.BIP340Signature
+	FpPks            []*btcec.PublicKey
 
 	SlashingAddr  string
 	StakingTime   uint16
@@ -66,11 +64,10 @@ type TestDelegationData struct {
 }
 
 type testFinalityProviderData struct {
-	BabylonPrivKey   *secp256k1.PrivKey
-	BabylonPublicKey *secp256k1.PubKey
-	BtcPrivKey       *btcec.PrivateKey
-	BtcKey           *btcec.PublicKey
-	PoP              *bstypes.ProofOfPossession
+	BabylonAddress sdk.AccAddress
+	BtcPrivKey     *btcec.PrivateKey
+	BtcKey         *btcec.PublicKey
+	PoP            *bstypes.ProofOfPossessionBTC
 }
 
 func StartManager(t *testing.T) *TestManager {
@@ -116,7 +113,7 @@ func StartManager(t *testing.T) *TestManager {
 func (tm *TestManager) WaitForServicesStart(t *testing.T) {
 	// wait for Babylon node starts
 	require.Eventually(t, func() bool {
-		params, err := tm.CovBBNClient.QueryStakingParams()
+		params, err := tm.CovBBNClient.QueryStakingParamsByVersion(0)
 		if err != nil {
 			return false
 		}
@@ -132,10 +129,9 @@ func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*btc
 
 	var btcPks []*btcec.PublicKey
 	for i := 0; i < n; i++ {
-		fpData := genTestFinalityProviderData(t)
+		fpData := genTestFinalityProviderData(t, tm.CovBBNClient.GetKeyAddress())
 		btcPubKey := bbntypes.NewBIP340PubKeyFromBTCPK(fpData.BtcKey)
 		_, err := tm.CovBBNClient.RegisterFinalityProvider(
-			fpData.BabylonPublicKey,
 			btcPubKey,
 			&tm.StakingParams.MinComissionRate,
 			&stakingtypes.Description{
@@ -164,20 +160,17 @@ func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*btc
 	return tm, btcPks
 }
 
-func genTestFinalityProviderData(t *testing.T) *testFinalityProviderData {
+func genTestFinalityProviderData(t *testing.T, babylonAddr sdk.AccAddress) *testFinalityProviderData {
 	finalityProviderEOTSPrivKey, err := btcec.NewPrivateKey()
 	require.NoError(t, err)
-	finalityProviderBabylonPrivKey := secp256k1.GenPrivKey()
-	finalityProviderBabylonPubKey := finalityProviderBabylonPrivKey.PubKey().(*secp256k1.PubKey)
-	pop, err := bstypes.NewPoP(finalityProviderBabylonPrivKey, finalityProviderEOTSPrivKey)
+	pop, err := bstypes.NewPoPBTC(babylonAddr, finalityProviderEOTSPrivKey)
 	require.NoError(t, err)
 
 	return &testFinalityProviderData{
-		BabylonPrivKey:   finalityProviderBabylonPrivKey,
-		BabylonPublicKey: finalityProviderBabylonPubKey,
-		BtcPrivKey:       finalityProviderEOTSPrivKey,
-		BtcKey:           finalityProviderEOTSPrivKey.PubKey(),
-		PoP:              pop,
+		BabylonAddress: babylonAddr,
+		BtcPrivKey:     finalityProviderEOTSPrivKey,
+		BtcKey:         finalityProviderEOTSPrivKey.PubKey(),
+		PoP:            pop,
 	}
 }
 
@@ -254,24 +247,22 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKe
 		unbondingTime,
 	)
 
-	// delegator Babylon key pairs
-	delBabylonPrivKey, delBabylonPubKey, err := datagen.GenRandomSecp256k1KeyPair(r)
-	require.NoError(t, err)
-
 	// proof-of-possession
-	pop, err := bstypes.NewPoP(delBabylonPrivKey, delBtcPrivKey)
+	pop, err := bstypes.NewPoPBTC(tm.CovBBNClient.GetKeyAddress(), delBtcPrivKey)
 	require.NoError(t, err)
 
 	// create and insert BTC headers which include the staking tx to get staking tx info
-	currentBtcTip, err := tm.CovBBNClient.QueryBtcLightClientTip()
+	currentBtcTipResp, err := tm.CovBBNClient.QueryBtcLightClientTip()
 	require.NoError(t, err)
-	blockWithStakingTx := datagen.CreateBlockWithTransaction(r, currentBtcTip.Header.ToBlockHeader(), testStakingInfo.StakingTx)
+	tipHeader, err := bbntypes.NewBTCHeaderBytesFromHex(currentBtcTipResp.HeaderHex)
+	require.NoError(t, err)
+	blockWithStakingTx := datagen.CreateBlockWithTransaction(r, tipHeader.ToBlockHeader(), testStakingInfo.StakingTx)
 	accumulatedWork := btclctypes.CalcWork(&blockWithStakingTx.HeaderBytes)
-	accumulatedWork = btclctypes.CumulativeWork(accumulatedWork, *currentBtcTip.Work)
+	accumulatedWork = btclctypes.CumulativeWork(accumulatedWork, currentBtcTipResp.Work)
 	parentBlockHeaderInfo := &btclctypes.BTCHeaderInfo{
 		Header: &blockWithStakingTx.HeaderBytes,
 		Hash:   blockWithStakingTx.HeaderBytes.Hash(),
-		Height: currentBtcTip.Height + 1,
+		Height: currentBtcTipResp.Height + 1,
 		Work:   &accumulatedWork,
 	}
 	headers := make([]bbntypes.BTCHeaderBytes, 0)
@@ -337,7 +328,6 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKe
 
 	// submit the BTC delegation to Babylon
 	_, err = tm.CovBBNClient.CreateBTCDelegation(
-		delBabylonPubKey.(*secp256k1.PubKey),
 		bbntypes.NewBIP340PubKeyFromBTCPK(delBtcPubKey),
 		fpPks,
 		pop,
@@ -356,18 +346,16 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKe
 	t.Log("successfully submitted a BTC delegation")
 
 	return &TestDelegationData{
-		DelegatorPrivKey:        delBtcPrivKey,
-		DelegatorKey:            delBtcPubKey,
-		DelegatorBabylonPrivKey: delBabylonPrivKey.(*secp256k1.PrivKey),
-		DelegatorBabylonKey:     delBabylonPubKey.(*secp256k1.PubKey),
-		FpPks:                   fpPks,
-		StakingTx:               testStakingInfo.StakingTx,
-		SlashingTx:              testStakingInfo.SlashingTx,
-		StakingTxInfo:           txInfo,
-		DelegatorSig:            delegatorSig,
-		SlashingAddr:            params.SlashingAddress.String(),
-		StakingTime:             stakingTime,
-		StakingAmount:           stakingAmount,
+		DelegatorPrivKey: delBtcPrivKey,
+		DelegatorKey:     delBtcPubKey,
+		FpPks:            fpPks,
+		StakingTx:        testStakingInfo.StakingTx,
+		SlashingTx:       testStakingInfo.SlashingTx,
+		StakingTxInfo:    txInfo,
+		DelegatorSig:     delegatorSig,
+		SlashingAddr:     params.SlashingAddress.String(),
+		StakingTime:      stakingTime,
+		StakingAmount:    stakingAmount,
 	}
 }
 

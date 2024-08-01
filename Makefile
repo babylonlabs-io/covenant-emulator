@@ -1,7 +1,7 @@
 BUILDDIR ?= $(CURDIR)/build
 TOOLS_DIR := tools
 
-BABYLON_PKG := github.com/babylonchain/babylon/cmd/babylond
+BABYLON_PKG := github.com/babylonlabs-io/babylon/cmd/babylond
 
 GO_BIN := ${GOPATH}/bin
 
@@ -29,6 +29,14 @@ endif
 BUILD_TARGETS := build install
 BUILD_FLAGS := --tags "$(build_tags)" --ldflags '$(ldflags)'
 
+# Update changelog vars
+ifneq (,$(SINCE_TAG))
+	sinceTag := --since-tag $(SINCE_TAG)
+endif
+ifneq (,$(UPCOMING_TAG))
+	upcomingTag := --future-release $(UPCOMING_TAG)
+endif
+
 all: build install
 
 build: BUILD_ARGS := $(build_args) -o $(BUILDDIR)
@@ -40,7 +48,7 @@ $(BUILDDIR)/:
 	mkdir -p $(BUILDDIR)/
 
 build-docker:
-	$(DOCKER) build --tag babylonchain/covenant-emulator -f Dockerfile \
+	$(DOCKER) build --tag babylonlabs-io/covenant-emulator -f Dockerfile \
 		$(shell git rev-parse --show-toplevel)
 
 .PHONY: build build-docker
@@ -55,3 +63,11 @@ test-e2e:
 mock-gen:
 	mkdir -p $(MOCKS_DIR)
 	$(MOCKGEN_CMD) -source=clientcontroller/interface.go -package mocks -destination $(MOCKS_DIR)/babylon.go
+
+.PHONY: mock-gen
+
+update-changelog:
+	@echo ./scripts/update_changelog.sh $(sinceTag) $(upcomingTag)
+	./scripts/update_changelog.sh $(sinceTag) $(upcomingTag)
+
+.PHONY: update-changelog

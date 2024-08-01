@@ -2,11 +2,12 @@ package clientcontroller
 
 import (
 	"fmt"
+
 	"github.com/btcsuite/btcd/chaincfg"
 	"go.uber.org/zap"
 
-	"github.com/babylonchain/covenant-emulator/config"
-	"github.com/babylonchain/covenant-emulator/types"
+	"github.com/babylonlabs-io/covenant-emulator/config"
+	"github.com/babylonlabs-io/covenant-emulator/types"
 )
 
 const (
@@ -22,7 +23,7 @@ type ClientController interface {
 	// QueryPendingDelegations queries BTC delegations that are in status of pending
 	QueryPendingDelegations(limit uint64) ([]*types.Delegation, error)
 
-	QueryStakingParams() (*types.StakingParams, error)
+	QueryStakingParamsByVersion(version uint32) (*types.StakingParams, error)
 
 	Close() error
 }
