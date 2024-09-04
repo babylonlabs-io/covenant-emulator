@@ -58,9 +58,9 @@ type TestDelegationData struct {
 	DelegatorSig     *bbntypes.BIP340Signature
 	FpPks            []*btcec.PublicKey
 
-	SlashingAddr  string
-	StakingTime   uint16
-	StakingAmount int64
+	SlashingPkScript []byte
+	StakingTime      uint16
+	StakingAmount    int64
 }
 
 type testFinalityProviderData struct {
@@ -242,7 +242,7 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKe
 		params.CovenantQuorum,
 		stakingTime,
 		stakingAmount,
-		params.SlashingAddress.String(),
+		params.SlashingPkScript,
 		params.SlashingRate,
 		unbondingTime,
 	)
@@ -305,7 +305,7 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKe
 		wire.NewOutPoint(&stakingTxHash, 1),
 		unbondingTime,
 		unbondingValue,
-		params.SlashingAddress.String(),
+		params.SlashingPkScript,
 		params.SlashingRate,
 		unbondingTime,
 	)
@@ -353,7 +353,7 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKe
 		SlashingTx:       testStakingInfo.SlashingTx,
 		StakingTxInfo:    txInfo,
 		DelegatorSig:     delegatorSig,
-		SlashingAddr:     params.SlashingAddress.String(),
+		SlashingPkScript: params.SlashingPkScript,
 		StakingTime:      stakingTime,
 		StakingAmount:    stakingAmount,
 	}

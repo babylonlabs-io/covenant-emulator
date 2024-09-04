@@ -18,8 +18,8 @@ type StakingParams struct {
 	// Bitcoin public keys of the covenant committee
 	CovenantPks []*btcec.PublicKey
 
-	// Address to which slashing transactions are sent
-	SlashingAddress btcutil.Address
+	// PkScript that must be inserted in the slashing output of the slashing transaction
+	SlashingPkScript []byte
 
 	// Minimum number of signatures needed for the covenant multisignature
 	CovenantQuorum uint32
@@ -32,6 +32,21 @@ type StakingParams struct {
 
 	// The minimum time for unbonding transaction timelock in BTC blocks
 	MinUnbondingTime uint32
+
+	// Fee required by unbonding transaction
+	UnbondingFee btcutil.Amount
+
+	// Minimum staking time required by bayblon
+	MinStakingTime uint16
+
+	// Maximum staking time required by bayblon
+	MaxStakingTime uint16
+
+	// Minimum staking value required by bayblon
+	MinStakingValue btcutil.Amount
+
+	// Maximum staking value required by bayblon
+	MaxStakingValue btcutil.Amount
 }
 
 // MinimumUnbondingTime returns the minimum unbonding time. It is the bigger value from:

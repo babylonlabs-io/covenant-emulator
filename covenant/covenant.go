@@ -157,7 +157,30 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 			continue
 		}
 
-		// 4. decode staking tx and slashing tx from the delegation
+		// 4. check whether the:
+		// - staking time is within the min and max staking time
+		// - staking value is within the min and max staking value
+		stakingTime := btcDel.GetStakingTime()
+
+		if stakingTime < params.MinStakingTime || stakingTime > params.MaxStakingTime {
+			ce.logger.Error("invalid staking time",
+				zap.Uint16("min_staking_time", params.MinStakingTime),
+				zap.Uint16("max_staking_time", params.MaxStakingTime),
+				zap.Uint16("got_staking_time", stakingTime),
+			)
+			continue
+		}
+
+		if btcDel.TotalSat < uint64(params.MinStakingValue) || btcDel.TotalSat > uint64(params.MaxStakingValue) {
+			ce.logger.Error("invalid staking value",
+				zap.Uint64("min_staking_value", uint64(params.MinStakingValue)),
+				zap.Uint64("max_staking_value", uint64(params.MaxStakingValue)),
+				zap.Uint64("got_staking_value", btcDel.TotalSat),
+			)
+			continue
+		}
+
+		// 5. decode staking tx and slashing tx from the delegation
 		stakingTx, slashingTx, err := decodeDelegationTransactions(btcDel, params, &ce.config.BTCNetParams)
 		if err != nil {
 			ce.logger.Error("invalid delegation",
@@ -169,7 +192,7 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 			continue
 		}
 
-		// 5. decode unbonding tx and slash unbonding tx from the undelegation
+		// 6. decode unbonding tx and slash unbonding tx from the undelegation
 		unbondingTx, slashUnbondingTx, err := decodeUndelegationTransactions(btcDel, params, &ce.config.BTCNetParams)
 		if err != nil {
 			ce.logger.Error("invalid undelegation",
@@ -181,7 +204,18 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 			continue
 		}
 
-		// 6. sign covenant staking sigs
+		// 7. Check unbonding fee
+		unbondingFee := stakingTx.TxOut[btcDel.StakingOutputIdx].Value - unbondingTx.TxOut[0].Value
+
+		if unbondingFee != int64(params.UnbondingFee) {
+			ce.logger.Error("invalid unbonding fee",
+				zap.Int64("expected_unbonding_fee", int64(params.UnbondingFee)),
+				zap.Int64("got_unbonding_fee", unbondingFee),
+			)
+			continue
+		}
+
+		// 8. sign covenant staking sigs
 		// record metrics
 		startSignTime := time.Now()
 		metricsTimeKeeper.SetPreviousSignStart(&startSignTime)
@@ -393,7 +427,7 @@ func decodeDelegationTransactions(del *types.Delegation, params *types.StakingPa
 		del.StakingOutputIdx,
 		int64(params.MinSlashingTxFeeSat),
 		params.SlashingRate,
-		params.SlashingAddress,
+		params.SlashingPkScript,
 		del.BtcPk,
 		uint16(del.UnbondingTime),
 		btcNet,
@@ -423,7 +457,7 @@ func decodeUndelegationTransactions(del *types.Delegation, params *types.Staking
 		0,
 		int64(params.MinSlashingTxFeeSat),
 		params.SlashingRate,
-		params.SlashingAddress,
+		params.SlashingPkScript,
 		del.BtcPk,
 		uint16(del.UnbondingTime),
 		btcNet,

@@ -111,21 +111,22 @@ func (bc *BabylonController) QueryStakingParamsByVersion(version uint32) (*types
 		}
 		covenantPks = append(covenantPks, covPk)
 	}
-	slashingAddress, err := btcutil.DecodeAddress(stakingParamRes.Params.SlashingAddress, bc.btcParams)
-	if err != nil {
-		return nil, err
-	}
 
 	return &types.StakingParams{
 		ComfirmationTimeBlocks:    ckptParamRes.Params.BtcConfirmationDepth,
 		FinalizationTimeoutBlocks: ckptParamRes.Params.CheckpointFinalizationTimeout,
 		MinSlashingTxFeeSat:       btcutil.Amount(stakingParamRes.Params.MinSlashingTxFeeSat),
 		CovenantPks:               covenantPks,
-		SlashingAddress:           slashingAddress,
+		SlashingPkScript:          stakingParamRes.Params.SlashingPkScript,
 		CovenantQuorum:            stakingParamRes.Params.CovenantQuorum,
 		SlashingRate:              stakingParamRes.Params.SlashingRate,
 		MinComissionRate:          stakingParamRes.Params.MinCommissionRate,
-		MinUnbondingTime:          stakingParamRes.Params.MinUnbondingTime,
+		MinUnbondingTime:          stakingParamRes.Params.MinUnbondingTimeBlocks,
+		UnbondingFee:              btcutil.Amount(stakingParamRes.Params.UnbondingFeeSat),
+		MinStakingTime:            uint16(stakingParamRes.Params.MinStakingTimeBlocks),
+		MaxStakingTime:            uint16(stakingParamRes.Params.MaxStakingTimeBlocks),
+		MinStakingValue:           btcutil.Amount(stakingParamRes.Params.MinStakingValueSat),
+		MaxStakingValue:           btcutil.Amount(stakingParamRes.Params.MaxStakingValueSat),
 	}, nil
 }
 
