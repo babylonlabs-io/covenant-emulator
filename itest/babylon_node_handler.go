@@ -2,6 +2,7 @@ package e2etest
 
 import (
 	"bytes"
+	"encoding/hex"
 	"fmt"
 	"log"
 	"os"
@@ -11,6 +12,10 @@ import (
 	"testing"
 
 	"github.com/babylonlabs-io/babylon/types"
+	"github.com/btcsuite/btcd/btcutil"
+	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/btcsuite/btcd/txscript"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -120,6 +125,10 @@ func NewBabylonNodeHandler(t *testing.T, covenantPk *types.BIP340PubKey) *Babylo
 	nodeDataDir := filepath.Join(testDir, "node0", "babylond")
 
 	slashingAddr := "SZtRT4BySL3o4efdGLh3k7Kny8GAnsBrSW"
+	decodedAddr, err := btcutil.DecodeAddress(slashingAddr, &chaincfg.SimNetParams)
+	require.NoError(t, err)
+	pkScript, err := txscript.PayToAddrScript(decodedAddr)
+	require.NoError(t, err)
 
 	initTestnetCmd := exec.Command(
 		"babylond",
@@ -130,7 +139,9 @@ func NewBabylonNodeHandler(t *testing.T, covenantPk *types.BIP340PubKey) *Babylo
 		"--keyring-backend=test",
 		"--chain-id=chain-test",
 		"--additional-sender-account",
-		fmt.Sprintf("--slashing-address=%s", slashingAddr),
+		"--min-staking-time-blocks=100",
+		"--min-staking-amount-sat=10000",
+		fmt.Sprintf("--slashing-pk-script=%s", hex.EncodeToString(pkScript)),
 		fmt.Sprintf("--covenant-pks=%s", covenantPk.MarshalHex()),
 		"--covenant-quorum=1",
 	)

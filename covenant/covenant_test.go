@@ -58,8 +58,8 @@ func FuzzAddCovenantSig(f *testing.F) {
 			// generate BTC delegation
 			delSK, delPK, err := datagen.GenRandomBTCKeyPair(r)
 			require.NoError(t, err)
-			stakingTimeBlocks := uint16(5)
-			stakingValue := int64(2 * 10e8)
+			stakingTimeBlocks := uint16(testutil.RandRange(r, int(params.MinStakingTime), int(params.MaxStakingTime)))
+			stakingValue := int64(testutil.RandRange(r, int(params.MinStakingValue), int(params.MaxStakingValue)))
 			unbondingTime := uint16(params.MinimumUnbondingTime()) + 1
 			fpNum := datagen.RandomInt(r, 5) + 1
 			fpPks := testutil.GenBtcPublicKeys(r, t, int(fpNum))
@@ -73,7 +73,7 @@ func FuzzAddCovenantSig(f *testing.F) {
 				params.CovenantQuorum,
 				stakingTimeBlocks,
 				stakingValue,
-				params.SlashingAddress.String(),
+				params.SlashingPkScript,
 				params.SlashingRate,
 				unbondingTime,
 			)
@@ -112,7 +112,7 @@ func FuzzAddCovenantSig(f *testing.F) {
 			}
 
 			// generate undelegation
-			unbondingValue := int64(btcDel.TotalSat) - 1000
+			unbondingValue := int64(btcDel.TotalSat) - int64(params.UnbondingFee)
 
 			stakingTxHash := testInfo.StakingTx.TxHash()
 			testUnbondingInfo := datagen.GenBTCUnbondingSlashingInfo(
@@ -126,7 +126,7 @@ func FuzzAddCovenantSig(f *testing.F) {
 				wire.NewOutPoint(&stakingTxHash, 0),
 				unbondingTime,
 				unbondingValue,
-				params.SlashingAddress.String(),
+				params.SlashingPkScript,
 				params.SlashingRate,
 				unbondingTime,
 			)
