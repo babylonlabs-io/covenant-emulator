@@ -335,6 +335,7 @@ func (bc *BabylonController) CreateBTCDelegation(
 	for _, v := range fpPks {
 		fpBtcPks = append(fpBtcPks, *bbntypes.NewBIP340PubKeyFromBTCPK(v))
 	}
+
 	msg := &btcstakingtypes.MsgCreateBTCDelegation{
 		StakerAddr:                    bc.mustGetTxSigner(),
 		Pop:                           pop,
@@ -342,7 +343,8 @@ func (bc *BabylonController) CreateBTCDelegation(
 		FpBtcPkList:                   fpBtcPks,
 		StakingTime:                   stakingTime,
 		StakingValue:                  stakingValue,
-		StakingTx:                     stakingTxInfo,
+		StakingTx:                     stakingTxInfo.Transaction,
+		StakingTxInclusionProof:       btcstakingtypes.NewInclusionProof(stakingTxInfo.Key, stakingTxInfo.Proof),
 		SlashingTx:                    slashingTx,
 		DelegatorSlashingSig:          delSlashingSig,
 		UnbondingTx:                   unbondingTx,
