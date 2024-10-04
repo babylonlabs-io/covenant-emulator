@@ -36,16 +36,16 @@ type StakingParams struct {
 	// Fee required by unbonding transaction
 	UnbondingFee btcutil.Amount
 
-	// Minimum staking time required by bayblon
+	// Minimum staking time required by babylon
 	MinStakingTime uint16
 
-	// Maximum staking time required by bayblon
+	// Maximum staking time required by babylon
 	MaxStakingTime uint16
 
-	// Minimum staking value required by bayblon
+	// Minimum staking value required by babylon
 	MinStakingValue btcutil.Amount
 
-	// Maximum staking value required by bayblon
+	// Maximum staking value required by babylon
 	MaxStakingValue btcutil.Amount
 }
 
