@@ -116,13 +116,13 @@ func (bc *BabylonController) QueryStakingParamsByVersion(version uint32) (*types
 	if stakingParamRes.Params.MinStakingTimeBlocks > math.MaxUint16 {
 		return nil, fmt.Errorf("babylon min staking time blocks (%d) is larger than the maximum uint16", stakingParamRes.Params.MinStakingTimeBlocks)
 	}
-	// #nosec G115
+	// #nosec G115 -- performed the conversion check above
 	minStakingTimeBlocksUint16 := uint16(stakingParamRes.Params.MinStakingTimeBlocks)
 
 	if stakingParamRes.Params.MaxStakingTimeBlocks > math.MaxUint16 {
 		return nil, fmt.Errorf("babylon max staking time blocks (%d) is larger than the maximum uint16", stakingParamRes.Params.MaxStakingTimeBlocks)
 	}
-	// #nosec G115
+	// #nosec G115 -- performed the conversion check above
 	maxStakingTimeBlocksUint16 := uint16(stakingParamRes.Params.MaxStakingTimeBlocks)
 
 	return &types.StakingParams{
