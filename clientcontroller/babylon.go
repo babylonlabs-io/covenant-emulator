@@ -3,6 +3,7 @@ package clientcontroller
 import (
 	"context"
 	"fmt"
+	"math"
 	"time"
 
 	sdkmath "cosmossdk.io/math"
@@ -112,6 +113,18 @@ func (bc *BabylonController) QueryStakingParamsByVersion(version uint32) (*types
 		covenantPks = append(covenantPks, covPk)
 	}
 
+	if stakingParamRes.Params.MinStakingTimeBlocks > math.MaxUint16 {
+		return nil, fmt.Errorf("babylon min staking time blocks (%d) is larger than the maximum uint16", stakingParamRes.Params.MinStakingTimeBlocks)
+	}
+	// #nosec G115
+	minStakingTimeBlocksUint16 := uint16(stakingParamRes.Params.MinStakingTimeBlocks)
+
+	if stakingParamRes.Params.MaxStakingTimeBlocks > math.MaxUint16 {
+		return nil, fmt.Errorf("babylon max staking time blocks (%d) is larger than the maximum uint16", stakingParamRes.Params.MaxStakingTimeBlocks)
+	}
+	// #nosec G115
+	maxStakingTimeBlocksUint16 := uint16(stakingParamRes.Params.MaxStakingTimeBlocks)
+
 	return &types.StakingParams{
 		ComfirmationTimeBlocks:    ckptParamRes.Params.BtcConfirmationDepth,
 		FinalizationTimeoutBlocks: ckptParamRes.Params.CheckpointFinalizationTimeout,
@@ -123,8 +136,8 @@ func (bc *BabylonController) QueryStakingParamsByVersion(version uint32) (*types
 		MinComissionRate:          stakingParamRes.Params.MinCommissionRate,
 		MinUnbondingTime:          stakingParamRes.Params.MinUnbondingTimeBlocks,
 		UnbondingFee:              btcutil.Amount(stakingParamRes.Params.UnbondingFeeSat),
-		MinStakingTime:            uint16(stakingParamRes.Params.MinStakingTimeBlocks),
-		MaxStakingTime:            uint16(stakingParamRes.Params.MaxStakingTimeBlocks),
+		MinStakingTime:            minStakingTimeBlocksUint16,
+		MaxStakingTime:            maxStakingTimeBlocksUint16,
 		MinStakingValue:           btcutil.Amount(stakingParamRes.Params.MinStakingValueSat),
 		MaxStakingValue:           btcutil.Amount(stakingParamRes.Params.MaxStakingValueSat),
 	}, nil
@@ -248,17 +261,25 @@ func DelegationRespToDelegation(del *btcstakingtypes.BTCDelegationResponse) (*ty
 		fpBtcPks = append(fpBtcPks, fp.MustToBTCPK())
 	}
 
+	if del.UnbondingTime > uint32(math.MaxUint16) {
+		return nil, fmt.Errorf("unbonding time should be smaller than max uint16")
+	}
+
+	if del.TotalSat > uint64(math.MaxInt64) {
+		return nil, fmt.Errorf("total sat (%d) is larger than the maximum int64", del.TotalSat)
+	}
+
 	return &types.Delegation{
 		BtcPk:            del.BtcPk.MustToBTCPK(),
 		FpBtcPks:         fpBtcPks,
-		TotalSat:         del.TotalSat,
+		TotalSat:         btcutil.Amount(del.TotalSat),
 		StartHeight:      del.StartHeight,
 		EndHeight:        del.EndHeight,
 		StakingTxHex:     del.StakingTxHex,
 		SlashingTxHex:    del.SlashingTxHex,
 		StakingOutputIdx: del.StakingOutputIdx,
 		CovenantSigs:     covenantSigs,
-		UnbondingTime:    del.UnbondingTime,
+		UnbondingTime:    uint16(del.UnbondingTime),
 		BtcUndelegation:  undelegation,
 	}, nil
 }

@@ -152,7 +152,7 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 		if uint64(unbondingTime) <= minUnbondingTime {
 			ce.logger.Error("invalid unbonding time",
 				zap.Uint64("min_unbonding_time", minUnbondingTime),
-				zap.Uint32("got_unbonding_time", unbondingTime),
+				zap.Uint16("got_unbonding_time", unbondingTime),
 			)
 			continue
 		}
@@ -171,11 +171,11 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 			continue
 		}
 
-		if btcDel.TotalSat < uint64(params.MinStakingValue) || btcDel.TotalSat > uint64(params.MaxStakingValue) {
+		if btcDel.TotalSat < params.MinStakingValue || btcDel.TotalSat > params.MaxStakingValue {
 			ce.logger.Error("invalid staking value",
-				zap.Uint64("min_staking_value", uint64(params.MinStakingValue)),
-				zap.Uint64("max_staking_value", uint64(params.MaxStakingValue)),
-				zap.Uint64("got_staking_value", btcDel.TotalSat),
+				zap.Int64("min_staking_value", int64(params.MinStakingValue)),
+				zap.Int64("max_staking_value", int64(params.MaxStakingValue)),
+				zap.Int64("got_staking_value", int64(btcDel.TotalSat)),
 			)
 			continue
 		}
@@ -296,7 +296,7 @@ func signSlashUnbondingSignatures(
 		del.FpBtcPks,
 		params.CovenantPks,
 		params.CovenantQuorum,
-		uint16(del.UnbondingTime),
+		del.UnbondingTime,
 		btcutil.Amount(unbondingTx.TxOut[0].Value),
 		btcNet,
 	)
@@ -341,7 +341,6 @@ func signSlashAndUnbondSignatures(
 	params *types.StakingParams,
 	btcNet *chaincfg.Params,
 ) ([][]byte, *schnorr.Signature, error) {
-
 	// sign slash signatures with every finality providers
 	stakingInfo, err := btcstaking.BuildStakingInfo(
 		del.BtcPk,
@@ -349,7 +348,7 @@ func signSlashAndUnbondSignatures(
 		params.CovenantPks,
 		params.CovenantQuorum,
 		del.GetStakingTime(),
-		btcutil.Amount(del.TotalSat),
+		del.TotalSat,
 		btcNet,
 	)
 	if err != nil {
@@ -429,7 +428,7 @@ func decodeDelegationTransactions(del *types.Delegation, params *types.StakingPa
 		params.SlashingRate,
 		params.SlashingPkScript,
 		del.BtcPk,
-		uint16(del.UnbondingTime),
+		del.UnbondingTime,
 		btcNet,
 	); err != nil {
 		return nil, nil, fmt.Errorf("invalid txs in the delegation: %w", err)
@@ -459,7 +458,7 @@ func decodeUndelegationTransactions(del *types.Delegation, params *types.Staking
 		params.SlashingRate,
 		params.SlashingPkScript,
 		del.BtcPk,
-		uint16(del.UnbondingTime),
+		del.UnbondingTime,
 		btcNet,
 	); err != nil {
 		return nil, nil, fmt.Errorf("invalid txs in the undelegation: %w", err)

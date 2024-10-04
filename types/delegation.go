@@ -1,6 +1,7 @@
 package types
 
 import (
+	"github.com/btcsuite/btcd/btcutil"
 	"math"
 
 	bbn "github.com/babylonlabs-io/babylon/types"
@@ -23,7 +24,7 @@ type Delegation struct {
 	EndHeight uint64
 	// The total amount of BTC stakes in this delegation
 	// quantified in satoshi
-	TotalSat uint64
+	TotalSat btcutil.Amount
 	// The hex string of the staking tx
 	StakingTxHex string
 	// The index of the staking output in the staking tx
@@ -32,7 +33,7 @@ type Delegation struct {
 	SlashingTxHex string
 	// UnbondingTime describes how long the funds will be locked either in unbonding output
 	// or slashing change output
-	UnbondingTime uint32
+	UnbondingTime uint16
 	// The signatures on the slashing tx
 	// by the covenants (i.e., SKs corresponding to covenant_pks in params)
 	// It will be a part of the witness for the staking tx output.
@@ -47,7 +48,7 @@ type Delegation struct {
 // HasCovenantQuorum returns whether a delegation has sufficient sigs
 // from Covenant members to make a quorum
 func (d *Delegation) HasCovenantQuorum(quorum uint32) bool {
-	return uint32(len(d.CovenantSigs)) >= quorum && d.BtcUndelegation.HasAllSignatures(quorum)
+	return len(d.CovenantSigs) >= int(quorum) && d.BtcUndelegation.HasAllSignatures(quorum)
 }
 
 func (d *Delegation) GetStakingTime() uint16 {

@@ -2,6 +2,7 @@ package covenant_test
 
 import (
 	"encoding/hex"
+	"github.com/btcsuite/btcd/btcutil"
 	"math/rand"
 	"testing"
 
@@ -87,8 +88,8 @@ func FuzzAddCovenantSig(f *testing.F) {
 				FpBtcPks:         fpPks,
 				StartHeight:      startHeight, // not relevant here
 				EndHeight:        startHeight + uint64(stakingTimeBlocks),
-				TotalSat:         uint64(stakingValue),
-				UnbondingTime:    uint32(unbondingTime),
+				TotalSat:         btcutil.Amount(stakingValue),
+				UnbondingTime:    unbondingTime,
 				StakingTxHex:     hex.EncodeToString(stakingTxBytes),
 				StakingOutputIdx: stakingOutputIdx,
 				SlashingTxHex:    testInfo.SlashingTx.ToHexStr(),
