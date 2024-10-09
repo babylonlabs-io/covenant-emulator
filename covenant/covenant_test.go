@@ -2,9 +2,10 @@ package covenant_test
 
 import (
 	"encoding/hex"
-	"github.com/btcsuite/btcd/btcutil"
 	"math/rand"
 	"testing"
+
+	"github.com/btcsuite/btcd/btcutil"
 
 	"github.com/babylonlabs-io/babylon/btcstaking"
 	asig "github.com/babylonlabs-io/babylon/crypto/schnorr-adaptor-signature"
@@ -17,6 +18,7 @@ import (
 
 	covcfg "github.com/babylonlabs-io/covenant-emulator/config"
 	"github.com/babylonlabs-io/covenant-emulator/covenant"
+	"github.com/babylonlabs-io/covenant-emulator/keyring"
 	"github.com/babylonlabs-io/covenant-emulator/testutil"
 	"github.com/babylonlabs-io/covenant-emulator/types"
 )
@@ -38,7 +40,7 @@ func FuzzAddCovenantSig(f *testing.F) {
 
 		// create a Covenant key pair in the keyring
 		covenantConfig := covcfg.DefaultConfig()
-		covKeyPair, err := covenant.CreateCovenantKey(
+		covKeyPair, err := keyring.CreateCovenantKey(
 			covenantConfig.BabylonConfig.KeyDirectory,
 			covenantConfig.BabylonConfig.ChainID,
 			covenantConfig.BabylonConfig.Key,
@@ -48,8 +50,11 @@ func FuzzAddCovenantSig(f *testing.F) {
 		)
 		require.NoError(t, err)
 
+		signer, err := keyring.NewLocalKeyringCriptoSigner(covenantConfig.BabylonConfig.ChainID, covenantConfig.BabylonConfig.Key, covenantConfig.BabylonConfig.KeyDirectory, covenantConfig.BabylonConfig.KeyringBackend, passphrase)
+		require.NoError(t, err)
+
 		// create and start covenant emulator
-		ce, err := covenant.NewCovenantEmulator(&covenantConfig, mockClientController, passphrase, zap.NewNop())
+		ce, err := covenant.NewCovenantEmulator(&covenantConfig, mockClientController, passphrase, zap.NewNop(), signer)
 		require.NoError(t, err)
 
 		numDels := datagen.RandomInt(r, 3) + 1

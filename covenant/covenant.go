@@ -3,7 +3,6 @@ package covenant
 import (
 	"encoding/hex"
 	"fmt"
-	"strings"
 	"sync"
 	"time"
 
@@ -21,7 +20,6 @@ import (
 
 	"github.com/babylonlabs-io/covenant-emulator/clientcontroller"
 	covcfg "github.com/babylonlabs-io/covenant-emulator/config"
-	"github.com/babylonlabs-io/covenant-emulator/keyring"
 	"github.com/babylonlabs-io/covenant-emulator/types"
 )
 
@@ -42,15 +40,11 @@ type CovenantEmulator struct {
 
 	pk *btcec.PublicKey
 
-	cc clientcontroller.ClientController
-	kc *keyring.ChainKeyringController
+	signer CriptoSigner
+	cc     clientcontroller.ClientController
 
 	config *covcfg.Config
 	logger *zap.Logger
-
-	// input is used to pass passphrase to the keyring
-	input      *strings.Reader
-	passphrase string
 }
 
 func NewCovenantEmulator(
@@ -58,42 +52,20 @@ func NewCovenantEmulator(
 	cc clientcontroller.ClientController,
 	passphrase string,
 	logger *zap.Logger,
+	signer CriptoSigner,
 ) (*CovenantEmulator, error) {
-	input := strings.NewReader("")
-	kr, err := keyring.CreateKeyring(
-		config.BabylonConfig.KeyDirectory,
-		config.BabylonConfig.ChainID,
-		config.BabylonConfig.KeyringBackend,
-		input,
-	)
+	pk, err := signer.PubKey()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create keyring: %w", err)
-	}
-
-	kc, err := keyring.NewChainKeyringControllerWithKeyring(kr, config.BabylonConfig.Key, input)
-	if err != nil {
-		return nil, err
-	}
-
-	sk, err := kc.GetChainPrivKey(passphrase)
-	if err != nil {
-		return nil, fmt.Errorf("covenant key %s is not found: %w", config.BabylonConfig.Key, err)
-	}
-
-	pk, err := btcec.ParsePubKey(sk.PubKey().Bytes())
-	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get signer pub key: %w", err)
 	}
 
 	return &CovenantEmulator{
-		cc:         cc,
-		kc:         kc,
-		config:     config,
-		logger:     logger,
-		input:      input,
-		passphrase: passphrase,
-		pk:         pk,
-		quit:       make(chan struct{}),
+		cc:     cc,
+		signer: signer,
+		config: config,
+		logger: logger,
+		pk:     pk,
+		quit:   make(chan struct{}),
 	}, nil
 }
 
@@ -219,17 +191,12 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 		startSignTime := time.Now()
 		metricsTimeKeeper.SetPreviousSignStart(&startSignTime)
 
-		covenantPrivKey, err := ce.getPrivKey()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get Covenant private key: %w", err)
-		}
-
 		slashSigs, unbondingSig, err := signSlashAndUnbondSignatures(
 			btcDel,
 			stakingTx,
 			slashingTx,
 			unbondingTx,
-			covenantPrivKey,
+			ce.signer,
 			params,
 			&ce.config.BTCNetParams,
 		)
@@ -243,7 +210,7 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 			btcDel,
 			unbondingTx,
 			slashUnbondingTx,
-			covenantPrivKey,
+			ce.signer,
 			params,
 			&ce.config.BTCNetParams,
 		)
@@ -286,7 +253,7 @@ func signSlashUnbondingSignatures(
 	del *types.Delegation,
 	unbondingTx *wire.MsgTx,
 	slashUnbondingTx *wire.MsgTx,
-	covPrivKey *btcec.PrivateKey,
+	signer CriptoSigner,
 	params *types.StakingParams,
 	btcNet *chaincfg.Params,
 ) ([][]byte, error) {
@@ -314,12 +281,11 @@ func signSlashUnbondingSignatures(
 		if err != nil {
 			return nil, err
 		}
-		slashUnbondingSig, err := btcstaking.EncSignTxWithOneScriptSpendInputStrict(
+		slashUnbondingSig, err := signer.EncSignTxWithOneScriptSpendInputStrict(
 			slashUnbondingTx,
 			unbondingTx,
 			0, // 0th output is always the unbonding script output
 			unbondingTxSlashingPath.GetPkScriptPath(),
-			covPrivKey,
 			encKey,
 		)
 		if err != nil {
@@ -336,7 +302,7 @@ func signSlashAndUnbondSignatures(
 	stakingTx *wire.MsgTx,
 	slashingTx *wire.MsgTx,
 	unbondingTx *wire.MsgTx,
-	covPrivKey *btcec.PrivateKey,
+	signer CriptoSigner,
 	params *types.StakingParams,
 	btcNet *chaincfg.Params,
 ) ([][]byte, *schnorr.Signature, error) {
@@ -367,12 +333,11 @@ func signSlashAndUnbondSignatures(
 			return nil, nil, fmt.Errorf("failed to get encryption key from finality provider public key %s: %w",
 				fpPkHex, err)
 		}
-		slashSig, err := btcstaking.EncSignTxWithOneScriptSpendInputStrict(
+		slashSig, err := signer.EncSignTxWithOneScriptSpendInputStrict(
 			slashingTx,
 			stakingTx,
 			del.StakingOutputIdx,
 			slashingPathInfo.GetPkScriptPath(),
-			covPrivKey,
 			encKey,
 		)
 		if err != nil {
@@ -387,12 +352,11 @@ func signSlashAndUnbondSignatures(
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get unbonding path spend info")
 	}
-	unbondingSig, err := btcstaking.SignTxWithOneScriptSpendInputStrict(
+	unbondingSig, err := signer.SignTxWithOneScriptSpendInputStrict(
 		unbondingTx,
 		stakingTx,
 		del.StakingOutputIdx,
 		stakingTxUnbondingPathInfo.GetPkScriptPath(),
-		covPrivKey,
 	)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to sign unbonding tx: %w", err)
@@ -464,17 +428,6 @@ func decodeUndelegationTransactions(del *types.Delegation, params *types.Staking
 	}
 
 	return unbondingMsgTx, unbondingSlashingMsgTx, err
-}
-
-func (ce *CovenantEmulator) getPrivKey() (*btcec.PrivateKey, error) {
-	sdkPrivKey, err := ce.kc.GetChainPrivKey(ce.passphrase)
-	if err != nil {
-		return nil, err
-	}
-
-	privKey, _ := btcec.PrivKeyFromBytes(sdkPrivKey.Key)
-
-	return privKey, nil
 }
 
 // delegationsToBatches takes a list of delegations and splits them into batches
@@ -581,26 +534,6 @@ func (ce *CovenantEmulator) metricsUpdateLoop() {
 			return
 		}
 	}
-}
-
-func CreateCovenantKey(keyringDir, chainID, keyName, backend, passphrase, hdPath string) (*types.ChainKeyInfo, error) {
-	sdkCtx, err := keyring.CreateClientCtx(
-		keyringDir, chainID,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	krController, err := keyring.NewChainKeyringController(
-		sdkCtx,
-		keyName,
-		backend,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	return krController.CreateChainKey(passphrase, hdPath)
 }
 
 func (ce *CovenantEmulator) getParamsByVersionWithRetry(version uint32) (*types.StakingParams, error) {

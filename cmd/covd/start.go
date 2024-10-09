@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 
 	covcfg "github.com/babylonlabs-io/covenant-emulator/config"
+	"github.com/babylonlabs-io/covenant-emulator/keyring"
 	"github.com/babylonlabs-io/covenant-emulator/log"
 	"github.com/babylonlabs-io/covenant-emulator/util"
 
@@ -57,7 +58,14 @@ func start(ctx *cli.Context) error {
 		return fmt.Errorf("failed to create rpc client for the consumer chain: %w", err)
 	}
 
-	ce, err := covenant.NewCovenantEmulator(cfg, bbnClient, ctx.String(passphraseFlag), logger)
+	pwd := ctx.String(passphraseFlag)
+
+	signer, err := NewSignerFromConfig(cfg, pwd)
+	if err != nil {
+		return fmt.Errorf("failed to create signer from config: %w", err)
+	}
+
+	ce, err := covenant.NewCovenantEmulator(cfg, bbnClient, pwd, logger, signer)
 	if err != nil {
 		return fmt.Errorf("failed to start the covenant emulator: %w", err)
 	}
@@ -74,4 +82,8 @@ func start(ctx *cli.Context) error {
 	}
 
 	return srv.RunUntilShutdown()
+}
+
+func NewSignerFromConfig(cfg *covcfg.Config, passphrase string) (*keyring.KeyringCriptoSigner, error) {
+	return keyring.NewLocalKeyringCriptoSigner(cfg.BabylonConfig.ChainID, cfg.BabylonConfig.Key, cfg.BabylonConfig.KeyDirectory, cfg.BabylonConfig.KeyringBackend, passphrase)
 }
