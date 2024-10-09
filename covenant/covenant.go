@@ -1,7 +1,6 @@
 package covenant
 
 import (
-	"bytes"
 	"encoding/hex"
 	"fmt"
 	"strings"
@@ -502,7 +501,7 @@ func (ce *CovenantEmulator) removeAlreadySigned(dels []*types.Delegation) []*typ
 		delCopy := del
 		alreadySigned := false
 		for _, covSig := range delCopy.CovenantSigs {
-			if bytes.Equal(schnorr.SerializePubKey(covSig.Pk), schnorr.SerializePubKey(ce.pk)) {
+			if covSig.Pk.IsEqual(ce.pk) {
 				alreadySigned = true
 				break
 			}
