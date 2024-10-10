@@ -7,7 +7,7 @@ import (
 )
 
 type CovenantSigs struct {
-	PublicKey             btcec.PublicKey
+	PublicKey             *btcec.PublicKey
 	StakingTxHash         chainhash.Hash
 	SlashingSigs          [][]byte
 	UnbondingSig          schnorr.Signature

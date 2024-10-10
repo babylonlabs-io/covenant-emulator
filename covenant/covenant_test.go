@@ -180,7 +180,7 @@ func FuzzAddCovenantSig(f *testing.F) {
 				unbondingCovSlashingSigs = append(unbondingCovSlashingSigs, covenantSig.MustMarshal())
 			}
 			covSigsSet = append(covSigsSet, types.CovenantSigs{
-				PublicKey:             *covKeyPair.PublicKey,
+				PublicKey:             covKeyPair.PublicKey,
 				StakingTxHash:         testInfo.StakingTx.TxHash(),
 				SlashingSigs:          covSigs,
 				UnbondingSig:          *unbondingCovSig,

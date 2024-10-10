@@ -164,7 +164,7 @@ func (bc *BabylonController) SubmitCovenantSigs(covSigs []types.CovenantSigs) (*
 		bip340UnbondingSig := bbntypes.NewBIP340SignatureFromBTCSig(&covSig.UnbondingSig)
 		msgs = append(msgs, &btcstakingtypes.MsgAddCovenantSigs{
 			Signer:                  bc.mustGetTxSigner(),
-			Pk:                      bbntypes.NewBIP340PubKeyFromBTCPK(&covSig.PublicKey),
+			Pk:                      bbntypes.NewBIP340PubKeyFromBTCPK(covSig.PublicKey),
 			StakingTxHash:           covSig.StakingTxHash.String(),
 			SlashingTxSigs:          covSig.SlashingSigs,
 			UnbondingTxSig:          bip340UnbondingSig,

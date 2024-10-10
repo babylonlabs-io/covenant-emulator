@@ -245,7 +245,7 @@ func BuildCovenantSigs(pk *secp.PublicKey, resp SigningResponse) []types.Covenan
 	covenantSigs := make([]types.CovenantSigs, 0, len(resp.SignaturesByStkTxHash))
 	for stkTxHash, signatures := range resp.SignaturesByStkTxHash {
 		covenantSigs = append(covenantSigs, types.CovenantSigs{
-			PublicKey:             *pk,
+			PublicKey:             pk,
 			StakingTxHash:         stkTxHash,
 			SlashingSigs:          signatures.SlashSigs,
 			UnbondingSig:          *signatures.UnbondingSig,
