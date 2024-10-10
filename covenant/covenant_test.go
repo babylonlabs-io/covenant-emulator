@@ -33,6 +33,7 @@ var net = &chaincfg.SimNetParams
 func FuzzAddCovenantSig(f *testing.F) {
 	testutil.AddRandomSeedsToFuzzer(f, 10)
 	f.Fuzz(func(t *testing.T, seed int64) {
+		t.Log("Seed", seed)
 		r := rand.New(rand.NewSource(seed))
 
 		params := testutil.GenRandomParams(r, t)
@@ -40,6 +41,8 @@ func FuzzAddCovenantSig(f *testing.F) {
 
 		// create a Covenant key pair in the keyring
 		covenantConfig := covcfg.DefaultConfig()
+		covenantConfig.BabylonConfig.KeyDirectory = t.TempDir()
+
 		covKeyPair, err := keyring.CreateCovenantKey(
 			covenantConfig.BabylonConfig.KeyDirectory,
 			covenantConfig.BabylonConfig.ChainID,
@@ -58,7 +61,7 @@ func FuzzAddCovenantSig(f *testing.F) {
 		require.NoError(t, err)
 
 		numDels := datagen.RandomInt(r, 3) + 1
-		covSigsSet := make([]*types.CovenantSigs, 0, numDels)
+		covSigsSet := make([]types.CovenantSigs, 0, numDels)
 		btcDels := make([]*types.Delegation, 0, numDels)
 		for i := 0; uint64(i) < numDels; i++ {
 			// generate BTC delegation
@@ -176,11 +179,11 @@ func FuzzAddCovenantSig(f *testing.F) {
 				require.NoError(t, err)
 				unbondingCovSlashingSigs = append(unbondingCovSlashingSigs, covenantSig.MustMarshal())
 			}
-			covSigsSet = append(covSigsSet, &types.CovenantSigs{
-				PublicKey:             covKeyPair.PublicKey,
+			covSigsSet = append(covSigsSet, types.CovenantSigs{
+				PublicKey:             *covKeyPair.PublicKey,
 				StakingTxHash:         testInfo.StakingTx.TxHash(),
 				SlashingSigs:          covSigs,
-				UnbondingSig:          unbondingCovSig,
+				UnbondingSig:          *unbondingCovSig,
 				SlashingUnbondingSigs: unbondingCovSlashingSigs,
 			})
 		}
@@ -191,9 +194,10 @@ func FuzzAddCovenantSig(f *testing.F) {
 		}
 		btcDels = append(btcDels, invalidDelegation)
 
+		sortedCovSigs := covenant.SortCovenantSigs(covSigsSet)
 		// check the sigs are expected
 		expectedTxHash := testutil.GenRandomHexStr(r, 32)
-		mockClientController.EXPECT().SubmitCovenantSigs(covSigsSet).
+		mockClientController.EXPECT().SubmitCovenantSigs(sortedCovSigs).
 			Return(&types.TxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
 		res, err := ce.AddCovenantSignatures(btcDels)
 		require.NoError(t, err)
