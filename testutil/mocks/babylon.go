@@ -79,7 +79,7 @@ func (mr *MockClientControllerMockRecorder) QueryStakingParamsByVersion(version 
 }
 
 // SubmitCovenantSigs mocks base method.
-func (m *MockClientController) SubmitCovenantSigs(covSigMsgs []types.CovenantSigs) (*types.TxResponse, error) {
+func (m *MockClientController) SubmitCovenantSigs(covSigMsgs []*types.CovenantSigs) (*types.TxResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SubmitCovenantSigs", covSigMsgs)
 	ret0, _ := ret[0].(*types.TxResponse)

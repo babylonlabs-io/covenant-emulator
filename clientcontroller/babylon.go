@@ -158,7 +158,7 @@ func (bc *BabylonController) reliablySendMsgs(msgs []sdk.Msg) (*provider.Relayer
 
 // SubmitCovenantSigs submits the Covenant signature via a MsgAddCovenantSig to Babylon if the daemon runs in Covenant mode
 // it returns tx hash and error
-func (bc *BabylonController) SubmitCovenantSigs(covSigs []types.CovenantSigs) (*types.TxResponse, error) {
+func (bc *BabylonController) SubmitCovenantSigs(covSigs []*types.CovenantSigs) (*types.TxResponse, error) {
 	msgs := make([]sdk.Msg, 0, len(covSigs))
 	for _, covSig := range covSigs {
 		bip340UnbondingSig := bbntypes.NewBIP340SignatureFromBTCSig(covSig.UnbondingSig)

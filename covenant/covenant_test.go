@@ -61,7 +61,7 @@ func FuzzAddCovenantSig(f *testing.F) {
 		require.NoError(t, err)
 
 		numDels := datagen.RandomInt(r, 3) + 1
-		covSigsSet := make([]types.CovenantSigs, 0, numDels)
+		covSigsSet := make([]*types.CovenantSigs, 0, numDels)
 		btcDels := make([]*types.Delegation, 0, numDels)
 		for i := 0; uint64(i) < numDels; i++ {
 			// generate BTC delegation
@@ -179,7 +179,7 @@ func FuzzAddCovenantSig(f *testing.F) {
 				require.NoError(t, err)
 				unbondingCovSlashingSigs = append(unbondingCovSlashingSigs, covenantSig.MustMarshal())
 			}
-			covSigsSet = append(covSigsSet, types.CovenantSigs{
+			covSigsSet = append(covSigsSet, &types.CovenantSigs{
 				PublicKey:             covKeyPair.PublicKey,
 				StakingTxHash:         testInfo.StakingTx.TxHash(),
 				SlashingSigs:          covSigs,

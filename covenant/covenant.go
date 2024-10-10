@@ -241,10 +241,10 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 }
 
 // BuildCovenantSigs creates the covenant signatures from the signature response
-func BuildCovenantSigs(pk *secp.PublicKey, resp SigningResponse) []types.CovenantSigs {
-	covenantSigs := make([]types.CovenantSigs, 0, len(resp.SignaturesByStkTxHash))
+func BuildCovenantSigs(pk *secp.PublicKey, resp SigningResponse) []*types.CovenantSigs {
+	covenantSigs := make([]*types.CovenantSigs, 0, len(resp.SignaturesByStkTxHash))
 	for stkTxHash, signatures := range resp.SignaturesByStkTxHash {
-		covenantSigs = append(covenantSigs, types.CovenantSigs{
+		covenantSigs = append(covenantSigs, &types.CovenantSigs{
 			PublicKey:             pk,
 			StakingTxHash:         stkTxHash,
 			SlashingSigs:          signatures.SlashSigs,
@@ -608,8 +608,8 @@ func (ce *CovenantEmulator) Stop() error {
 }
 
 // SortCovenantSigs helper function to sort all covenant signatures by the staking tx hash
-func SortCovenantSigs(covSigs []types.CovenantSigs) []types.CovenantSigs {
-	sorted := make([]types.CovenantSigs, len(covSigs))
+func SortCovenantSigs(covSigs []*types.CovenantSigs) []*types.CovenantSigs {
+	sorted := make([]*types.CovenantSigs, len(covSigs))
 	copy(sorted, covSigs)
 	sort.SliceStable(sorted, func(i, j int) bool {
 		return strings.Compare(sorted[i].StakingTxHash.String(), sorted[j].StakingTxHash.String()) == 1
