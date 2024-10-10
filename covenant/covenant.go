@@ -218,14 +218,15 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 		}
 	}
 
+	// 9. sign covenant transactions
 	respSigs, err := ce.SignTransactions(signingReq)
 	if err != nil {
 		return nil, err
 	}
 
-	covenantSigs := BuildCovenantSigs(ce.pk, *respSigs)
+	covenantSigs := BuildCovenantSigs(ce.pk, respSigs)
 
-	// 9. submit covenant sigs
+	// 10. submit covenant sigs
 	res, err := ce.cc.SubmitCovenantSigs(covenantSigs)
 	if err != nil {
 		ce.recordMetricsFailedSignDelegations(len(covenantSigs))
@@ -241,7 +242,7 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 }
 
 // BuildCovenantSigs creates the covenant signatures from the signature response
-func BuildCovenantSigs(pk *secp.PublicKey, resp SigningResponse) []*types.CovenantSigs {
+func BuildCovenantSigs(pk *secp.PublicKey, resp *SigningResponse) []*types.CovenantSigs {
 	covenantSigs := make([]*types.CovenantSigs, 0, len(resp.SignaturesByStkTxHash))
 	for stkTxHash, signatures := range resp.SignaturesByStkTxHash {
 		covenantSigs = append(covenantSigs, &types.CovenantSigs{
@@ -261,7 +262,6 @@ func (ce *CovenantEmulator) SignTransactions(signingReq map[chainhash.Hash]Signi
 	startSignTime := time.Now()
 	metricsTimeKeeper.SetPreviousSignStart(&startSignTime)
 
-	// 8. sign covenant transactions
 	respSignatures, err := ce.signer.SignTransactions(SigningRequest{SigningTxsReqByStkTxHash: signingReq})
 	if err != nil {
 		ce.recordMetricsFailedSignDelegations(len(signingReq))
@@ -608,6 +608,7 @@ func (ce *CovenantEmulator) Stop() error {
 }
 
 // SortCovenantSigs helper function to sort all covenant signatures by the staking tx hash
+// Usefull for test checking expected inputs
 func SortCovenantSigs(covSigs []*types.CovenantSigs) []*types.CovenantSigs {
 	sorted := make([]*types.CovenantSigs, len(covSigs))
 	copy(sorted, covSigs)
