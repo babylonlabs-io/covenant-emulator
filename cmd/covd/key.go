@@ -9,7 +9,7 @@ import (
 	"github.com/urfave/cli"
 
 	covcfg "github.com/babylonlabs-io/covenant-emulator/config"
-	"github.com/babylonlabs-io/covenant-emulator/covenant"
+	"github.com/babylonlabs-io/covenant-emulator/keyring"
 )
 
 type covenantKey struct {
@@ -71,7 +71,7 @@ func createKey(ctx *cli.Context) error {
 		return fmt.Errorf("failed to load the config from %s: %w", covcfg.ConfigFile(homePath), err)
 	}
 
-	keyPair, err := covenant.CreateCovenantKey(
+	keyPair, err := keyring.CreateCovenantKey(
 		homePath,
 		chainID,
 		keyName,
