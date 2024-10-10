@@ -183,7 +183,7 @@ func FuzzAddCovenantSig(f *testing.F) {
 				PublicKey:             covKeyPair.PublicKey,
 				StakingTxHash:         testInfo.StakingTx.TxHash(),
 				SlashingSigs:          covSigs,
-				UnbondingSig:          *unbondingCovSig,
+				UnbondingSig:          unbondingCovSig,
 				SlashingUnbondingSigs: unbondingCovSlashingSigs,
 			})
 		}

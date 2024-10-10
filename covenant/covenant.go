@@ -248,7 +248,7 @@ func BuildCovenantSigs(pk *secp.PublicKey, resp SigningResponse) []types.Covenan
 			PublicKey:             pk,
 			StakingTxHash:         stkTxHash,
 			SlashingSigs:          signatures.SlashSigs,
-			UnbondingSig:          *signatures.UnbondingSig,
+			UnbondingSig:          signatures.UnbondingSig,
 			SlashingUnbondingSigs: signatures.SlashUnbondingSigs,
 		})
 	}

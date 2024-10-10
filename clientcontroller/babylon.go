@@ -161,7 +161,7 @@ func (bc *BabylonController) reliablySendMsgs(msgs []sdk.Msg) (*provider.Relayer
 func (bc *BabylonController) SubmitCovenantSigs(covSigs []types.CovenantSigs) (*types.TxResponse, error) {
 	msgs := make([]sdk.Msg, 0, len(covSigs))
 	for _, covSig := range covSigs {
-		bip340UnbondingSig := bbntypes.NewBIP340SignatureFromBTCSig(&covSig.UnbondingSig)
+		bip340UnbondingSig := bbntypes.NewBIP340SignatureFromBTCSig(covSig.UnbondingSig)
 		msgs = append(msgs, &btcstakingtypes.MsgAddCovenantSigs{
 			Signer:                  bc.mustGetTxSigner(),
 			Pk:                      bbntypes.NewBIP340PubKeyFromBTCPK(covSig.PublicKey),
