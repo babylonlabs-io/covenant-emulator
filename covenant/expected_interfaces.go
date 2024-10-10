@@ -8,16 +8,25 @@ import (
 	secp "github.com/decred/dcrd/dcrec/secp256k1/v4"
 )
 
+// Signer wrapper interface to sign messages
+type Signer interface {
+	// SignTransactions signs all the transactions from the request
+	// and returns all the signatures for Slash, Unbond and Unbonding Slash.
+	SignTransactions(req SigningRequest) (*SigningResponse, error)
+	// PubKey returns the current secp256k1 public key
+	PubKey() (*secp.PublicKey, error)
+}
+
 type SigningTxsRequest struct {
-	StakingTx                      *wire.MsgTx
-	SlashingTx                     *wire.MsgTx
-	UnbondingTx                    *wire.MsgTx
-	SlashUnbondingTx               *wire.MsgTx
-	StakingOutputIdx               uint32
-	SlashingPkScriptPath           []byte
-	StakingTxUnbondingPkScriptPath []byte
-	UnbondingTxSlashingScriptPath  []byte
-	FpEncKeys                      []*asig.EncryptionKey
+	StakingTx                       *wire.MsgTx
+	SlashingTx                      *wire.MsgTx
+	UnbondingTx                     *wire.MsgTx
+	SlashUnbondingTx                *wire.MsgTx
+	StakingOutputIdx                uint32
+	SlashingPkScriptPath            []byte
+	StakingTxUnbondingPkScriptPath  []byte
+	UnbondingTxSlashingPkScriptPath []byte
+	FpEncKeys                       []*asig.EncryptionKey
 }
 
 type SigningRequest struct {
@@ -32,35 +41,4 @@ type SignaturesResponse struct {
 
 type SigningResponse struct {
 	SignaturesByStkTxHash map[chainhash.Hash]SignaturesResponse
-}
-
-// Signer wrapper interface to sign messages
-type Signer interface {
-	SignTransactions(req SigningRequest) (*SigningResponse, error)
-	// PubKey returns the current secp256k1 public key
-	PubKey() (*secp.PublicKey, error)
-	// EncSignTxWithOneScriptSpendInputStrict is encrypted version of
-	// SignTxWithOneScriptSpendInputStrict with the output to be encrypted
-	// by an encryption key (adaptor signature)
-	EncSignTxWithOneScriptSpendInputStrict(
-		txToSign *wire.MsgTx,
-		fundingTx *wire.MsgTx,
-		fundingOutputIdx uint32,
-		signedScriptPath []byte,
-		encKey *asig.EncryptionKey,
-	) (*asig.AdaptorSignature, error)
-	// SignTxWithOneScriptSpendInputStrict signs transaction with one input coming
-	// from script spend output with provided script.
-	// It checks:
-	// - txToSign is not nil
-	// - txToSign has exactly one input
-	// - fundingTx is not nil
-	// - fundingTx has one output committing to the provided script
-	// - txToSign input is pointing to the correct output in fundingTx
-	SignTxWithOneScriptSpendInputStrict(
-		txToSign *wire.MsgTx,
-		fundingTx *wire.MsgTx,
-		fundingOutputIdx uint32,
-		signedScriptPath []byte,
-	) (*schnorr.Signature, error)
 }

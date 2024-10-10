@@ -7,11 +7,8 @@ import (
 	"github.com/babylonlabs-io/babylon/btcstaking"
 	"github.com/babylonlabs-io/covenant-emulator/covenant"
 
-	asig "github.com/babylonlabs-io/babylon/crypto/schnorr-adaptor-signature"
 	"github.com/btcsuite/btcd/btcec/v2"
-	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/wire"
 	secp "github.com/decred/dcrd/dcrec/secp256k1/v4"
 )
 
@@ -67,59 +64,6 @@ func (kcs KeyringSigner) getPrivKey() (*btcec.PrivateKey, error) {
 	return privKey, nil
 }
 
-// EncSignTxWithOneScriptSpendInputStrict is encrypted version of
-// SignTxWithOneScriptSpendInputStrict with the output to be encrypted
-// by an encryption key (adaptor signature)
-func (kcs KeyringSigner) EncSignTxWithOneScriptSpendInputStrict(
-	txToSign *wire.MsgTx,
-	fundingTx *wire.MsgTx,
-	fundingOutputIdx uint32,
-	signedScriptPath []byte,
-	encKey *asig.EncryptionKey,
-) (*asig.AdaptorSignature, error) {
-	covenantPrivKey, err := kcs.getPrivKey()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get Covenant private key: %w", err)
-	}
-
-	return btcstaking.EncSignTxWithOneScriptSpendInputStrict(
-		txToSign,
-		fundingTx,
-		fundingOutputIdx,
-		signedScriptPath,
-		covenantPrivKey,
-		encKey,
-	)
-}
-
-// SignTxWithOneScriptSpendInputStrict signs transaction with one input coming
-// from script spend output with provided script.
-// It checks:
-// - txToSign is not nil
-// - txToSign has exactly one input
-// - fundingTx is not nil
-// - fundingTx has one output committing to the provided script
-// - txToSign input is pointing to the correct output in fundingTx
-func (kcs KeyringSigner) SignTxWithOneScriptSpendInputStrict(
-	txToSign *wire.MsgTx,
-	fundingTx *wire.MsgTx,
-	fundingOutputIdx uint32,
-	signedScriptPath []byte,
-) (*schnorr.Signature, error) {
-	covenantPrivKey, err := kcs.getPrivKey()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get Covenant private key: %w", err)
-	}
-
-	return btcstaking.SignTxWithOneScriptSpendInputStrict(
-		txToSign,
-		fundingTx,
-		fundingOutputIdx,
-		signedScriptPath,
-		covenantPrivKey,
-	)
-}
-
 // SignTransactions receives a batch of transactions to sign and returns all the signatures if nothing fails.
 func (kcs KeyringSigner) SignTransactions(req covenant.SigningRequest) (*covenant.SigningResponse, error) {
 	resp := make(map[chainhash.Hash]covenant.SignaturesResponse, len(req.SigningTxsReqByStkTxHash))
@@ -156,7 +100,7 @@ func (kcs KeyringSigner) SignTransactions(req covenant.SigningRequest) (*covenan
 				signingTxReq.SlashUnbondingTx,
 				signingTxReq.UnbondingTx,
 				0, // 0th output is always the unbonding script output
-				signingTxReq.UnbondingTxSlashingScriptPath,
+				signingTxReq.UnbondingTxSlashingPkScriptPath,
 				covenantPrivKey,
 				fpEncKey,
 			)
