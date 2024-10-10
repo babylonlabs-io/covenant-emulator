@@ -10,6 +10,7 @@ import (
 	asig "github.com/babylonlabs-io/babylon/crypto/schnorr-adaptor-signature"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
+	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
 	secp "github.com/decred/dcrd/dcrec/secp256k1/v4"
 )
@@ -117,4 +118,73 @@ func (kcs KeyringSigner) SignTxWithOneScriptSpendInputStrict(
 		signedScriptPath,
 		covenantPrivKey,
 	)
+}
+
+// SignTransactions receives a batch of transactions to sign and returns all the signatures if nothing fails.
+func (kcs KeyringSigner) SignTransactions(req covenant.SigningRequest) (*covenant.SigningResponse, error) {
+	resp := make(map[chainhash.Hash]covenant.SignaturesResponse, len(req.SigningTxsReqByStkTxHash))
+
+	covenantPrivKey, err := kcs.getPrivKey()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get Covenant private key: %w", err)
+	}
+
+	for stakingTxHash, signingTxReq := range req.SigningTxsReqByStkTxHash {
+		// for each signing tx request
+
+		slashSigs := make([][]byte, 0, len(signingTxReq.FpEncKeys))
+		slashUnbondingSigs := make([][]byte, 0, len(signingTxReq.FpEncKeys))
+		for _, fpEncKey := range signingTxReq.FpEncKeys {
+			// creates slash sigs
+			// TODO: split to diff func
+			slashSig, err := btcstaking.EncSignTxWithOneScriptSpendInputStrict(
+				signingTxReq.SlashingTx,
+				signingTxReq.StakingTx,
+				signingTxReq.StakingOutputIdx,
+				signingTxReq.SlashingPkScriptPath,
+				covenantPrivKey,
+				fpEncKey,
+			)
+			if err != nil {
+				return nil, fmt.Errorf("failed to sign adaptor slash signature with finality provider public key %s: %w", fpEncKey.ToBytes(), err)
+			}
+			slashSigs = append(slashSigs, slashSig.MustMarshal())
+
+			// TODO: split to diff func
+			// creates slash unbonding sig
+			slashUnbondingSig, err := btcstaking.EncSignTxWithOneScriptSpendInputStrict(
+				signingTxReq.SlashUnbondingTx,
+				signingTxReq.UnbondingTx,
+				0, // 0th output is always the unbonding script output
+				signingTxReq.UnbondingTxSlashingScriptPath,
+				covenantPrivKey,
+				fpEncKey,
+			)
+			if err != nil {
+				return nil, fmt.Errorf("failed to sign adaptor slash unbonding signature with finality provider public key %s: %w", fpEncKey.ToBytes(), err)
+			}
+			slashUnbondingSigs = append(slashUnbondingSigs, slashUnbondingSig.MustMarshal())
+		}
+
+		unbondingSig, err := btcstaking.SignTxWithOneScriptSpendInputStrict(
+			signingTxReq.UnbondingTx,
+			signingTxReq.StakingTx,
+			signingTxReq.StakingOutputIdx,
+			signingTxReq.StakingTxUnbondingPkScriptPath,
+			covenantPrivKey,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to sign unbonding tx: %w", err)
+		}
+
+		resp[stakingTxHash] = covenant.SignaturesResponse{
+			SlashSigs:          slashSigs,
+			UnbondingSig:       unbondingSig,
+			SlashUnbondingSigs: slashUnbondingSigs,
+		}
+	}
+
+	return &covenant.SigningResponse{
+		SignaturesByStkTxHash: resp,
+	}, nil
 }
