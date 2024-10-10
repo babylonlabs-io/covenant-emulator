@@ -7,8 +7,8 @@ import (
 	secp "github.com/decred/dcrd/dcrec/secp256k1/v4"
 )
 
-// CriptoSigner wrapper interface to sign messages
-type CriptoSigner interface {
+// Signer wrapper interface to sign messages
+type Signer interface {
 	// PubKey returns the current secp256k1 public key
 	PubKey() (*secp.PublicKey, error)
 	// EncSignTxWithOneScriptSpendInputStrict is encrypted version of

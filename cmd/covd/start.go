@@ -84,6 +84,6 @@ func start(ctx *cli.Context) error {
 	return srv.RunUntilShutdown()
 }
 
-func NewSignerFromConfig(cfg *covcfg.Config, passphrase string) (*keyring.KeyringCriptoSigner, error) {
-	return keyring.NewLocalKeyringCriptoSigner(cfg.BabylonConfig.ChainID, cfg.BabylonConfig.Key, cfg.BabylonConfig.KeyDirectory, cfg.BabylonConfig.KeyringBackend, passphrase)
+func NewSignerFromConfig(cfg *covcfg.Config, passphrase string) (*keyring.KeyringSigner, error) {
+	return keyring.NewKeyringSigner(cfg.BabylonConfig.ChainID, cfg.BabylonConfig.Key, cfg.BabylonConfig.KeyDirectory, cfg.BabylonConfig.KeyringBackend, passphrase)
 }

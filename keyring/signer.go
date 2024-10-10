@@ -14,14 +14,14 @@ import (
 	secp "github.com/decred/dcrd/dcrec/secp256k1/v4"
 )
 
-var _ covenant.CriptoSigner = KeyringCriptoSigner{}
+var _ covenant.Signer = KeyringSigner{}
 
-type KeyringCriptoSigner struct {
+type KeyringSigner struct {
 	kc         *ChainKeyringController
 	passphrase string
 }
 
-func NewLocalKeyringCriptoSigner(chainId, keyName, keyringDir, keyringBackend, passphrase string) (*KeyringCriptoSigner, error) {
+func NewKeyringSigner(chainId, keyName, keyringDir, keyringBackend, passphrase string) (*KeyringSigner, error) {
 	input := strings.NewReader("")
 	kr, err := CreateKeyring(keyringDir, chainId, keyringBackend, input)
 	if err != nil {
@@ -33,13 +33,13 @@ func NewLocalKeyringCriptoSigner(chainId, keyName, keyringDir, keyringBackend, p
 		return nil, err
 	}
 
-	return &KeyringCriptoSigner{
+	return &KeyringSigner{
 		kc:         kc,
 		passphrase: passphrase,
 	}, nil
 }
 
-func (kcs KeyringCriptoSigner) PubKey() (*secp.PublicKey, error) {
+func (kcs KeyringSigner) PubKey() (*secp.PublicKey, error) {
 	record, err := kcs.kc.KeyRecord()
 	if err != nil {
 		return nil, err
@@ -56,7 +56,7 @@ func (kcs KeyringCriptoSigner) PubKey() (*secp.PublicKey, error) {
 // getPrivKey returns the keyring private key
 // TODO: update btcstaking functions to avoid receiving private key as parameter
 // and only sign it using the kcs.kc.GetKeyring().Sign()
-func (kcs KeyringCriptoSigner) getPrivKey() (*btcec.PrivateKey, error) {
+func (kcs KeyringSigner) getPrivKey() (*btcec.PrivateKey, error) {
 	sdkPrivKey, err := kcs.kc.GetChainPrivKey(kcs.passphrase)
 	if err != nil {
 		return nil, err
@@ -69,7 +69,7 @@ func (kcs KeyringCriptoSigner) getPrivKey() (*btcec.PrivateKey, error) {
 // EncSignTxWithOneScriptSpendInputStrict is encrypted version of
 // SignTxWithOneScriptSpendInputStrict with the output to be encrypted
 // by an encryption key (adaptor signature)
-func (kcs KeyringCriptoSigner) EncSignTxWithOneScriptSpendInputStrict(
+func (kcs KeyringSigner) EncSignTxWithOneScriptSpendInputStrict(
 	txToSign *wire.MsgTx,
 	fundingTx *wire.MsgTx,
 	fundingOutputIdx uint32,
@@ -99,7 +99,7 @@ func (kcs KeyringCriptoSigner) EncSignTxWithOneScriptSpendInputStrict(
 // - fundingTx is not nil
 // - fundingTx has one output committing to the provided script
 // - txToSign input is pointing to the correct output in fundingTx
-func (kcs KeyringCriptoSigner) SignTxWithOneScriptSpendInputStrict(
+func (kcs KeyringSigner) SignTxWithOneScriptSpendInputStrict(
 	txToSign *wire.MsgTx,
 	fundingTx *wire.MsgTx,
 	fundingOutputIdx uint32,

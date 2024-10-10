@@ -94,7 +94,7 @@ func StartManager(t *testing.T) *TestManager {
 	covbc, err := covcc.NewBabylonController(bbnCfg, &covenantConfig.BTCNetParams, logger)
 	require.NoError(t, err)
 
-	signer, err := covdkeyring.NewLocalKeyringCriptoSigner(covenantConfig.BabylonConfig.ChainID, covenantConfig.BabylonConfig.Key, covenantConfig.BabylonConfig.KeyDirectory, covenantConfig.BabylonConfig.KeyringBackend, passphrase)
+	signer, err := covdkeyring.NewKeyringSigner(covenantConfig.BabylonConfig.ChainID, covenantConfig.BabylonConfig.Key, covenantConfig.BabylonConfig.KeyDirectory, covenantConfig.BabylonConfig.KeyringBackend, passphrase)
 	require.NoError(t, err)
 
 	ce, err := covenant.NewCovenantEmulator(covenantConfig, covbc, passphrase, logger, signer)

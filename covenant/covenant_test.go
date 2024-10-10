@@ -50,7 +50,7 @@ func FuzzAddCovenantSig(f *testing.F) {
 		)
 		require.NoError(t, err)
 
-		signer, err := keyring.NewLocalKeyringCriptoSigner(covenantConfig.BabylonConfig.ChainID, covenantConfig.BabylonConfig.Key, covenantConfig.BabylonConfig.KeyDirectory, covenantConfig.BabylonConfig.KeyringBackend, passphrase)
+		signer, err := keyring.NewKeyringSigner(covenantConfig.BabylonConfig.ChainID, covenantConfig.BabylonConfig.Key, covenantConfig.BabylonConfig.KeyDirectory, covenantConfig.BabylonConfig.KeyringBackend, passphrase)
 		require.NoError(t, err)
 
 		// create and start covenant emulator

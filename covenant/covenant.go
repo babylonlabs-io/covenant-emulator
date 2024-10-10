@@ -40,7 +40,7 @@ type CovenantEmulator struct {
 
 	pk *btcec.PublicKey
 
-	signer CriptoSigner
+	signer Signer
 	cc     clientcontroller.ClientController
 
 	config *covcfg.Config
@@ -52,7 +52,7 @@ func NewCovenantEmulator(
 	cc clientcontroller.ClientController,
 	passphrase string,
 	logger *zap.Logger,
-	signer CriptoSigner,
+	signer Signer,
 ) (*CovenantEmulator, error) {
 	pk, err := signer.PubKey()
 	if err != nil {
@@ -253,7 +253,7 @@ func signSlashUnbondingSignatures(
 	del *types.Delegation,
 	unbondingTx *wire.MsgTx,
 	slashUnbondingTx *wire.MsgTx,
-	signer CriptoSigner,
+	signer Signer,
 	params *types.StakingParams,
 	btcNet *chaincfg.Params,
 ) ([][]byte, error) {
@@ -302,7 +302,7 @@ func signSlashAndUnbondSignatures(
 	stakingTx *wire.MsgTx,
 	slashingTx *wire.MsgTx,
 	unbondingTx *wire.MsgTx,
-	signer CriptoSigner,
+	signer Signer,
 	params *types.StakingParams,
 	btcNet *chaincfg.Params,
 ) ([][]byte, *schnorr.Signature, error) {
