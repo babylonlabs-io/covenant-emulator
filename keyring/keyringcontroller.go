@@ -19,8 +19,8 @@ const (
 )
 
 type ChainKeyringController struct {
-	kr     keyring.Keyring
-	fpName string
+	kr      keyring.Keyring
+	keyName string
 	// input is to send passphrase to kr
 	input *strings.Reader
 }
@@ -47,9 +47,9 @@ func NewChainKeyringController(ctx client.Context, name, keyringBackend string) 
 	}
 
 	return &ChainKeyringController{
-		fpName: name,
-		kr:     kr,
-		input:  inputReader,
+		keyName: name,
+		kr:      kr,
+		input:   inputReader,
 	}, nil
 }
 
@@ -59,9 +59,9 @@ func NewChainKeyringControllerWithKeyring(kr keyring.Keyring, name string, input
 	}
 
 	return &ChainKeyringController{
-		kr:     kr,
-		fpName: name,
-		input:  input,
+		kr:      kr,
+		keyName: name,
+		input:   input,
 	}, nil
 }
 
@@ -89,7 +89,7 @@ func (kc *ChainKeyringController) CreateChainKey(passphrase, hdPath string) (*ty
 
 	// we need to repeat the passphrase to mock the reentry
 	kc.input.Reset(passphrase + "\n" + passphrase)
-	record, err := kc.kr.NewAccount(kc.fpName, mnemonic, passphrase, hdPath, algo)
+	record, err := kc.kr.NewAccount(kc.keyName, mnemonic, passphrase, hdPath, algo)
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +100,7 @@ func (kc *ChainKeyringController) CreateChainKey(passphrase, hdPath string) (*ty
 	case *sdksecp256k1.PrivKey:
 		sk, pk := btcec.PrivKeyFromBytes(v.Key)
 		return &types.ChainKeyInfo{
-			Name:       kc.fpName,
+			Name:       kc.keyName,
 			PublicKey:  pk,
 			PrivateKey: sk,
 			Mnemonic:   mnemonic,
@@ -112,7 +112,7 @@ func (kc *ChainKeyringController) CreateChainKey(passphrase, hdPath string) (*ty
 
 func (kc *ChainKeyringController) GetChainPrivKey(passphrase string) (*sdksecp256k1.PrivKey, error) {
 	kc.input.Reset(passphrase)
-	k, err := kc.kr.Key(kc.fpName)
+	k, err := kc.kr.Key(kc.keyName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get private key: %w", err)
 	}
@@ -125,4 +125,8 @@ func (kc *ChainKeyringController) GetChainPrivKey(passphrase string) (*sdksecp25
 	default:
 		return nil, fmt.Errorf("unsupported key type in keyring")
 	}
+}
+
+func (kc *ChainKeyringController) KeyRecord() (*keyring.Record, error) {
+	return kc.GetKeyring().Key(kc.keyName)
 }
