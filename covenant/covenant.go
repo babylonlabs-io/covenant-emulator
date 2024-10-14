@@ -17,9 +17,7 @@ import (
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
-	secp "github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"go.uber.org/zap"
 
 	"github.com/babylonlabs-io/covenant-emulator/clientcontroller"
@@ -88,7 +86,7 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 		return nil, fmt.Errorf("no delegations")
 	}
 
-	signingReq := make(map[chainhash.Hash]SigningTxsRequest, len(btcDels))
+	covenantSigs := make([]*types.CovenantSigs, 0, len(btcDels))
 	for _, btcDel := range btcDels {
 		// 0. nil checks
 		if btcDel == nil {
@@ -204,7 +202,8 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 			continue
 		}
 
-		signingReq[stakingTx.TxHash()] = SigningTxsRequest{
+		// 9. sign covenant transactions
+		resp, err := ce.SignTransactions(SigningRequest{
 			StakingTx:                       stakingTx,
 			SlashingTx:                      slashingTx,
 			UnbondingTx:                     unbondingTx,
@@ -214,19 +213,23 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 			StakingTxUnbondingPkScriptPath:  stakingTxUnbondingPkScriptPath,
 			UnbondingTxSlashingPkScriptPath: unbondingTxSlashingPkScriptPath,
 			FpEncKeys:                       fpsEncKeys,
+		})
+		if err != nil {
+			ce.logger.Error("failed to sign transactions", zap.Error(err))
+			continue
 		}
-	}
 
-	// 9. sign covenant transactions
-	respSigs, err := ce.SignTransactions(signingReq)
-	if err != nil {
-		return nil, err
+		covenantSigs = append(covenantSigs, &types.CovenantSigs{
+			PublicKey:             ce.pk,
+			StakingTxHash:         stakingTx.TxHash(),
+			SlashingSigs:          resp.SlashSigs,
+			UnbondingSig:          resp.UnbondingSig,
+			SlashingUnbondingSigs: resp.SlashUnbondingSigs,
+		})
 	}
-
-	covenantSigs := BuildCovenantSigs(ce.pk, respSigs)
 
 	// 10. submit covenant sigs
-	res, err := ce.cc.SubmitCovenantSigs(covenantSigs)
+	res, err := ce.cc.SubmitCovenantSigs(SortCovenantSigs(covenantSigs))
 	if err != nil {
 		ce.recordMetricsFailedSignDelegations(len(covenantSigs))
 		return nil, err
@@ -240,30 +243,14 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 	return res, nil
 }
 
-// BuildCovenantSigs creates the covenant signatures from the signature response
-func BuildCovenantSigs(pk *secp.PublicKey, resp *SigningResponse) []*types.CovenantSigs {
-	covenantSigs := make([]*types.CovenantSigs, 0, len(resp.SignaturesByStkTxHash))
-	for stkTxHash, signatures := range resp.SignaturesByStkTxHash {
-		covenantSigs = append(covenantSigs, &types.CovenantSigs{
-			PublicKey:             pk,
-			StakingTxHash:         stkTxHash,
-			SlashingSigs:          signatures.SlashSigs,
-			UnbondingSig:          signatures.UnbondingSig,
-			SlashingUnbondingSigs: signatures.SlashUnbondingSigs,
-		})
-	}
-	return SortCovenantSigs(covenantSigs)
-}
-
 // SignTransactions calls the signer and record metrics about signing
-func (ce *CovenantEmulator) SignTransactions(signingReq map[chainhash.Hash]SigningTxsRequest) (*SigningResponse, error) {
+func (ce *CovenantEmulator) SignTransactions(signingReq SigningRequest) (*SignaturesResponse, error) {
 	// record metrics
 	startSignTime := time.Now()
 	metricsTimeKeeper.SetPreviousSignStart(&startSignTime)
 
-	respSignatures, err := ce.signer.SignTransactions(SigningRequest{SigningTxsReqByStkTxHash: signingReq})
+	resp, err := ce.signer.SignTransactions(signingReq)
 	if err != nil {
-		ce.recordMetricsFailedSignDelegations(len(signingReq))
 		return nil, err
 	}
 
@@ -272,7 +259,7 @@ func (ce *CovenantEmulator) SignTransactions(signingReq map[chainhash.Hash]Signi
 	metricsTimeKeeper.SetPreviousSignFinish(&finishSignTime)
 	timedSignDelegationLag.Observe(time.Since(startSignTime).Seconds())
 
-	return respSignatures, nil
+	return resp, nil
 }
 
 func fpEncKeysFromDel(btcDel *types.Delegation) ([]*asig.EncryptionKey, error) {

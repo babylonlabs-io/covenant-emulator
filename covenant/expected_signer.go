@@ -3,7 +3,6 @@ package covenant
 import (
 	asig "github.com/babylonlabs-io/babylon/crypto/schnorr-adaptor-signature"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
 	secp "github.com/decred/dcrd/dcrec/secp256k1/v4"
 )
@@ -12,12 +11,12 @@ import (
 type Signer interface {
 	// SignTransactions signs all the transactions from the request
 	// and returns all the signatures for Slash, Unbond and Unbonding Slash.
-	SignTransactions(req SigningRequest) (*SigningResponse, error)
+	SignTransactions(req SigningRequest) (*SignaturesResponse, error)
 	// PubKey returns the current secp256k1 public key
 	PubKey() (*secp.PublicKey, error)
 }
 
-type SigningTxsRequest struct {
+type SigningRequest struct {
 	StakingTx                       *wire.MsgTx
 	SlashingTx                      *wire.MsgTx
 	UnbondingTx                     *wire.MsgTx
@@ -29,16 +28,8 @@ type SigningTxsRequest struct {
 	FpEncKeys                       []*asig.EncryptionKey
 }
 
-type SigningRequest struct {
-	SigningTxsReqByStkTxHash map[chainhash.Hash]SigningTxsRequest
-}
-
 type SignaturesResponse struct {
 	SlashSigs          [][]byte
 	UnbondingSig       *schnorr.Signature
 	SlashUnbondingSigs [][]byte
-}
-
-type SigningResponse struct {
-	SignaturesByStkTxHash map[chainhash.Hash]SignaturesResponse
 }
