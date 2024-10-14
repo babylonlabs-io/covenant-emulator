@@ -3,8 +3,6 @@ package covenant
 import (
 	"encoding/hex"
 	"fmt"
-	"sort"
-	"strings"
 	"sync"
 	"time"
 
@@ -229,7 +227,7 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 	}
 
 	// 10. submit covenant sigs
-	res, err := ce.cc.SubmitCovenantSigs(SortCovenantSigs(covenantSigs))
+	res, err := ce.cc.SubmitCovenantSigs(covenantSigs)
 	if err != nil {
 		ce.recordMetricsFailedSignDelegations(len(covenantSigs))
 		return nil, err
@@ -591,16 +589,4 @@ func (ce *CovenantEmulator) Stop() error {
 		ce.logger.Debug("Covenant Emulator successfully stopped")
 	})
 	return stopErr
-}
-
-// SortCovenantSigs helper function to sort all covenant signatures by the staking tx hash
-// Usefull for test checking expected inputs
-func SortCovenantSigs(covSigs []*types.CovenantSigs) []*types.CovenantSigs {
-	sorted := make([]*types.CovenantSigs, len(covSigs))
-	copy(sorted, covSigs)
-	sort.SliceStable(sorted, func(i, j int) bool {
-		return strings.Compare(sorted[i].StakingTxHash.String(), sorted[j].StakingTxHash.String()) == 1
-	})
-
-	return sorted
 }

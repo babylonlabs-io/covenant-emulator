@@ -194,10 +194,9 @@ func FuzzAddCovenantSig(f *testing.F) {
 		}
 		btcDels = append(btcDels, invalidDelegation)
 
-		sortedCovSigs := covenant.SortCovenantSigs(covSigsSet)
 		// check the sigs are expected
 		expectedTxHash := testutil.GenRandomHexStr(r, 32)
-		mockClientController.EXPECT().SubmitCovenantSigs(sortedCovSigs).
+		mockClientController.EXPECT().SubmitCovenantSigs(covSigsSet).
 			Return(&types.TxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
 		res, err := ce.AddCovenantSignatures(btcDels)
 		require.NoError(t, err)
