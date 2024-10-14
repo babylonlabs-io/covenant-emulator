@@ -54,7 +54,6 @@ type CovenantEmulator struct {
 func NewCovenantEmulator(
 	config *covcfg.Config,
 	cc clientcontroller.ClientController,
-	passphrase string,
 	logger *zap.Logger,
 	signer Signer,
 ) (*CovenantEmulator, error) {
@@ -191,7 +190,7 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 		}
 
 		// 8. Generate Signing Request
-		// Finality providers encription keys
+		// Finality providers encryption keys
 		// pk script paths for Slash, unbond and unbonding slashing
 		fpsEncKeys, err := fpEncKeysFromDel(btcDel)
 		if err != nil {

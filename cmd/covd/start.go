@@ -60,7 +60,7 @@ func start(ctx *cli.Context) error {
 
 	pwd := ctx.String(passphraseFlag)
 
-	signer, err := NewSignerFromConfig(cfg, pwd)
+	signer, err := newSignerFromConfig(cfg, pwd)
 	if err != nil {
 		return fmt.Errorf("failed to create signer from config: %w", err)
 	}
@@ -84,6 +84,12 @@ func start(ctx *cli.Context) error {
 	return srv.RunUntilShutdown()
 }
 
-func NewSignerFromConfig(cfg *covcfg.Config, passphrase string) (*keyring.KeyringSigner, error) {
-	return keyring.NewKeyringSigner(cfg.BabylonConfig.ChainID, cfg.BabylonConfig.Key, cfg.BabylonConfig.KeyDirectory, cfg.BabylonConfig.KeyringBackend, passphrase)
+func newSignerFromConfig(cfg *covcfg.Config, passphrase string) (*keyring.KeyringSigner, error) {
+	return keyring.NewKeyringSigner(
+		cfg.BabylonConfig.ChainID,
+		cfg.BabylonConfig.Key,
+		cfg.BabylonConfig.KeyDirectory,
+		cfg.BabylonConfig.KeyringBackend,
+		passphrase,
+	)
 }
