@@ -65,7 +65,7 @@ func start(ctx *cli.Context) error {
 		return fmt.Errorf("failed to create signer from config: %w", err)
 	}
 
-	ce, err := covenant.NewCovenantEmulator(cfg, bbnClient, pwd, logger, signer)
+	ce, err := covenant.NewCovenantEmulator(cfg, bbnClient, logger, signer)
 	if err != nil {
 		return fmt.Errorf("failed to start the covenant emulator: %w", err)
 	}

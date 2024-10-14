@@ -57,7 +57,7 @@ func FuzzAddCovenantSig(f *testing.F) {
 		require.NoError(t, err)
 
 		// create and start covenant emulator
-		ce, err := covenant.NewCovenantEmulator(&covenantConfig, mockClientController, passphrase, zap.NewNop(), signer)
+		ce, err := covenant.NewCovenantEmulator(&covenantConfig, mockClientController, zap.NewNop(), signer)
 		require.NoError(t, err)
 
 		numDels := datagen.RandomInt(r, 3) + 1
