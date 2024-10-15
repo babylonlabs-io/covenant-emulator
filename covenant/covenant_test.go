@@ -67,7 +67,7 @@ func FuzzAddCovenantSig(f *testing.F) {
 			// generate BTC delegation
 			delSK, delPK, err := datagen.GenRandomBTCKeyPair(r)
 			require.NoError(t, err)
-			stakingTimeBlocks := uint16(testutil.RandRange(r, int(params.MinStakingTime), int(params.MaxStakingTime)))
+			stakingTimeBlocks := uint32(testutil.RandRange(r, int(params.MinStakingTime), int(params.MaxStakingTime)))
 			stakingValue := int64(testutil.RandRange(r, int(params.MinStakingValue), int(params.MaxStakingValue)))
 			unbondingTime := uint16(params.MinimumUnbondingTime()) + 1
 			fpNum := datagen.RandomInt(r, 5) + 1
@@ -80,7 +80,7 @@ func FuzzAddCovenantSig(f *testing.F) {
 				fpPks,
 				params.CovenantPks,
 				params.CovenantQuorum,
-				stakingTimeBlocks,
+				uint16(stakingTimeBlocks),
 				stakingValue,
 				params.SlashingPkScript,
 				params.SlashingRate,
@@ -88,14 +88,15 @@ func FuzzAddCovenantSig(f *testing.F) {
 			)
 			stakingTxBytes, err := bbntypes.SerializeBTCTx(testInfo.StakingTx)
 			require.NoError(t, err)
-			startHeight := datagen.RandomInt(r, 1000) + 100
+			startHeight := uint32(datagen.RandomInt(r, 1000) + 100)
 			stakingOutputIdx, err := bbntypes.GetOutputIdxInBTCTx(testInfo.StakingTx, testInfo.StakingInfo.StakingOutput)
 			require.NoError(t, err)
 			btcDel := &types.Delegation{
 				BtcPk:            delPK,
 				FpBtcPks:         fpPks,
+				StakingTime:      stakingTimeBlocks,
 				StartHeight:      startHeight, // not relevant here
-				EndHeight:        startHeight + uint64(stakingTimeBlocks),
+				EndHeight:        startHeight + stakingTimeBlocks,
 				TotalSat:         btcutil.Amount(stakingValue),
 				UnbondingTime:    unbondingTime,
 				StakingTxHex:     hex.EncodeToString(stakingTxBytes),

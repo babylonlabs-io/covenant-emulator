@@ -187,6 +187,10 @@ func (bc *BabylonController) QueryActiveDelegations(limit uint64) ([]*types.Dele
 	return bc.queryDelegationsWithStatus(btcstakingtypes.BTCDelegationStatus_ACTIVE, limit)
 }
 
+func (bc *BabylonController) QueryVerifiedDelegations(limit uint64) ([]*types.Delegation, error) {
+	return bc.queryDelegationsWithStatus(btcstakingtypes.BTCDelegationStatus_VERIFIED, limit)
+}
+
 // queryDelegationsWithStatus queries BTC delegations that need a Covenant signature
 // with the given status (either pending or unbonding)
 // it is only used when the program is running in Covenant mode
@@ -273,6 +277,7 @@ func DelegationRespToDelegation(del *btcstakingtypes.BTCDelegationResponse) (*ty
 		BtcPk:            del.BtcPk.MustToBTCPK(),
 		FpBtcPks:         fpBtcPks,
 		TotalSat:         btcutil.Amount(del.TotalSat),
+		StakingTime:      del.StakingTime,
 		StartHeight:      del.StartHeight,
 		EndHeight:        del.EndHeight,
 		StakingTxHex:     del.StakingTxHex,

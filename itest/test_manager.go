@@ -228,7 +228,34 @@ func (tm *TestManager) WaitForNActiveDels(t *testing.T, n int) []*types.Delegati
 	return dels
 }
 
-func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKey, stakingTime uint16, stakingAmount int64) *TestDelegationData {
+func (tm *TestManager) WaitForNVerifiedDels(t *testing.T, n int) []*types.Delegation {
+	var (
+		dels []*types.Delegation
+		err  error
+	)
+	require.Eventually(t, func() bool {
+		dels, err = tm.CovBBNClient.QueryVerifiedDelegations(
+			tm.CovenanConfig.DelegationLimit,
+		)
+		if err != nil {
+			return false
+		}
+		return len(dels) == n
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
+
+	t.Logf("delegations are verified")
+
+	return dels
+}
+
+// InsertBTCDelegation inserts a BTC delegation to Babylon
+// isPreApproval indicates whether the delegation follows
+// pre-approval flow, if so, the inclusion proof is nil
+func (tm *TestManager) InsertBTCDelegation(
+	t *testing.T,
+	fpPks []*btcec.PublicKey, stakingTime uint16, stakingAmount int64,
+	isPreApproval bool,
+) *TestDelegationData {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	params := tm.StakingParams
 
@@ -256,42 +283,46 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKe
 	pop, err := bstypes.NewPoPBTC(tm.CovBBNClient.GetKeyAddress(), delBtcPrivKey)
 	require.NoError(t, err)
 
-	// create and insert BTC headers which include the staking tx to get staking tx info
-	currentBtcTipResp, err := tm.CovBBNClient.QueryBtcLightClientTip()
-	require.NoError(t, err)
-	tipHeader, err := bbntypes.NewBTCHeaderBytesFromHex(currentBtcTipResp.HeaderHex)
-	require.NoError(t, err)
-	blockWithStakingTx := datagen.CreateBlockWithTransaction(r, tipHeader.ToBlockHeader(), testStakingInfo.StakingTx)
-	accumulatedWork := btclctypes.CalcWork(&blockWithStakingTx.HeaderBytes)
-	accumulatedWork = btclctypes.CumulativeWork(accumulatedWork, currentBtcTipResp.Work)
-	parentBlockHeaderInfo := &btclctypes.BTCHeaderInfo{
-		Header: &blockWithStakingTx.HeaderBytes,
-		Hash:   blockWithStakingTx.HeaderBytes.Hash(),
-		Height: currentBtcTipResp.Height + 1,
-		Work:   &accumulatedWork,
+	// if the delegation is not following pre-approval, tx inclusion proof is needed
+	var txInfo *btcctypes.TransactionInfo
+	if !isPreApproval {
+		// create and insert BTC headers which include the staking tx to get staking tx info
+		currentBtcTipResp, err := tm.CovBBNClient.QueryBtcLightClientTip()
+		require.NoError(t, err)
+		tipHeader, err := bbntypes.NewBTCHeaderBytesFromHex(currentBtcTipResp.HeaderHex)
+		require.NoError(t, err)
+		blockWithStakingTx := datagen.CreateBlockWithTransaction(r, tipHeader.ToBlockHeader(), testStakingInfo.StakingTx)
+		accumulatedWork := btclctypes.CalcWork(&blockWithStakingTx.HeaderBytes)
+		accumulatedWork = btclctypes.CumulativeWork(accumulatedWork, currentBtcTipResp.Work)
+		parentBlockHeaderInfo := &btclctypes.BTCHeaderInfo{
+			Header: &blockWithStakingTx.HeaderBytes,
+			Hash:   blockWithStakingTx.HeaderBytes.Hash(),
+			Height: currentBtcTipResp.Height + 1,
+			Work:   &accumulatedWork,
+		}
+		headers := make([]bbntypes.BTCHeaderBytes, 0)
+		headers = append(headers, blockWithStakingTx.HeaderBytes)
+		for i := 0; i < int(params.ComfirmationTimeBlocks); i++ {
+			headerInfo := datagen.GenRandomValidBTCHeaderInfoWithParent(r, *parentBlockHeaderInfo)
+			headers = append(headers, *headerInfo.Header)
+			parentBlockHeaderInfo = headerInfo
+		}
+		_, err = tm.CovBBNClient.InsertBtcBlockHeaders(headers)
+		require.NoError(t, err)
+		btcHeader := blockWithStakingTx.HeaderBytes
+		serializedStakingTx, err := bbntypes.SerializeBTCTx(testStakingInfo.StakingTx)
+		require.NoError(t, err)
+		txInfo = btcctypes.NewTransactionInfo(&btcctypes.TransactionKey{Index: 1, Hash: btcHeader.Hash()}, serializedStakingTx, blockWithStakingTx.SpvProof.MerkleNodes)
 	}
-	headers := make([]bbntypes.BTCHeaderBytes, 0)
-	headers = append(headers, blockWithStakingTx.HeaderBytes)
-	for i := 0; i < int(params.ComfirmationTimeBlocks); i++ {
-		headerInfo := datagen.GenRandomValidBTCHeaderInfoWithParent(r, *parentBlockHeaderInfo)
-		headers = append(headers, *headerInfo.Header)
-		parentBlockHeaderInfo = headerInfo
-	}
-	_, err = tm.CovBBNClient.InsertBtcBlockHeaders(headers)
-	require.NoError(t, err)
-	btcHeader := blockWithStakingTx.HeaderBytes
-	serializedStakingTx, err := bbntypes.SerializeBTCTx(testStakingInfo.StakingTx)
-	require.NoError(t, err)
-	txInfo := btcctypes.NewTransactionInfo(&btcctypes.TransactionKey{Index: 1, Hash: btcHeader.Hash()}, serializedStakingTx, blockWithStakingTx.SpvProof.MerkleNodes)
 
-	slashignSpendInfo, err := testStakingInfo.StakingInfo.SlashingPathSpendInfo()
+	slashingSpendInfo, err := testStakingInfo.StakingInfo.SlashingPathSpendInfo()
 	require.NoError(t, err)
 
 	// delegator sig
 	delegatorSig, err := testStakingInfo.SlashingTx.Sign(
 		testStakingInfo.StakingTx,
 		1,
-		slashignSpendInfo.GetPkScriptPath(),
+		slashingSpendInfo.GetPkScriptPath(),
 		delBtcPrivKey,
 	)
 	require.NoError(t, err)

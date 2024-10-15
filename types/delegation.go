@@ -1,8 +1,9 @@
 package types
 
 import (
-	"github.com/btcsuite/btcd/btcutil"
 	"math"
+
+	"github.com/btcsuite/btcd/btcutil"
 
 	bbn "github.com/babylonlabs-io/babylon/types"
 
@@ -16,12 +17,14 @@ type Delegation struct {
 	// The Bitcoin secp256k1 PKs of the finality providers that
 	// this BTC delegation delegates to
 	FpBtcPks []*btcec.PublicKey
+	// The number of blocks for which the delegation is locked on BTC chain
+	StakingTime uint32
 	// The start BTC height of the BTC delegation
 	// it is the start BTC height of the timelock
-	StartHeight uint64
+	StartHeight uint32
 	// The end height of the BTC delegation
 	// it is the end BTC height of the timelock - w
-	EndHeight uint64
+	EndHeight uint32
 	// The total amount of BTC stakes in this delegation
 	// quantified in satoshi
 	TotalSat btcutil.Amount

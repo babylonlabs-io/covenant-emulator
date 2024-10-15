@@ -120,9 +120,9 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 		// - CheckpointFinalizationTimeout
 		unbondingTime := btcDel.UnbondingTime
 		minUnbondingTime := params.MinimumUnbondingTime()
-		if uint64(unbondingTime) <= minUnbondingTime {
+		if uint32(unbondingTime) <= minUnbondingTime {
 			ce.logger.Error("invalid unbonding time",
-				zap.Uint64("min_unbonding_time", minUnbondingTime),
+				zap.Uint32("min_unbonding_time", minUnbondingTime),
 				zap.Uint16("got_unbonding_time", unbondingTime),
 			)
 			continue
@@ -374,7 +374,7 @@ func decodeDelegationTransactions(del *types.Delegation, params *types.StakingPa
 	}
 
 	// 2. verify the transactions
-	if err := btcstaking.CheckTransactions(
+	if err := btcstaking.CheckSlashingTxMatchFundingTx(
 		slashingMsgTx,
 		stakingMsgTx,
 		del.StakingOutputIdx,
@@ -404,7 +404,7 @@ func decodeUndelegationTransactions(del *types.Delegation, params *types.Staking
 	}
 
 	// 2. verify transactions
-	if err := btcstaking.CheckTransactions(
+	if err := btcstaking.CheckSlashingTxMatchFundingTx(
 		unbondingSlashingMsgTx,
 		unbondingMsgTx,
 		0,
