@@ -55,14 +55,12 @@ func (d *Delegation) HasCovenantQuorum(quorum uint32) bool {
 }
 
 func (d *Delegation) GetStakingTime() uint16 {
-	diff := d.EndHeight - d.StartHeight
-
-	if diff > math.MaxUint16 {
+	if d.StakingTime > math.MaxUint16 {
 		// In a valid delegation, EndHeight is always greater than StartHeight and it is always uint16 value
 		panic("invalid delegation in database")
 	}
 
-	return uint16(diff)
+	return uint16(d.StakingTime)
 }
 
 // Undelegation signalizes that the delegation is being undelegated

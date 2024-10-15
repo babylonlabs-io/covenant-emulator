@@ -188,7 +188,7 @@ func (bc *BabylonController) QueryActiveDelegations(limit uint64) ([]*types.Dele
 }
 
 func (bc *BabylonController) QueryVerifiedDelegations(limit uint64) ([]*types.Delegation, error) {
-	return bc.queryDelegationsWithStatus(btcstakingtypes.BTCDelegationStatus_VERIFIED, limit)
+	return bc.queryDelegationsWithStatus(btcstakingtypes.BTCDelegationStatus_ANY, limit)
 }
 
 // queryDelegationsWithStatus queries BTC delegations that need a Covenant signature
@@ -356,10 +356,16 @@ func (bc *BabylonController) CreateBTCDelegation(
 	unbondingValue int64,
 	unbondingSlashingTx *btcstakingtypes.BTCSlashingTx,
 	delUnbondingSlashingSig *bbntypes.BIP340Signature,
+	isPreApproval bool,
 ) (*types.TxResponse, error) {
 	fpBtcPks := make([]bbntypes.BIP340PubKey, 0, len(fpPks))
 	for _, v := range fpPks {
 		fpBtcPks = append(fpBtcPks, *bbntypes.NewBIP340PubKeyFromBTCPK(v))
+	}
+
+	var inclusionProof *btcstakingtypes.InclusionProof
+	if !isPreApproval {
+		inclusionProof = btcstakingtypes.NewInclusionProof(stakingTxInfo.Key, stakingTxInfo.Proof)
 	}
 
 	msg := &btcstakingtypes.MsgCreateBTCDelegation{
@@ -370,7 +376,7 @@ func (bc *BabylonController) CreateBTCDelegation(
 		StakingTime:                   stakingTime,
 		StakingValue:                  stakingValue,
 		StakingTx:                     stakingTxInfo.Transaction,
-		StakingTxInclusionProof:       btcstakingtypes.NewInclusionProof(stakingTxInfo.Key, stakingTxInfo.Proof),
+		StakingTxInclusionProof:       inclusionProof,
 		SlashingTx:                    slashingTx,
 		DelegatorSlashingSig:          delSlashingSig,
 		UnbondingTx:                   unbondingTx,
