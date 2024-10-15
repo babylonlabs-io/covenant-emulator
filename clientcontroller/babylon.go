@@ -188,7 +188,7 @@ func (bc *BabylonController) QueryActiveDelegations(limit uint64) ([]*types.Dele
 }
 
 func (bc *BabylonController) QueryVerifiedDelegations(limit uint64) ([]*types.Delegation, error) {
-	return bc.queryDelegationsWithStatus(btcstakingtypes.BTCDelegationStatus_ANY, limit)
+	return bc.queryDelegationsWithStatus(btcstakingtypes.BTCDelegationStatus_VERIFIED, limit)
 }
 
 // queryDelegationsWithStatus queries BTC delegations that need a Covenant signature
