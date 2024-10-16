@@ -37,6 +37,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## Unreleased
 
+## v0.5.0
+
+### Bug fixes
+
+* [#23](https://github.com/babylonlabs-io/covenant-emulator/pull/23) Fix pre-approval flow
+
 ### Improvements
 
 * [#20](https://github.com/babylonlabs-io/covenant-emulator/pull/20) Add signing behind
