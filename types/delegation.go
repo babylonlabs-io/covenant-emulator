@@ -83,6 +83,8 @@ type Undelegation struct {
 	CovenantUnbondingSigs []*CovenantSchnorrSigInfo
 	// The delegator signature for the unbonding tx
 	DelegatorUnbondingSig *bbn.BIP340Signature
+	// The transaction that spends the staking tx output but not unbonding tx
+	SpendStakeTxHex string
 }
 
 func (ud *Undelegation) HasCovenantQuorumOnSlashing(quorum uint32) bool {
