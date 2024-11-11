@@ -37,6 +37,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## Unreleased
 
+* [#30](https://github.com/babylonlabs-io/covenant-emulator/pull/30) Ignore duplicated sig error
+
 ## v0.7.0
 
 ### Improvements
