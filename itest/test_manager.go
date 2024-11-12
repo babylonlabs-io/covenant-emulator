@@ -24,6 +24,7 @@ import (
 	covcc "github.com/babylonlabs-io/covenant-emulator/clientcontroller"
 	covcfg "github.com/babylonlabs-io/covenant-emulator/config"
 	"github.com/babylonlabs-io/covenant-emulator/covenant"
+	covdkeyring "github.com/babylonlabs-io/covenant-emulator/keyring"
 	"github.com/babylonlabs-io/covenant-emulator/testutil"
 	"github.com/babylonlabs-io/covenant-emulator/types"
 )
@@ -80,7 +81,7 @@ func StartManager(t *testing.T) *TestManager {
 	covenantConfig := defaultCovenantConfig(testDir)
 	err = covenantConfig.Validate()
 	require.NoError(t, err)
-	covKeyPair, err := covenant.CreateCovenantKey(testDir, chainID, covenantKeyName, keyring.BackendTest, passphrase, hdPath)
+	covKeyPair, err := covdkeyring.CreateCovenantKey(testDir, chainID, covenantKeyName, keyring.BackendTest, passphrase, hdPath)
 	require.NoError(t, err)
 
 	// 2. prepare Babylon node
@@ -92,7 +93,11 @@ func StartManager(t *testing.T) *TestManager {
 	bbnCfg := defaultBBNConfigWithKey("test-spending-key", bh.GetNodeDataDir())
 	covbc, err := covcc.NewBabylonController(bbnCfg, &covenantConfig.BTCNetParams, logger)
 	require.NoError(t, err)
-	ce, err := covenant.NewCovenantEmulator(covenantConfig, covbc, passphrase, logger)
+
+	signer, err := covdkeyring.NewKeyringSigner(covenantConfig.BabylonConfig.ChainID, covenantConfig.BabylonConfig.Key, covenantConfig.BabylonConfig.KeyDirectory, covenantConfig.BabylonConfig.KeyringBackend, passphrase)
+	require.NoError(t, err)
+
+	ce, err := covenant.NewCovenantEmulator(covenantConfig, covbc, logger, signer)
 	require.NoError(t, err)
 	err = ce.Start()
 	require.NoError(t, err)
@@ -223,7 +228,34 @@ func (tm *TestManager) WaitForNActiveDels(t *testing.T, n int) []*types.Delegati
 	return dels
 }
 
-func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKey, stakingTime uint16, stakingAmount int64) *TestDelegationData {
+func (tm *TestManager) WaitForNVerifiedDels(t *testing.T, n int) []*types.Delegation {
+	var (
+		dels []*types.Delegation
+		err  error
+	)
+	require.Eventually(t, func() bool {
+		dels, err = tm.CovBBNClient.QueryVerifiedDelegations(
+			tm.CovenanConfig.DelegationLimit,
+		)
+		if err != nil {
+			return false
+		}
+		return len(dels) == n
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
+
+	t.Logf("delegations are verified")
+
+	return dels
+}
+
+// InsertBTCDelegation inserts a BTC delegation to Babylon
+// isPreApproval indicates whether the delegation follows
+// pre-approval flow, if so, the inclusion proof is nil
+func (tm *TestManager) InsertBTCDelegation(
+	t *testing.T,
+	fpPks []*btcec.PublicKey, stakingTime uint16, stakingAmount int64,
+	isPreApproval bool,
+) *TestDelegationData {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	params := tm.StakingParams
 
@@ -279,14 +311,14 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKe
 	require.NoError(t, err)
 	txInfo := btcctypes.NewTransactionInfo(&btcctypes.TransactionKey{Index: 1, Hash: btcHeader.Hash()}, serializedStakingTx, blockWithStakingTx.SpvProof.MerkleNodes)
 
-	slashignSpendInfo, err := testStakingInfo.StakingInfo.SlashingPathSpendInfo()
+	slashingSpendInfo, err := testStakingInfo.StakingInfo.SlashingPathSpendInfo()
 	require.NoError(t, err)
 
 	// delegator sig
 	delegatorSig, err := testStakingInfo.SlashingTx.Sign(
 		testStakingInfo.StakingTx,
 		1,
-		slashignSpendInfo.GetPkScriptPath(),
+		slashingSpendInfo.GetPkScriptPath(),
 		delBtcPrivKey,
 	)
 	require.NoError(t, err)
@@ -340,7 +372,8 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKe
 		uint32(unbondingTime),
 		unbondingValue,
 		testUnbondingInfo.SlashingTx,
-		unbondingSig)
+		unbondingSig,
+		isPreApproval)
 	require.NoError(t, err)
 
 	t.Log("successfully submitted a BTC delegation")

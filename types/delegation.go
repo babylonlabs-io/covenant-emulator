@@ -1,8 +1,9 @@
 package types
 
 import (
-	"github.com/btcsuite/btcd/btcutil"
 	"math"
+
+	"github.com/btcsuite/btcd/btcutil"
 
 	bbn "github.com/babylonlabs-io/babylon/types"
 
@@ -16,12 +17,14 @@ type Delegation struct {
 	// The Bitcoin secp256k1 PKs of the finality providers that
 	// this BTC delegation delegates to
 	FpBtcPks []*btcec.PublicKey
+	// The number of blocks for which the delegation is locked on BTC chain
+	StakingTime uint32
 	// The start BTC height of the BTC delegation
 	// it is the start BTC height of the timelock
-	StartHeight uint64
+	StartHeight uint32
 	// The end height of the BTC delegation
 	// it is the end BTC height of the timelock - w
-	EndHeight uint64
+	EndHeight uint32
 	// The total amount of BTC stakes in this delegation
 	// quantified in satoshi
 	TotalSat btcutil.Amount
@@ -52,14 +55,12 @@ func (d *Delegation) HasCovenantQuorum(quorum uint32) bool {
 }
 
 func (d *Delegation) GetStakingTime() uint16 {
-	diff := d.EndHeight - d.StartHeight
-
-	if diff > math.MaxUint16 {
+	if d.StakingTime > math.MaxUint16 {
 		// In a valid delegation, EndHeight is always greater than StartHeight and it is always uint16 value
 		panic("invalid delegation in database")
 	}
 
-	return uint16(diff)
+	return uint16(d.StakingTime)
 }
 
 // Undelegation signalizes that the delegation is being undelegated
@@ -82,6 +83,8 @@ type Undelegation struct {
 	CovenantUnbondingSigs []*CovenantSchnorrSigInfo
 	// The delegator signature for the unbonding tx
 	DelegatorUnbondingSig *bbn.BIP340Signature
+	// The transaction that spends the staking tx output but not unbonding tx
+	SpendStakeTxHex string
 }
 
 func (ud *Undelegation) HasCovenantQuorumOnSlashing(quorum uint32) bool {

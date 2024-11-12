@@ -41,3 +41,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 * [#22](https://github.com/babylonlabs-io/covenant-emulator/pull/22) Go releaser setup
   and move changelog reminder out
+
+## v0.7.0
+
+### Improvements
+
+* [#25](https://github.com/babylonlabs-io/covenant-emulator/pull/25) Bump Babylon to v0.15.0
+
+## v0.6.0
+
+### Improvements
+
+* [#24](https://github.com/babylonlabs-io/covenant-emulator/pull/24) Bump Babylon to v0.14.0
+
+## v0.5.0
+
+### Bug fixes
+
+* [#23](https://github.com/babylonlabs-io/covenant-emulator/pull/23) Fix pre-approval flow
+
+### Improvements
+
+* [#20](https://github.com/babylonlabs-io/covenant-emulator/pull/20) Add signing behind
+interface.

@@ -187,6 +187,10 @@ func (bc *BabylonController) QueryActiveDelegations(limit uint64) ([]*types.Dele
 	return bc.queryDelegationsWithStatus(btcstakingtypes.BTCDelegationStatus_ACTIVE, limit)
 }
 
+func (bc *BabylonController) QueryVerifiedDelegations(limit uint64) ([]*types.Delegation, error) {
+	return bc.queryDelegationsWithStatus(btcstakingtypes.BTCDelegationStatus_VERIFIED, limit)
+}
+
 // queryDelegationsWithStatus queries BTC delegations that need a Covenant signature
 // with the given status (either pending or unbonding)
 // it is only used when the program is running in Covenant mode
@@ -273,6 +277,7 @@ func DelegationRespToDelegation(del *btcstakingtypes.BTCDelegationResponse) (*ty
 		BtcPk:            del.BtcPk.MustToBTCPK(),
 		FpBtcPks:         fpBtcPks,
 		TotalSat:         btcutil.Amount(del.TotalSat),
+		StakingTime:      del.StakingTime,
 		StartHeight:      del.StartHeight,
 		EndHeight:        del.EndHeight,
 		StakingTxHex:     del.StakingTxHex,
@@ -288,7 +293,6 @@ func UndelegationRespToUndelegation(undel *btcstakingtypes.BTCUndelegationRespon
 	var (
 		covenantSlashingSigs  []*types.CovenantAdaptorSigInfo
 		covenantUnbondingSigs []*types.CovenantSchnorrSigInfo
-		err                   error
 	)
 
 	if undel.UnbondingTxHex == "" {
@@ -319,12 +323,9 @@ func UndelegationRespToUndelegation(undel *btcstakingtypes.BTCUndelegationRespon
 		covenantSlashingSigs = append(covenantSlashingSigs, covSigInfo)
 	}
 
-	delegatorUnbondingSig := new(bbntypes.BIP340Signature)
-	if undel.DelegatorUnbondingSigHex != "" {
-		delegatorUnbondingSig, err = bbntypes.NewBIP340SignatureFromHex(undel.DelegatorUnbondingSigHex)
-		if err != nil {
-			return nil, err
-		}
+	var spendStakeTxHex = ""
+	if undel.DelegatorUnbondingInfoResponse != nil {
+		spendStakeTxHex = undel.DelegatorUnbondingInfoResponse.SpendStakeTxHex
 	}
 
 	return &types.Undelegation{
@@ -332,7 +333,7 @@ func UndelegationRespToUndelegation(undel *btcstakingtypes.BTCUndelegationRespon
 		SlashingTxHex:         undel.SlashingTxHex,
 		CovenantSlashingSigs:  covenantSlashingSigs,
 		CovenantUnbondingSigs: covenantUnbondingSigs,
-		DelegatorUnbondingSig: delegatorUnbondingSig,
+		SpendStakeTxHex:       spendStakeTxHex,
 	}, nil
 }
 
@@ -351,10 +352,16 @@ func (bc *BabylonController) CreateBTCDelegation(
 	unbondingValue int64,
 	unbondingSlashingTx *btcstakingtypes.BTCSlashingTx,
 	delUnbondingSlashingSig *bbntypes.BIP340Signature,
+	isPreApproval bool,
 ) (*types.TxResponse, error) {
 	fpBtcPks := make([]bbntypes.BIP340PubKey, 0, len(fpPks))
 	for _, v := range fpPks {
 		fpBtcPks = append(fpBtcPks, *bbntypes.NewBIP340PubKeyFromBTCPK(v))
+	}
+
+	var inclusionProof *btcstakingtypes.InclusionProof
+	if !isPreApproval {
+		inclusionProof = btcstakingtypes.NewInclusionProof(stakingTxInfo.Key, stakingTxInfo.Proof)
 	}
 
 	msg := &btcstakingtypes.MsgCreateBTCDelegation{
@@ -365,7 +372,7 @@ func (bc *BabylonController) CreateBTCDelegation(
 		StakingTime:                   stakingTime,
 		StakingValue:                  stakingValue,
 		StakingTx:                     stakingTxInfo.Transaction,
-		StakingTxInclusionProof:       btcstakingtypes.NewInclusionProof(stakingTxInfo.Key, stakingTxInfo.Proof),
+		StakingTxInclusionProof:       inclusionProof,
 		SlashingTx:                    slashingTx,
 		DelegatorSlashingSig:          delSlashingSig,
 		UnbondingTx:                   unbondingTx,

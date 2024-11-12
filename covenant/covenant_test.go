@@ -2,9 +2,10 @@ package covenant_test
 
 import (
 	"encoding/hex"
-	"github.com/btcsuite/btcd/btcutil"
 	"math/rand"
 	"testing"
+
+	"github.com/btcsuite/btcd/btcutil"
 
 	"github.com/babylonlabs-io/babylon/btcstaking"
 	asig "github.com/babylonlabs-io/babylon/crypto/schnorr-adaptor-signature"
@@ -17,6 +18,7 @@ import (
 
 	covcfg "github.com/babylonlabs-io/covenant-emulator/config"
 	"github.com/babylonlabs-io/covenant-emulator/covenant"
+	"github.com/babylonlabs-io/covenant-emulator/keyring"
 	"github.com/babylonlabs-io/covenant-emulator/testutil"
 	"github.com/babylonlabs-io/covenant-emulator/types"
 )
@@ -31,6 +33,7 @@ var net = &chaincfg.SimNetParams
 func FuzzAddCovenantSig(f *testing.F) {
 	testutil.AddRandomSeedsToFuzzer(f, 10)
 	f.Fuzz(func(t *testing.T, seed int64) {
+		t.Log("Seed", seed)
 		r := rand.New(rand.NewSource(seed))
 
 		params := testutil.GenRandomParams(r, t)
@@ -38,7 +41,9 @@ func FuzzAddCovenantSig(f *testing.F) {
 
 		// create a Covenant key pair in the keyring
 		covenantConfig := covcfg.DefaultConfig()
-		covKeyPair, err := covenant.CreateCovenantKey(
+		covenantConfig.BabylonConfig.KeyDirectory = t.TempDir()
+
+		covKeyPair, err := keyring.CreateCovenantKey(
 			covenantConfig.BabylonConfig.KeyDirectory,
 			covenantConfig.BabylonConfig.ChainID,
 			covenantConfig.BabylonConfig.Key,
@@ -48,8 +53,11 @@ func FuzzAddCovenantSig(f *testing.F) {
 		)
 		require.NoError(t, err)
 
+		signer, err := keyring.NewKeyringSigner(covenantConfig.BabylonConfig.ChainID, covenantConfig.BabylonConfig.Key, covenantConfig.BabylonConfig.KeyDirectory, covenantConfig.BabylonConfig.KeyringBackend, passphrase)
+		require.NoError(t, err)
+
 		// create and start covenant emulator
-		ce, err := covenant.NewCovenantEmulator(&covenantConfig, mockClientController, passphrase, zap.NewNop())
+		ce, err := covenant.NewCovenantEmulator(&covenantConfig, mockClientController, zap.NewNop(), signer)
 		require.NoError(t, err)
 
 		numDels := datagen.RandomInt(r, 3) + 1
@@ -59,7 +67,7 @@ func FuzzAddCovenantSig(f *testing.F) {
 			// generate BTC delegation
 			delSK, delPK, err := datagen.GenRandomBTCKeyPair(r)
 			require.NoError(t, err)
-			stakingTimeBlocks := uint16(testutil.RandRange(r, int(params.MinStakingTime), int(params.MaxStakingTime)))
+			stakingTimeBlocks := uint32(testutil.RandRange(r, int(params.MinStakingTime), int(params.MaxStakingTime)))
 			stakingValue := int64(testutil.RandRange(r, int(params.MinStakingValue), int(params.MaxStakingValue)))
 			unbondingTime := uint16(params.MinimumUnbondingTime()) + 1
 			fpNum := datagen.RandomInt(r, 5) + 1
@@ -72,7 +80,7 @@ func FuzzAddCovenantSig(f *testing.F) {
 				fpPks,
 				params.CovenantPks,
 				params.CovenantQuorum,
-				stakingTimeBlocks,
+				uint16(stakingTimeBlocks),
 				stakingValue,
 				params.SlashingPkScript,
 				params.SlashingRate,
@@ -80,14 +88,15 @@ func FuzzAddCovenantSig(f *testing.F) {
 			)
 			stakingTxBytes, err := bbntypes.SerializeBTCTx(testInfo.StakingTx)
 			require.NoError(t, err)
-			startHeight := datagen.RandomInt(r, 1000) + 100
+			startHeight := uint32(datagen.RandomInt(r, 1000) + 100)
 			stakingOutputIdx, err := bbntypes.GetOutputIdxInBTCTx(testInfo.StakingTx, testInfo.StakingInfo.StakingOutput)
 			require.NoError(t, err)
 			btcDel := &types.Delegation{
 				BtcPk:            delPK,
 				FpBtcPks:         fpPks,
+				StakingTime:      stakingTimeBlocks,
 				StartHeight:      startHeight, // not relevant here
-				EndHeight:        startHeight + uint64(stakingTimeBlocks),
+				EndHeight:        startHeight + stakingTimeBlocks,
 				TotalSat:         btcutil.Amount(stakingValue),
 				UnbondingTime:    unbondingTime,
 				StakingTxHex:     hex.EncodeToString(stakingTxBytes),
