@@ -37,6 +37,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## Unreleased
 
+### Improvements
+
+* [#22](https://github.com/babylonlabs-io/covenant-emulator/pull/22) Go releaser setup
+  and move changelog reminder out
+
 ## v0.7.0
 
 ### Improvements
