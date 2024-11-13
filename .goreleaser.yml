@@ -1,0 +1,52 @@
+project_name: covenant-emulator
+
+builds:
+  - id: covd-linux-amd64
+    main: ./cmd/covd
+    binary: covd
+    hooks:
+      pre:
+        - wget https://github.com/CosmWasm/wasmvm/releases/download/{{ .Env.COSMWASM_VERSION }}/libwasmvm.x86_64.so -O /lib/libwasmvm_muslc.x86_64.so
+    goos:
+      - linux
+    goarch:
+      - amd64
+    flags:
+      - -mod=readonly
+      - -trimpath
+    ldflags:
+      - -w
+      - -s
+    tags:
+      - netgo
+
+archives:
+  - id: zipped
+    builds:
+      - covd-linux-amd64
+    name_template: "{{.ProjectName}}-{{ .Version }}-{{ .Os }}-{{ .Arch }}"
+    format: tar.gz
+    files:
+      - none*
+  - id: binaries
+    builds:
+      - covd-linux-amd64
+    name_template: "{{.ProjectName}}-{{ .Version }}-{{ .Os }}-{{ .Arch }}"
+    format: binary
+    files:
+      - none*
+
+checksum:
+  name_template: "{{ .ProjectName }}_{{ .Version }}_checksums.txt"
+  algorithm: sha256
+
+release:
+  github:
+    owner: babylonlabs-io
+    name: covenant-emulator
+
+# Docs: https://goreleaser.com/customization/changelog/
+changelog:
+  disable: true
+
+dist: dist
