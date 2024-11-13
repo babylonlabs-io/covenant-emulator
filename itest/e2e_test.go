@@ -6,6 +6,8 @@ package e2etest
 import (
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -37,5 +39,14 @@ func TestCovenantEmulatorLifeCycle(t *testing.T) {
 	time.Sleep(10 * time.Second)
 
 	// check the BTC delegation is verified
-	_ = tm.WaitForNVerifiedDels(t, 1)
+	dels := tm.WaitForNVerifiedDels(t, 1)
+
+	// test duplicate, should expect no error
+	// remove covenant sigs
+	dels[0].CovenantSigs = nil
+	dels[0].BtcUndelegation.CovenantSlashingSigs = nil
+	dels[0].BtcUndelegation.CovenantUnbondingSigs = nil
+	res, err := tm.CovenantEmulator.AddCovenantSignatures(dels)
+	require.NoError(t, err)
+	require.Empty(t, res)
 }
