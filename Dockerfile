@@ -1,4 +1,4 @@
-FROM golang:1.21.4 AS builder
+FROM golang:1.23.1 AS builder
 
 RUN apt-get update && apt-get install -y make git bash gcc curl jq
 
