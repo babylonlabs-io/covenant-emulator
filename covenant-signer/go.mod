@@ -42,8 +42,8 @@ require (
 )
 
 require (
+	cosmossdk.io/math v1.3.0
 	github.com/babylonlabs-io/babylon v0.12.1
-	github.com/babylonlabs-io/networks/parameters v0.2.2
 	github.com/btcsuite/btcd/btcutil/psbt v1.1.8
 	github.com/btcsuite/btcd/chaincfg/chainhash v1.1.0
 	github.com/btcsuite/btcwallet/wallet/txauthor v1.3.4
@@ -67,7 +67,6 @@ require (
 	cosmossdk.io/depinject v1.0.0-alpha.4 // indirect
 	cosmossdk.io/errors v1.0.1 // indirect
 	cosmossdk.io/log v1.3.1 // indirect
-	cosmossdk.io/math v1.3.0 // indirect
 	cosmossdk.io/store v1.1.0 // indirect
 	cosmossdk.io/x/circuit v0.1.0 // indirect
 	cosmossdk.io/x/evidence v0.1.0 // indirect

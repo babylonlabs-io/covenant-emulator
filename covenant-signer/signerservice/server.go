@@ -22,7 +22,7 @@ type SigningServer struct {
 
 func (a *SigningServer) SetupRoutes(r *chi.Mux) {
 	handler := a.handler
-	r.Post("/v1/sign-unbonding-tx", registerHandler(handler.SignUnbonding))
+	r.Post("/v1/sign-transactions", registerHandler(handler.SignTransactions))
 }
 
 func New(

@@ -3,9 +3,9 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/spf13/cobra"
 
-	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/btcclient"
 	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/config"
 	m "github.com/babylonlabs-io/covenant-emulator/covenant-signer/observability/metrics"
 	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/signerapp"
@@ -35,40 +35,17 @@ var runSignerCmd = &cobra.Command{
 			return err
 		}
 
-		parsedGlobalParams, err := signerapp.NewVersionedParamsRetriever(globalParamPath)
+		privKey, err := btcec.NewPrivateKey()
 
 		if err != nil {
 			return err
 		}
 
-		fullNodeClient, err := btcclient.NewBtcClient(parsedConfig.BtcNodeConfig)
-
-		if err != nil {
-			return err
-		}
-
-		chainInfo := signerapp.NewBitcoindChainInfo(fullNodeClient)
-
-		signerClient, err := btcclient.NewBtcClient(parsedConfig.BtcSignerConfig.ToBtcConfig())
-
-		if err != nil {
-			return err
-		}
-
-		var signer signerapp.ExternalBtcSigner
-		if parsedConfig.BtcSignerConfig.SignerType == config.PsbtSigner {
-			fmt.Println("using psbt signer")
-			signer = signerapp.NewPsbtSigner(signerClient)
-		} else if parsedConfig.BtcSignerConfig.SignerType == config.PrivKeySigner {
-			fmt.Println("using privkey signer")
-			signer = signerapp.NewPrivKeySigner(signerClient)
-		}
+		// TODO: Implement other approach to store keys
+		prk := signerapp.NewHardcodedPrivKeyRetriever(privKey)
 
 		app := signerapp.NewSignerApp(
-			signer,
-			chainInfo,
-			parsedGlobalParams,
-			parsedConfig.BtcNodeConfig.Network,
+			prk,
 		)
 
 		metrics := m.NewCovenantSignerMetrics()

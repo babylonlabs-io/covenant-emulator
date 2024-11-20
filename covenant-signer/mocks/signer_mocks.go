@@ -8,136 +8,44 @@ import (
 	context "context"
 	reflect "reflect"
 
-	signerapp "github.com/babylonlabs-io/covenant-emulator/covenant-signer/signerapp"
-	chainhash "github.com/btcsuite/btcd/chaincfg/chainhash"
+	btcec "github.com/btcsuite/btcd/btcec/v2"
 	gomock "github.com/golang/mock/gomock"
 )
 
-// MockBabylonParamsRetriever is a mock of BabylonParamsRetriever interface.
-type MockBabylonParamsRetriever struct {
+// MockPrivKeyRetriever is a mock of PrivKeyRetriever interface.
+type MockPrivKeyRetriever struct {
 	ctrl     *gomock.Controller
-	recorder *MockBabylonParamsRetrieverMockRecorder
+	recorder *MockPrivKeyRetrieverMockRecorder
 }
 
-// MockBabylonParamsRetrieverMockRecorder is the mock recorder for MockBabylonParamsRetriever.
-type MockBabylonParamsRetrieverMockRecorder struct {
-	mock *MockBabylonParamsRetriever
+// MockPrivKeyRetrieverMockRecorder is the mock recorder for MockPrivKeyRetriever.
+type MockPrivKeyRetrieverMockRecorder struct {
+	mock *MockPrivKeyRetriever
 }
 
-// NewMockBabylonParamsRetriever creates a new mock instance.
-func NewMockBabylonParamsRetriever(ctrl *gomock.Controller) *MockBabylonParamsRetriever {
-	mock := &MockBabylonParamsRetriever{ctrl: ctrl}
-	mock.recorder = &MockBabylonParamsRetrieverMockRecorder{mock}
+// NewMockPrivKeyRetriever creates a new mock instance.
+func NewMockPrivKeyRetriever(ctrl *gomock.Controller) *MockPrivKeyRetriever {
+	mock := &MockPrivKeyRetriever{ctrl: ctrl}
+	mock.recorder = &MockPrivKeyRetrieverMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockBabylonParamsRetriever) EXPECT() *MockBabylonParamsRetrieverMockRecorder {
+func (m *MockPrivKeyRetriever) EXPECT() *MockPrivKeyRetrieverMockRecorder {
 	return m.recorder
 }
 
-// ParamsByHeight mocks base method.
-func (m *MockBabylonParamsRetriever) ParamsByHeight(ctx context.Context, height uint64) (*signerapp.BabylonParams, error) {
+// PrivKey mocks base method.
+func (m *MockPrivKeyRetriever) PrivKey(ctx context.Context) (*btcec.PrivateKey, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ParamsByHeight", ctx, height)
-	ret0, _ := ret[0].(*signerapp.BabylonParams)
+	ret := m.ctrl.Call(m, "PrivKey", ctx)
+	ret0, _ := ret[0].(*btcec.PrivateKey)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// ParamsByHeight indicates an expected call of ParamsByHeight.
-func (mr *MockBabylonParamsRetrieverMockRecorder) ParamsByHeight(ctx, height interface{}) *gomock.Call {
+// PrivKey indicates an expected call of PrivKey.
+func (mr *MockPrivKeyRetrieverMockRecorder) PrivKey(ctx interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ParamsByHeight", reflect.TypeOf((*MockBabylonParamsRetriever)(nil).ParamsByHeight), ctx, height)
-}
-
-// MockBtcChainInfo is a mock of BtcChainInfo interface.
-type MockBtcChainInfo struct {
-	ctrl     *gomock.Controller
-	recorder *MockBtcChainInfoMockRecorder
-}
-
-// MockBtcChainInfoMockRecorder is the mock recorder for MockBtcChainInfo.
-type MockBtcChainInfoMockRecorder struct {
-	mock *MockBtcChainInfo
-}
-
-// NewMockBtcChainInfo creates a new mock instance.
-func NewMockBtcChainInfo(ctrl *gomock.Controller) *MockBtcChainInfo {
-	mock := &MockBtcChainInfo{ctrl: ctrl}
-	mock.recorder = &MockBtcChainInfoMockRecorder{mock}
-	return mock
-}
-
-// EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockBtcChainInfo) EXPECT() *MockBtcChainInfoMockRecorder {
-	return m.recorder
-}
-
-// BestBlockHeight mocks base method.
-func (m *MockBtcChainInfo) BestBlockHeight(ctx context.Context) (uint32, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "BestBlockHeight", ctx)
-	ret0, _ := ret[0].(uint32)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// BestBlockHeight indicates an expected call of BestBlockHeight.
-func (mr *MockBtcChainInfoMockRecorder) BestBlockHeight(ctx interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BestBlockHeight", reflect.TypeOf((*MockBtcChainInfo)(nil).BestBlockHeight), ctx)
-}
-
-// TxByHash mocks base method.
-func (m *MockBtcChainInfo) TxByHash(ctx context.Context, txHash *chainhash.Hash, pkScript []byte) (*signerapp.TxInfo, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "TxByHash", ctx, txHash, pkScript)
-	ret0, _ := ret[0].(*signerapp.TxInfo)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// TxByHash indicates an expected call of TxByHash.
-func (mr *MockBtcChainInfoMockRecorder) TxByHash(ctx, txHash, pkScript interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TxByHash", reflect.TypeOf((*MockBtcChainInfo)(nil).TxByHash), ctx, txHash, pkScript)
-}
-
-// MockExternalBtcSigner is a mock of ExternalBtcSigner interface.
-type MockExternalBtcSigner struct {
-	ctrl     *gomock.Controller
-	recorder *MockExternalBtcSignerMockRecorder
-}
-
-// MockExternalBtcSignerMockRecorder is the mock recorder for MockExternalBtcSigner.
-type MockExternalBtcSignerMockRecorder struct {
-	mock *MockExternalBtcSigner
-}
-
-// NewMockExternalBtcSigner creates a new mock instance.
-func NewMockExternalBtcSigner(ctrl *gomock.Controller) *MockExternalBtcSigner {
-	mock := &MockExternalBtcSigner{ctrl: ctrl}
-	mock.recorder = &MockExternalBtcSignerMockRecorder{mock}
-	return mock
-}
-
-// EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockExternalBtcSigner) EXPECT() *MockExternalBtcSignerMockRecorder {
-	return m.recorder
-}
-
-// RawSignature mocks base method.
-func (m *MockExternalBtcSigner) RawSignature(ctx context.Context, request *signerapp.SigningRequest) (*signerapp.SigningResult, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RawSignature", ctx, request)
-	ret0, _ := ret[0].(*signerapp.SigningResult)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// RawSignature indicates an expected call of RawSignature.
-func (mr *MockExternalBtcSignerMockRecorder) RawSignature(ctx, request interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RawSignature", reflect.TypeOf((*MockExternalBtcSigner)(nil).RawSignature), ctx, request)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PrivKey", reflect.TypeOf((*MockPrivKeyRetriever)(nil).PrivKey), ctx)
 }
