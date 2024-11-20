@@ -16,7 +16,7 @@ jobs:
       run-lint: true
       run-build: true
       run-gosec: true
-      gosec-args: "-exclude-generated -exclude-dir=itest -exclude-dir=testutil ./..."
+      gosec-args: "-exclude-generated -exclude-dir=itest -exclude-dir=testutil -exclude-dir=covenant-signer ./..."
 
   docker_pipeline:
     uses: babylonlabs-io/.github/.github/workflows/reusable_docker_pipeline.yml@v0.7.0
@@ -25,3 +25,23 @@ jobs:
       publish: false
       dockerfile: ./Dockerfile
       repoName: covenant-emulator
+
+  go_sec_covenant_signer:
+    runs-on: ubuntu-24.04
+    env:
+      GO111MODULE: on
+    steps:
+      - name: Fetch Repository
+        uses: actions/checkout@v4
+      - name: Install Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '^1.23.x'
+          check-latest: true
+          cache: false
+      - name: Install Gosec
+        run: go install github.com/securego/gosec/v2/cmd/gosec@latest
+      - name: Run Gosec (covenant-signer)
+        working-directory: ./covenant-signer
+        run: gosec ./...
+
