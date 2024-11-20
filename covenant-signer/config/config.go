@@ -42,13 +42,11 @@ func (cfg *Config) Parse() (*ParsedConfig, error) {
 	}
 
 	serverConfig, err := cfg.Server.Parse()
-
 	if err != nil {
 		return nil, err
 	}
 
 	metricsConfig, err := cfg.Metrics.Parse()
-
 	if err != nil {
 		return nil, err
 	}

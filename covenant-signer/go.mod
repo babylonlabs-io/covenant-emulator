@@ -1,8 +1,6 @@
 module github.com/babylonlabs-io/covenant-emulator/covenant-signer
 
-go 1.22.3
-
-toolchain go1.22.4
+go 1.23.1
 
 require (
 	github.com/btcsuite/btcd v0.24.2

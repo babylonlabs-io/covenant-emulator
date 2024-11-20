@@ -134,12 +134,12 @@ func (m *Manager) RunBitcoindResource(
 				fmt.Sprintf("%s/:/data/.bitcoin", bitcoindCfgPath),
 			},
 			ExposedPorts: []string{
-				"8332",
-				"8333",
-				"28332",
-				"28333",
-				"18443",
-				"18444",
+				"8332/tcp",
+				"8333/tcp",
+				"28332/tcp",
+				"28333/tcp",
+				"18443/tcp",
+				"18444/tcp",
 			},
 			PortBindings: map[docker.Port][]docker.PortBinding{
 				"8332/tcp":  {{HostIP: "", HostPort: "8332"}},
