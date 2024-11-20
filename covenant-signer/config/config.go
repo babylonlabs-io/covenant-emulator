@@ -16,23 +16,31 @@ const (
 )
 
 type Config struct {
-	Server  ServerConfig  `mapstructure:"server-config"`
-	Metrics MetricsConfig `mapstructure:"metrics"`
+	KeyStore KeyStoreConfig `mapstructure:"keystore"`
+	Server   ServerConfig   `mapstructure:"server-config"`
+	Metrics  MetricsConfig  `mapstructure:"metrics"`
 }
 
 func DefaultConfig() *Config {
 	return &Config{
-		Server:  *DefaultServerConfig(),
-		Metrics: *DefaultMetricsConfig(),
+		KeyStore: *DefaultKeyStoreConfig(),
+		Server:   *DefaultServerConfig(),
+		Metrics:  *DefaultMetricsConfig(),
 	}
 }
 
 type ParsedConfig struct {
-	ServerConfig  *ParsedServerConfig
-	MetricsConfig *ParsedMetricsConfig
+	KeyStoreConfig *ParsedKeyStoreConfig
+	ServerConfig   *ParsedServerConfig
+	MetricsConfig  *ParsedMetricsConfig
 }
 
 func (cfg *Config) Parse() (*ParsedConfig, error) {
+	keyStoreConfig, err := cfg.KeyStore.Parse()
+	if err != nil {
+		return nil, err
+	}
+
 	serverConfig, err := cfg.Server.Parse()
 
 	if err != nil {
@@ -46,13 +54,28 @@ func (cfg *Config) Parse() (*ParsedConfig, error) {
 	}
 
 	return &ParsedConfig{
-		ServerConfig:  serverConfig,
-		MetricsConfig: metricsConfig,
+		KeyStoreConfig: keyStoreConfig,
+		ServerConfig:   serverConfig,
+		MetricsConfig:  metricsConfig,
 	}, nil
 }
 
 const defaultConfigTemplate = `# This is a TOML config file.
 # For more information, see https://github.com/toml-lang/toml
+
+[keystore]
+# The type of the key store
+keystore-type = "{{ .KeyStore.KeyStoreType }}"
+
+[keystore.cosmos]
+# The directory to store the keys in
+key-directory = "{{ .KeyStore.CosmosKeyStore.KeyDirectory }}"
+# The keyring backend to use
+keyring-backend = "{{ .KeyStore.CosmosKeyStore.KeyringBackend }}"
+# The name of the key to use
+key-name = "{{ .KeyStore.CosmosKeyStore.KeyName }}"
+# Passphrase
+passphrase = "{{ .KeyStore.CosmosKeyStore.Passphrase }}"
 
 [server-config]
 # The address to listen on

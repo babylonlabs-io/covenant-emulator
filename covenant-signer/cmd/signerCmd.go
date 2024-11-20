@@ -3,10 +3,10 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/spf13/cobra"
 
 	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/config"
+	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/keystore/cosmos"
 	m "github.com/babylonlabs-io/covenant-emulator/covenant-signer/observability/metrics"
 	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/signerapp"
 	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/signerservice"
@@ -35,14 +35,16 @@ var runSignerCmd = &cobra.Command{
 			return err
 		}
 
-		privKey, err := btcec.NewPrivateKey()
-
-		if err != nil {
-			return err
+		var prk signerapp.PrivKeyRetriever
+		if parsedConfig.KeyStoreConfig.KeyStoreType == config.CosmosKeyStore {
+			kr, err := cosmos.NewCosmosKeyringRetriever(parsedConfig.KeyStoreConfig.CosmosKeyStore)
+			if err != nil {
+				return err
+			}
+			prk = kr
+		} else {
+			return fmt.Errorf("unknown key store type")
 		}
-
-		// TODO: Implement other approach to store keys
-		prk := signerapp.NewHardcodedPrivKeyRetriever(privKey)
 
 		app := signerapp.NewSignerApp(
 			prk,

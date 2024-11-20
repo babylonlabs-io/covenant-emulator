@@ -29,6 +29,7 @@ import (
 
 	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/config"
 	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/itest/containers"
+	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/keystore/cosmos"
 	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/observability/metrics"
 	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/signerapp"
 	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/signerservice"
@@ -87,13 +88,24 @@ func StartManager(
 
 	appConfig := config.DefaultConfig()
 
-	covenantPrivateKey, err := btcec.NewPrivateKey()
+	appConfig.KeyStore.KeyStoreType = "cosmos"
+	appConfig.KeyStore.CosmosKeyStore.ChainID = "test-chain"
+	appConfig.KeyStore.CosmosKeyStore.Passphrase = passphrase
+	appConfig.KeyStore.CosmosKeyStore.KeyName = "test-key"
+	appConfig.KeyStore.CosmosKeyStore.KeyDirectory = ""
+	appConfig.KeyStore.CosmosKeyStore.KeyringBackend = "memory"
+
+	retriever, err := cosmos.NewCosmosKeyringRetriever(appConfig.KeyStore.CosmosKeyStore)
 	require.NoError(t, err)
 
-	privKeyRetriever := signerapp.NewHardcodedPrivKeyRetriever(covenantPrivateKey)
+	keyInfo, err := retriever.Kr.CreateChainKey(
+		appConfig.KeyStore.CosmosKeyStore.Passphrase,
+		"",
+	)
+	require.NoError(t, err)
 
 	app := signerapp.NewSignerApp(
-		privKeyRetriever,
+		retriever,
 	)
 
 	met := metrics.NewCovenantSignerMetrics()
@@ -124,7 +136,7 @@ func StartManager(
 		t:               t,
 		bitcoindHandler: h,
 		walletPass:      passphrase,
-		covenantPrivKey: covenantPrivateKey,
+		covenantPrivKey: keyInfo.PrivateKey,
 		signerConfig:    appConfig,
 		app:             app,
 		server:          server,
