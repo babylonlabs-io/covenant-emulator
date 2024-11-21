@@ -1,8 +1,5 @@
 FROM golang:1.23.1-alpine as builder
 
-# Version to build. Default is the Git HEAD.
-ARG VERSION="HEAD"
-
 # Use muslc for static libs
 ARG BUILD_TAGS="muslc"
 

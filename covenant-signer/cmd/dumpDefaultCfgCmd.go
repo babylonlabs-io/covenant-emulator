@@ -13,7 +13,7 @@ func init() {
 
 var dumpCfgCmd = &cobra.Command{
 	Use:   "dump-cfg",
-	Short: "dumps default confiiguration file",
+	Short: "dumps default configuration file",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		path, err := cmd.Flags().GetString(configPathKey)
 		if err != nil {

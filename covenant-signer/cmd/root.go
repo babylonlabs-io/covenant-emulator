@@ -12,20 +12,16 @@ var (
 	configPath    string
 	configPathKey = "config"
 
-	globalParamPath string
-	globalParamKey  = "params"
-
 	rootCmd = &cobra.Command{
 		Use:   "covenant-signer",
 		Short: "remote signing serivce to perform covenant duties",
 	}
 
-	//   C:\Users\<username>\AppData\Local\tools on Windows
-	//   ~/.tools on Linux
-	//   ~/Library/Application Support/tools on MacOS
-	dafaultConfigDir        = btcutil.AppDataDir("signer", false)
-	dafaultConfigPath       = filepath.Join(dafaultConfigDir, "config.toml")
-	defaultGlobalParamsPath = filepath.Join(dafaultConfigDir, "global-params.json")
+	//   C:\Users\<username>\AppData\Local\signer on Windows
+	//   ~/.signer on Linux
+	//   ~/Library/Application Support/signer on MacOS
+	dafaultConfigDir  = btcutil.AppDataDir("signer", false)
+	dafaultConfigPath = filepath.Join(dafaultConfigDir, "config.toml")
 )
 
 // Execute executes the root command.
@@ -39,12 +35,5 @@ func init() {
 		configPathKey,
 		dafaultConfigPath,
 		"path to the configuration file",
-	)
-
-	rootCmd.PersistentFlags().StringVar(
-		&globalParamPath,
-		globalParamKey,
-		defaultGlobalParamsPath,
-		"path to the global params file",
 	)
 }
