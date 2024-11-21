@@ -39,6 +39,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 * [#33](https://github.com/babylonlabs-io/covenant-emulator/pull/33) Add remote
 signer sub module
+* [#31](https://github.com/babylonlabs-io/covenant-emulator/pull/31/) Bump docker workflow
+version, fix some Dockerfile issue
 
 ## v0.8.0
 
