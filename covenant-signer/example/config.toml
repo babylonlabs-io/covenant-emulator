@@ -1,0 +1,41 @@
+# This is a TOML config file.
+# For more information, see https://github.com/toml-lang/toml
+
+[keystore]
+# The type of the key store
+keystore-type = "cosmos"
+
+[keystore.cosmos]
+# The directory to store the keys in
+key-directory = ""
+# The keyring backend to use
+keyring-backend = ""
+# The name of the key to use
+key-name = ""
+# Passphrase
+passphrase = ""
+
+[server-config]
+# The address to listen on
+host = "127.0.0.1"
+
+# The port to listen on
+port = 9791
+
+# Read timeout in seconds
+read-timeout = 15
+
+# Write timeout in seconds
+write-timeout = 15
+
+# Idle timeout in seconds
+idle-timeout = 120
+
+# Max content length in bytes
+max-content-length = 8192
+
+[metrics]
+# The prometheus server host
+host = "127.0.0.1"
+# The prometheus server port
+port = 2112

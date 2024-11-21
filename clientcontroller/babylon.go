@@ -176,6 +176,10 @@ func (bc *BabylonController) SubmitCovenantSigs(covSigs []*types.CovenantSigs) (
 		return nil, err
 	}
 
+	if res == nil {
+		return &types.TxResponse{}, nil
+	}
+
 	return &types.TxResponse{TxHash: res.TxHash, Events: res.Events}, nil
 }
 

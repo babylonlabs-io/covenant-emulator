@@ -37,10 +37,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## Unreleased
 
+* [#33](https://github.com/babylonlabs-io/covenant-emulator/pull/33) Add remote
+signer sub module
+
+## v0.8.0
+
+### Bug fixes
+
+* [#30](https://github.com/babylonlabs-io/covenant-emulator/pull/30) Ignore duplicated sig error
+
 ### Improvements
 
 * [#22](https://github.com/babylonlabs-io/covenant-emulator/pull/22) Go releaser setup
   and move changelog reminder out
+* [#32](https://github.com/babylonlabs-io/covenant-emulator/pull/32) Upgrade Babylon
+  to v0.16.0
 
 ## v0.7.0
 
