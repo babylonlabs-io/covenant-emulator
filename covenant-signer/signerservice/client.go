@@ -3,6 +3,7 @@ package signerservice
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,6 +13,7 @@ import (
 	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/signerapp"
 	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/signerservice/handlers"
 	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/signerservice/types"
+	"github.com/btcsuite/btcd/btcec/v2"
 )
 
 const (
@@ -78,4 +80,47 @@ func RequestCovenantSignaure(
 	}
 
 	return types.ToParsedSigningResponse(&response.Data)
+}
+
+func GetPublicKey(ctx context.Context, signerUrl string, timeout time.Duration) (*btcec.PublicKey, error) {
+	route := fmt.Sprintf("%s/v1/public-key", signerUrl)
+
+	httpRequest, err := http.NewRequestWithContext(ctx, "GET", route, nil)
+
+	if err != nil {
+		return nil, err
+	}
+
+	client := http.Client{Timeout: timeout}
+	res, err := client.Do(httpRequest)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer res.Body.Close()
+
+	maxSizeReader := http.MaxBytesReader(nil, res.Body, maxResponseSize)
+
+	resBody, err := io.ReadAll(maxSizeReader)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if res.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("public key request failed. status code: %d, message: %s", res.StatusCode, string(resBody))
+	}
+
+	var response handlers.PublicResponse[types.GetPublicKeyResponse]
+	if err := json.Unmarshal(resBody, &response); err != nil {
+		return nil, err
+	}
+
+	pubKey, err := hex.DecodeString(response.Data.PublicKey)
+	if err != nil {
+		return nil, err
+	}
+
+	return btcec.ParsePubKey(pubKey)
 }
