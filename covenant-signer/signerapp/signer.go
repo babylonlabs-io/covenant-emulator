@@ -44,7 +44,6 @@ func (s *SignerApp) SignTransactions(
 	ctx context.Context,
 	req *ParsedSigningRequest,
 ) (*ParsedSigningResponse, error) {
-
 	privKey, err := s.pkr.PrivKey(ctx)
 
 	defer func() {
@@ -77,7 +76,16 @@ func (s *SignerApp) SignTransactions(
 		UnbondingSig:              unbondingSig,
 		SlashUnbondingAdaptorSigs: slashUnbondingSigs,
 	}, nil
+}
 
+func (s *SignerApp) PubKey(ctx context.Context) (*btcec.PublicKey, error) {
+	privKey, err := s.pkr.PrivKey(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer privKey.Zero()
+
+	return privKey.PubKey(), nil
 }
 
 func slashUnbondSig(

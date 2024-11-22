@@ -129,6 +129,17 @@ func buildDataToSign(t *testing.T, covnenantPublicKey *btcec.PublicKey) signerap
 	}
 }
 
+func TestGetPublicKey(t *testing.T) {
+	tm := StartManager(t, 100)
+
+	pubKey, err := signerservice.GetPublicKey(context.Background(), tm.SigningServerUrl(), 10*time.Second)
+	require.NoError(t, err)
+	require.NotNil(t, pubKey)
+
+	pubKeyBytes := pubKey.SerializeCompressed()
+	require.Equal(t, hex.EncodeToString(pubKeyBytes), hex.EncodeToString(tm.covenantPrivKey.PubKey().SerializeCompressed()))
+}
+
 func TestSigningTransactions(t *testing.T) {
 	tm := StartManager(t, 100)
 

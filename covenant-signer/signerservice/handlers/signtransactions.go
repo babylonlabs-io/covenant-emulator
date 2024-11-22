@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"net/http"
 
@@ -37,6 +38,19 @@ func (h *Handler) SignTransactions(request *http.Request) (*Result, *types.Error
 	resp := types.ToResponse(sig)
 
 	h.m.IncSuccessfulSigningRequests()
+
+	return NewResult(resp), nil
+}
+
+func (h *Handler) GetPublicKey(request *http.Request) (*Result, *types.Error) {
+	pubKey, err := h.s.PubKey(request.Context())
+	if err != nil {
+		return nil, types.NewErrorWithMsg(http.StatusInternalServerError, types.InternalServiceError, err.Error())
+	}
+
+	resp := &types.GetPublicKeyResponse{
+		PublicKey: hex.EncodeToString(pubKey.SerializeCompressed()),
+	}
 
 	return NewResult(resp), nil
 }
