@@ -7,6 +7,7 @@ import (
 	covcfg "github.com/babylonlabs-io/covenant-emulator/config"
 	"github.com/babylonlabs-io/covenant-emulator/keyring"
 	"github.com/babylonlabs-io/covenant-emulator/log"
+	"github.com/babylonlabs-io/covenant-emulator/remotesigner"
 	"github.com/babylonlabs-io/covenant-emulator/util"
 
 	"github.com/lightningnetwork/lnd/signal"
@@ -60,9 +61,21 @@ func start(ctx *cli.Context) error {
 
 	pwd := ctx.String(passphraseFlag)
 
-	signer, err := newSignerFromConfig(cfg, pwd)
-	if err != nil {
-		return fmt.Errorf("failed to create signer from config: %w", err)
+	var signer covenant.Signer
+
+	if cfg.UseRemoteSigner {
+		signer, err = newRemoteSignerFromConfig(cfg)
+
+		if err != nil {
+			return fmt.Errorf("failed to create remote signer from config: %w", err)
+
+		} else {
+			signer, err = newSignerFromConfig(cfg, pwd)
+
+			if err != nil {
+				return fmt.Errorf("failed to create keyring signer from config: %w", err)
+			}
+		}
 	}
 
 	ce, err := covenant.NewCovenantEmulator(cfg, bbnClient, logger, signer)
@@ -84,7 +97,7 @@ func start(ctx *cli.Context) error {
 	return srv.RunUntilShutdown()
 }
 
-func newSignerFromConfig(cfg *covcfg.Config, passphrase string) (*keyring.KeyringSigner, error) {
+func newSignerFromConfig(cfg *covcfg.Config, passphrase string) (covenant.Signer, error) {
 	return keyring.NewKeyringSigner(
 		cfg.BabylonConfig.ChainID,
 		cfg.BabylonConfig.Key,
@@ -92,4 +105,8 @@ func newSignerFromConfig(cfg *covcfg.Config, passphrase string) (*keyring.Keyrin
 		cfg.BabylonConfig.KeyringBackend,
 		passphrase,
 	)
+}
+
+func newRemoteSignerFromConfig(cfg *covcfg.Config) (covenant.Signer, error) {
+	return remotesigner.NewRemoteSigner(cfg.RemoteSigner), nil
 }

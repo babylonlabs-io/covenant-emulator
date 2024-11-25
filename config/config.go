@@ -46,6 +46,10 @@ type Config struct {
 	Metrics *MetricsConfig `group:"metrics" namespace:"metrics"`
 
 	BabylonConfig *BBNConfig `group:"babylon" namespace:"babylon"`
+
+	UseRemoteSigner bool `long:"use-remotesigner" description:"if true, covenant will use the remote signer to sign transactions"`
+
+	RemoteSigner *RemoteSignerCfg `group:"remotesigner" namespace:"remotesigner"`
 }
 
 // LoadConfig initializes and parses the config using a config file and command
@@ -128,6 +132,7 @@ func DefaultConfigWithHomePath(homePath string) Config {
 	bbnCfg.Key = defaultCovenantKeyName
 	bbnCfg.KeyDirectory = homePath
 	metricsCfg := DefaultMetricsConfig()
+	remoteSignerCfg := DefaultRemoteSignerConfig()
 	cfg := Config{
 		LogLevel:        defaultLogLevel,
 		QueryInterval:   defaultQueryInterval,
@@ -137,6 +142,8 @@ func DefaultConfigWithHomePath(homePath string) Config {
 		BTCNetParams:    defaultBTCNetParams,
 		Metrics:         &metricsCfg,
 		BabylonConfig:   &bbnCfg,
+		UseRemoteSigner: false,
+		RemoteSigner:    &remoteSignerCfg,
 	}
 
 	if err := cfg.Validate(); err != nil {
