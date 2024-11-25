@@ -45,6 +45,8 @@ version, fix some Dockerfile issue
 endpoint to the remote signer
 * [#38](https://github.com/babylonlabs-io/covenant-emulator/pull/38) Bump Babylon version
 to v0.17.1
+* [#37](https://github.com/babylonlabs-io/covenant-emulator/pull/37) Add remote signer
+to the covenant emulator
 
 ## v0.8.0
 

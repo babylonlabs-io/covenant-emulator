@@ -1,6 +1,7 @@
 package e2etest
 
 import (
+	"context"
 	"math/rand"
 	"os"
 	"sync"
@@ -12,6 +13,18 @@ import (
 	btcctypes "github.com/babylonlabs-io/babylon/x/btccheckpoint/types"
 	btclctypes "github.com/babylonlabs-io/babylon/x/btclightclient/types"
 	bstypes "github.com/babylonlabs-io/babylon/x/btcstaking/types"
+	covcc "github.com/babylonlabs-io/covenant-emulator/clientcontroller"
+	covcfg "github.com/babylonlabs-io/covenant-emulator/config"
+	"github.com/babylonlabs-io/covenant-emulator/covenant"
+	signerCfg "github.com/babylonlabs-io/covenant-emulator/covenant-signer/config"
+	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/keystore/cosmos"
+	signerMetrics "github.com/babylonlabs-io/covenant-emulator/covenant-signer/observability/metrics"
+	signerApp "github.com/babylonlabs-io/covenant-emulator/covenant-signer/signerapp"
+	signerService "github.com/babylonlabs-io/covenant-emulator/covenant-signer/signerservice"
+	covdkeyring "github.com/babylonlabs-io/covenant-emulator/keyring"
+	"github.com/babylonlabs-io/covenant-emulator/remotesigner"
+	"github.com/babylonlabs-io/covenant-emulator/testutil"
+	"github.com/babylonlabs-io/covenant-emulator/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/wire"
@@ -20,13 +33,6 @@ import (
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
-
-	covcc "github.com/babylonlabs-io/covenant-emulator/clientcontroller"
-	covcfg "github.com/babylonlabs-io/covenant-emulator/config"
-	"github.com/babylonlabs-io/covenant-emulator/covenant"
-	covdkeyring "github.com/babylonlabs-io/covenant-emulator/keyring"
-	"github.com/babylonlabs-io/covenant-emulator/testutil"
-	"github.com/babylonlabs-io/covenant-emulator/types"
 )
 
 var (
@@ -71,21 +77,81 @@ type testFinalityProviderData struct {
 	PoP            *bstypes.ProofOfPossessionBTC
 }
 
-func StartManager(t *testing.T) *TestManager {
+func StartManager(t *testing.T, useRemoteSigner bool) *TestManager {
 	testDir, err := baseDir("cee2etest")
 	require.NoError(t, err)
 
 	logger := zap.NewNop()
-
-	// 1. prepare covenant key, which will be used as input of Babylon node
 	covenantConfig := defaultCovenantConfig(testDir)
 	err = covenantConfig.Validate()
 	require.NoError(t, err)
-	covKeyPair, err := covdkeyring.CreateCovenantKey(testDir, chainID, covenantKeyName, keyring.BackendTest, passphrase, hdPath)
-	require.NoError(t, err)
+
+	// 1. prepare covenant key, which will be used as input of Babylon node
+	var signer covenant.Signer
+	var covPubKey *btcec.PublicKey
+	if useRemoteSigner {
+		covenantConfig.RemoteSignerEnabled = true
+		signerConfig := signerCfg.DefaultConfig()
+		signerConfig.KeyStore.CosmosKeyStore.ChainID = covenantConfig.BabylonConfig.ChainID
+		signerConfig.KeyStore.CosmosKeyStore.Passphrase = passphrase
+		signerConfig.KeyStore.CosmosKeyStore.KeyName = covenantConfig.BabylonConfig.Key
+		signerConfig.KeyStore.CosmosKeyStore.KeyringBackend = covenantConfig.BabylonConfig.KeyringBackend
+		signerConfig.KeyStore.CosmosKeyStore.KeyDirectory = covenantConfig.BabylonConfig.KeyDirectory
+		keyRetriever, err := cosmos.NewCosmosKeyringRetriever(signerConfig.KeyStore.CosmosKeyStore)
+		require.NoError(t, err)
+		keyInfo, err := keyRetriever.Kr.CreateChainKey(
+			passphrase,
+			hdPath,
+		)
+		require.NoError(t, err)
+		require.NotNil(t, keyInfo)
+
+		app := signerApp.NewSignerApp(
+			keyRetriever,
+		)
+
+		met := signerMetrics.NewCovenantSignerMetrics()
+		parsedConfig, err := signerConfig.Parse()
+		require.NoError(t, err)
+
+		server, err := signerService.New(
+			context.Background(),
+			parsedConfig,
+			app,
+			met,
+		)
+
+		require.NoError(t, err)
+
+		signer = remotesigner.NewRemoteSigner(covenantConfig.RemoteSigner)
+		covPubKey = keyInfo.PublicKey
+
+		go func() {
+			_ = server.Start()
+		}()
+
+		// Give some time to launch server
+		time.Sleep(3 * time.Second)
+
+		t.Cleanup(func() {
+			_ = server.Stop(context.TODO())
+		})
+	} else {
+		covKeyPair, err := covdkeyring.CreateCovenantKey(testDir, chainID, covenantKeyName, keyring.BackendTest, passphrase, hdPath)
+		require.NoError(t, err)
+		signer, err = covdkeyring.NewKeyringSigner(
+			covenantConfig.BabylonConfig.ChainID,
+			covenantConfig.BabylonConfig.Key,
+			covenantConfig.BabylonConfig.KeyDirectory,
+			covenantConfig.BabylonConfig.KeyringBackend,
+			passphrase,
+		)
+		require.NoError(t, err)
+		covPubKey = covKeyPair.PublicKey
+	}
 
 	// 2. prepare Babylon node
-	bh := NewBabylonNodeHandler(t, bbntypes.NewBIP340PubKeyFromBTCPK(covKeyPair.PublicKey))
+	bh := NewBabylonNodeHandler(t, bbntypes.NewBIP340PubKeyFromBTCPK(covPubKey))
 	err = bh.Start()
 	require.NoError(t, err)
 
@@ -94,7 +160,6 @@ func StartManager(t *testing.T) *TestManager {
 	covbc, err := covcc.NewBabylonController(bbnCfg, &covenantConfig.BTCNetParams, logger)
 	require.NoError(t, err)
 
-	signer, err := covdkeyring.NewKeyringSigner(covenantConfig.BabylonConfig.ChainID, covenantConfig.BabylonConfig.Key, covenantConfig.BabylonConfig.KeyDirectory, covenantConfig.BabylonConfig.KeyringBackend, passphrase)
 	require.NoError(t, err)
 
 	ce, err := covenant.NewCovenantEmulator(covenantConfig, covbc, logger, signer)
@@ -129,8 +194,8 @@ func (tm *TestManager) WaitForServicesStart(t *testing.T) {
 	t.Logf("Babylon node is started")
 }
 
-func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*btcec.PublicKey) {
-	tm := StartManager(t)
+func StartManagerWithFinalityProvider(t *testing.T, n int, useRemoteSigner bool) (*TestManager, []*btcec.PublicKey) {
+	tm := StartManager(t, useRemoteSigner)
 
 	var btcPks []*btcec.PublicKey
 	for i := 0; i < n; i++ {
