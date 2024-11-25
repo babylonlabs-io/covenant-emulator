@@ -65,16 +65,13 @@ func start(ctx *cli.Context) error {
 
 	if cfg.UseRemoteSigner {
 		signer, err = newRemoteSignerFromConfig(cfg)
-
 		if err != nil {
 			return fmt.Errorf("failed to create remote signer from config: %w", err)
-
-		} else {
-			signer, err = newSignerFromConfig(cfg, pwd)
-
-			if err != nil {
-				return fmt.Errorf("failed to create keyring signer from config: %w", err)
-			}
+		}
+	} else {
+		signer, err = newSignerFromConfig(cfg, pwd)
+		if err != nil {
+			return fmt.Errorf("failed to create keyring signer from config: %w", err)
 		}
 	}
 
