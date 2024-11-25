@@ -63,7 +63,7 @@ func start(ctx *cli.Context) error {
 
 	var signer covenant.Signer
 
-	if cfg.UseRemoteSigner {
+	if cfg.RemoteSignerEnabled {
 		signer, err = newRemoteSignerFromConfig(cfg)
 		if err != nil {
 			return fmt.Errorf("failed to create remote signer from config: %w", err)

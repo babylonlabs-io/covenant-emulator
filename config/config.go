@@ -47,7 +47,7 @@ type Config struct {
 
 	BabylonConfig *BBNConfig `group:"babylon" namespace:"babylon"`
 
-	UseRemoteSigner bool `long:"use-remotesigner" description:"if true, covenant will use the remote signer to sign transactions"`
+	RemoteSignerEnabled bool `long:"remote-signer-enabled" description:"if true, covenant will use the remote signer to sign transactions"`
 
 	RemoteSigner *RemoteSignerCfg `group:"remotesigner" namespace:"remotesigner"`
 }
@@ -134,16 +134,16 @@ func DefaultConfigWithHomePath(homePath string) Config {
 	metricsCfg := DefaultMetricsConfig()
 	remoteSignerCfg := DefaultRemoteSignerConfig()
 	cfg := Config{
-		LogLevel:        defaultLogLevel,
-		QueryInterval:   defaultQueryInterval,
-		DelegationLimit: defaultDelegationLimit,
-		SigsBatchSize:   defaultSigsBatchSize,
-		BitcoinNetwork:  defaultBitcoinNetwork,
-		BTCNetParams:    defaultBTCNetParams,
-		Metrics:         &metricsCfg,
-		BabylonConfig:   &bbnCfg,
-		UseRemoteSigner: false,
-		RemoteSigner:    &remoteSignerCfg,
+		LogLevel:            defaultLogLevel,
+		QueryInterval:       defaultQueryInterval,
+		DelegationLimit:     defaultDelegationLimit,
+		SigsBatchSize:       defaultSigsBatchSize,
+		BitcoinNetwork:      defaultBitcoinNetwork,
+		BTCNetParams:        defaultBTCNetParams,
+		Metrics:             &metricsCfg,
+		BabylonConfig:       &bbnCfg,
+		RemoteSignerEnabled: false,
+		RemoteSigner:        &remoteSignerCfg,
 	}
 
 	if err := cfg.Validate(); err != nil {

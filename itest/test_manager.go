@@ -90,7 +90,7 @@ func StartManager(t *testing.T, useRemoteSigner bool) *TestManager {
 	var signer covenant.Signer
 	var covPubKey *btcec.PublicKey
 	if useRemoteSigner {
-		covenantConfig.UseRemoteSigner = true
+		covenantConfig.RemoteSignerEnabled = true
 		signerConfig := signerCfg.DefaultConfig()
 		signerConfig.KeyStore.CosmosKeyStore.ChainID = covenantConfig.BabylonConfig.ChainID
 		signerConfig.KeyStore.CosmosKeyStore.Passphrase = passphrase
