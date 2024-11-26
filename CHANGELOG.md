@@ -47,6 +47,8 @@ endpoint to the remote signer
 to v0.17.1
 * [#37](https://github.com/babylonlabs-io/covenant-emulator/pull/37) Add remote signer
 to the covenant emulator
+* [#40](https://github.com/babylonlabs-io/covenant-emulator/pull/40) Fix min unbonding time
+validation
 
 ## v0.8.0
 

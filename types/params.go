@@ -48,13 +48,3 @@ type StakingParams struct {
 	// Maximum staking value required by babylon
 	MaxStakingValue btcutil.Amount
 }
-
-// MinimumUnbondingTime returns the minimum unbonding time. It is the bigger value from:
-// - MinUnbondingTime
-// - CheckpointFinalizationTimeout
-func (p *StakingParams) MinimumUnbondingTime() uint32 {
-	return sdkmath.Max[uint32](
-		p.MinUnbondingTime,
-		p.FinalizationTimeoutBlocks,
-	)
-}
