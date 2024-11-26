@@ -2,6 +2,7 @@ package e2etest
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"testing"
 	"time"
@@ -54,7 +55,6 @@ func StartManager(
 	_ = h.GenerateBlocks(int(numMatureOutputsInWallet) + 100)
 
 	appConfig := config.DefaultConfig()
-
 	appConfig.KeyStore.KeyStoreType = "cosmos"
 	appConfig.KeyStore.CosmosKeyStore.ChainID = "test-chain"
 	appConfig.KeyStore.CosmosKeyStore.Passphrase = passphrase
@@ -65,9 +65,16 @@ func StartManager(
 	retriever, err := cosmos.NewCosmosKeyringRetriever(appConfig.KeyStore.CosmosKeyStore)
 	require.NoError(t, err)
 
-	keyInfo, err := retriever.Kr.CreateChainKey(
-		appConfig.KeyStore.CosmosKeyStore.Passphrase,
-		"",
+	covPrivKey, err := btcec.NewPrivateKey()
+	require.NoError(t, err)
+
+	hexPrivKey := hex.EncodeToString(covPrivKey.Serialize())
+
+	// Import private key to keyring, from hex string
+	err = retriever.Kr.GetKeyring().ImportPrivKeyHex(
+		appConfig.KeyStore.CosmosKeyStore.KeyName,
+		hexPrivKey,
+		"secp256k1",
 	)
 	require.NoError(t, err)
 
@@ -103,7 +110,7 @@ func StartManager(
 		t:               t,
 		bitcoindHandler: h,
 		walletPass:      passphrase,
-		covenantPrivKey: keyInfo.PrivateKey,
+		covenantPrivKey: covPrivKey,
 		signerConfig:    appConfig,
 		app:             app,
 		server:          server,
