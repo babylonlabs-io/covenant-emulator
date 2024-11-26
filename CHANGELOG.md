@@ -41,6 +41,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 * [#43](https://github.com/babylonlabs-io/covenant-emulator/pull/43) Test importing
 private key to the cosmos keyring
+* [#44](https://github.com/babylonlabs-io/covenant-emulator/pull/44) Command
+to derive child private keys from the master key
 
 ## v0.9.0
 
