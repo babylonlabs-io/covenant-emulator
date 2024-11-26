@@ -9,8 +9,6 @@ import (
 	"github.com/btcsuite/btcd/btcutil/hdkeychain"
 )
 
-// 84h/1h/0h/0/0
-
 const (
 	HardenedPostfix         = "h"
 	ExpectedDerivationDepth = 5
