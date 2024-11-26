@@ -107,7 +107,7 @@ func DeriveChildKey(masterKey string, childPath string) (*DerivationResult, erro
 		return nil, fmt.Errorf("invalid derivation path: %w", err)
 	}
 
-	var keyResult *hdkeychain.ExtendedKey = parsedMasterKey
+	keyResult := parsedMasterKey
 	for _, elem := range derivationPath {
 		keyResult, err = keyResult.Derive(elem)
 		if err != nil {
