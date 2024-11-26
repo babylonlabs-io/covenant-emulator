@@ -80,7 +80,6 @@ func (kc *ChainKeyringController) CreateChainKey(passphrase, hdPath string) (*Ch
 	if err != nil {
 		return nil, err
 	}
-
 	// read entropy seed straight from tmcrypto.Rand and convert to mnemonic
 	entropySeed, err := bip39.NewEntropy(mnemonicEntropySize)
 	if err != nil {
