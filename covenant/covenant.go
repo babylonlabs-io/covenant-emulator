@@ -114,13 +114,11 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 			continue
 		}
 
-		// 3. check unbonding time (staking time from unbonding tx) is larger than min unbonding time
-		// which is larger value from:
-		// - MinUnbondingTime
-		// - CheckpointFinalizationTimeout
+		// 3. check unbonding time (staking time from unbonding tx) is larger or equal
+		// to the minimum unbonding time in Babylon node parameters
 		unbondingTime := btcDel.UnbondingTime
-		minUnbondingTime := params.MinimumUnbondingTime()
-		if uint32(unbondingTime) <= minUnbondingTime {
+		minUnbondingTime := params.MinUnbondingTime
+		if uint32(unbondingTime) < minUnbondingTime {
 			ce.logger.Error("invalid unbonding time",
 				zap.Uint32("min_unbonding_time", minUnbondingTime),
 				zap.Uint16("got_unbonding_time", unbondingTime),
