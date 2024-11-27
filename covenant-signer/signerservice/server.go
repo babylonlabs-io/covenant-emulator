@@ -23,6 +23,8 @@ type SigningServer struct {
 func (a *SigningServer) SetupRoutes(r *chi.Mux) {
 	handler := a.handler
 	r.Post("/v1/sign-transactions", registerHandler(handler.SignTransactions))
+	r.Post("/v1/unlock", registerHandler(handler.Unlock))
+	r.Post("/v1/lock", registerHandler(handler.Lock))
 	r.Get("/v1/public-key", registerHandler(handler.GetPublicKey))
 }
 

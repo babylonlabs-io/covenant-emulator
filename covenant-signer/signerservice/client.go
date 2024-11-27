@@ -124,3 +124,87 @@ func GetPublicKey(ctx context.Context, signerUrl string, timeout time.Duration) 
 
 	return btcec.ParsePubKey(pubKey)
 }
+
+func Unlock(ctx context.Context, signerUrl string, timeout time.Duration, passphrase string) error {
+	route := fmt.Sprintf("%s/v1/unlock", signerUrl)
+
+	req := &types.UnlockRequest{
+		Passphrase: passphrase,
+	}
+	marshalled, err := json.Marshal(req)
+
+	if err != nil {
+		return err
+	}
+
+	httpRequest, err := http.NewRequestWithContext(ctx, "POST", route, bytes.NewReader(marshalled))
+
+	if err != nil {
+		return err
+	}
+
+	// use json
+	httpRequest.Header.Set("Content-Type", "application/json")
+
+	client := http.Client{Timeout: timeout}
+	// send the request
+	res, err := client.Do(httpRequest)
+
+	if err != nil {
+		return err
+	}
+
+	defer res.Body.Close()
+
+	maxSizeReader := http.MaxBytesReader(nil, res.Body, maxResponseSize)
+
+	// read body, up to 1MB
+	resBody, err := io.ReadAll(maxSizeReader)
+
+	if err != nil {
+		return err
+	}
+
+	if res.StatusCode != http.StatusOK {
+		return fmt.Errorf("unlocking request failed. status code: %d, message: %s", res.StatusCode, string(resBody))
+	}
+
+	return nil
+}
+
+func Lock(ctx context.Context, signerUrl string, timeout time.Duration) error {
+	route := fmt.Sprintf("%s/v1/lock", signerUrl)
+	httpRequest, err := http.NewRequestWithContext(ctx, "POST", route, bytes.NewReader([]byte{}))
+
+	if err != nil {
+		return err
+	}
+
+	// use json
+	httpRequest.Header.Set("Content-Type", "application/json")
+
+	client := http.Client{Timeout: timeout}
+	// send the request
+	res, err := client.Do(httpRequest)
+
+	if err != nil {
+		return err
+	}
+
+	defer res.Body.Close()
+
+	maxSizeReader := http.MaxBytesReader(nil, res.Body, maxResponseSize)
+
+	// read body, up to 1MB
+	resBody, err := io.ReadAll(maxSizeReader)
+
+	if err != nil {
+		return err
+	}
+
+	if res.StatusCode != http.StatusOK {
+		return fmt.Errorf("locking request failed. status code: %d, message: %s", res.StatusCode, string(resBody))
+	}
+
+	return nil
+}

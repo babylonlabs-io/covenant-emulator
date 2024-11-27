@@ -31,7 +31,6 @@ type TestManager struct {
 	t               *testing.T
 	bitcoindHandler *BitcoindTestHandler
 	walletPass      string
-	covenantPrivKey *btcec.PrivateKey
 	signerConfig    *config.Config
 	app             *signerapp.SignerApp
 	server          *signerservice.SigningServer
@@ -64,7 +63,6 @@ func StartManager(
 		appConfig.KeyStore.KeyStoreType = "cosmos"
 		// ChainID does not influence keyring with key imported from hex string
 		appConfig.KeyStore.CosmosKeyStore.ChainID = ""
-		appConfig.KeyStore.CosmosKeyStore.Passphrase = "testtest"
 		appConfig.KeyStore.CosmosKeyStore.KeyName = "test"
 		appConfig.KeyStore.CosmosKeyStore.KeyDirectory = "./testkeyring"
 		appConfig.KeyStore.CosmosKeyStore.KeyringBackend = "file"
@@ -74,7 +72,6 @@ func StartManager(
 	} else {
 		appConfig.KeyStore.KeyStoreType = "cosmos"
 		appConfig.KeyStore.CosmosKeyStore.ChainID = "test-chain"
-		appConfig.KeyStore.CosmosKeyStore.Passphrase = passphrase
 		appConfig.KeyStore.CosmosKeyStore.KeyName = "test-key"
 		appConfig.KeyStore.CosmosKeyStore.KeyDirectory = ""
 		appConfig.KeyStore.CosmosKeyStore.KeyringBackend = "memory"
@@ -95,9 +92,6 @@ func StartManager(
 		)
 		require.NoError(t, err)
 	}
-
-	privKey, err := retriever.PrivKey(context.Background())
-	require.NoError(t, err)
 
 	app := signerapp.NewSignerApp(
 		retriever,
@@ -131,7 +125,6 @@ func StartManager(
 		t:               t,
 		bitcoindHandler: h,
 		walletPass:      passphrase,
-		covenantPrivKey: privKey,
 		signerConfig:    appConfig,
 		app:             app,
 		server:          server,
@@ -142,7 +135,11 @@ func (tm *TestManager) SigningServerUrl() string {
 	return fmt.Sprintf("http://%s:%d", tm.signerConfig.Server.Host, tm.signerConfig.Server.Port)
 }
 
-func (tm *TestManager) verifyResponse(resp *signerapp.ParsedSigningResponse, req *signerapp.ParsedSigningRequest) error {
+func (tm *TestManager) verifyResponse(
+	resp *signerapp.ParsedSigningResponse,
+	req *signerapp.ParsedSigningRequest,
+	covenantPubKey *btcec.PublicKey,
+) error {
 
 	slashAdaptorSig, err := asig.NewAdaptorSignatureFromBytes(resp.SlashAdaptorSigs[0])
 
@@ -154,7 +151,7 @@ func (tm *TestManager) verifyResponse(resp *signerapp.ParsedSigningResponse, req
 		req.SlashingTx,
 		req.StakingTx.TxOut[req.StakingOutputIdx],
 		req.SlashingScript,
-		tm.covenantPrivKey.PubKey(),
+		covenantPubKey,
 		req.FpEncKeys[0],
 		slashAdaptorSig,
 	)
@@ -173,7 +170,7 @@ func (tm *TestManager) verifyResponse(resp *signerapp.ParsedSigningResponse, req
 		req.SlashUnbondingTx,
 		req.UnbondingTx.TxOut[0],
 		req.UnbondingSlashingScript,
-		tm.covenantPrivKey.PubKey(),
+		covenantPubKey,
 		req.FpEncKeys[0],
 		slashUnbondingAdaptorSig,
 	)
@@ -186,7 +183,7 @@ func (tm *TestManager) verifyResponse(resp *signerapp.ParsedSigningResponse, req
 		req.UnbondingTx,
 		req.StakingTx.TxOut[req.StakingOutputIdx],
 		req.UnbondingScript,
-		tm.covenantPrivKey.PubKey(),
+		covenantPubKey,
 		resp.UnbondingSig.Serialize(),
 	)
 

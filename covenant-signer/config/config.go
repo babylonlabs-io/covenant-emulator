@@ -72,8 +72,6 @@ key-directory = "{{ .KeyStore.CosmosKeyStore.KeyDirectory }}"
 keyring-backend = "{{ .KeyStore.CosmosKeyStore.KeyringBackend }}"
 # The name of the key to use
 key-name = "{{ .KeyStore.CosmosKeyStore.KeyName }}"
-# Passphrase
-passphrase = "{{ .KeyStore.CosmosKeyStore.Passphrase }}"
 
 [server-config]
 # The address to listen on
