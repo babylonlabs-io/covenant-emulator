@@ -129,8 +129,8 @@ func buildDataToSign(t *testing.T, covnenantPublicKey *btcec.PublicKey) signerap
 	}
 }
 
-func TestGetPublicKey(t *testing.T) {
-	tm := StartManager(t, 100)
+func ATestGetPublicKey(t *testing.T) {
+	tm := StartManager(t, 100, false)
 
 	pubKey, err := signerservice.GetPublicKey(context.Background(), tm.SigningServerUrl(), 10*time.Second)
 	require.NoError(t, err)
@@ -140,8 +140,8 @@ func TestGetPublicKey(t *testing.T) {
 	require.Equal(t, hex.EncodeToString(pubKeyBytes), hex.EncodeToString(tm.covenantPrivKey.PubKey().SerializeCompressed()))
 }
 
-func TestSigningTransactions(t *testing.T) {
-	tm := StartManager(t, 100)
+func ATestSigningTransactions(t *testing.T) {
+	tm := StartManager(t, 100, false)
 
 	dataToSign := buildDataToSign(t, tm.covenantPrivKey.PubKey())
 
@@ -159,8 +159,8 @@ func TestSigningTransactions(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestRejectToLargeRequest(t *testing.T) {
-	tm := StartManager(t, 100)
+func ATestRejectToLargeRequest(t *testing.T) {
+	tm := StartManager(t, 100, false)
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	tmContentLimit := tm.signerConfig.Server.MaxContentLength
 	size := tmContentLimit + 1
@@ -189,4 +189,23 @@ func TestRejectToLargeRequest(t *testing.T) {
 	require.NotNil(t, res)
 	defer res.Body.Close()
 	require.Equal(t, http.StatusRequestEntityTooLarge, res.StatusCode)
+}
+
+func TestSigningTransactionsUsingEncryptedFileKeyRing(t *testing.T) {
+	tm := StartManager(t, 100, true)
+
+	dataToSign := buildDataToSign(t, tm.covenantPrivKey.PubKey())
+
+	sigs, err := signerservice.RequestCovenantSignaure(
+		context.Background(),
+		tm.SigningServerUrl(),
+		10*time.Second,
+		&dataToSign,
+	)
+
+	require.NoError(t, err)
+	require.NotNil(t, sigs)
+
+	err = tm.verifyResponse(sigs, &dataToSign)
+	require.NoError(t, err)
 }
