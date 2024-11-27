@@ -39,7 +39,9 @@ type TestManager struct {
 
 func StartManager(
 	t *testing.T,
-	numMatureOutputsInWallet uint32) *TestManager {
+	numMatureOutputsInWallet uint32,
+	useEncryptedFileKeyRing bool,
+) *TestManager {
 	m, err := containers.NewManager()
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -55,27 +57,46 @@ func StartManager(
 	_ = h.GenerateBlocks(int(numMatureOutputsInWallet) + 100)
 
 	appConfig := config.DefaultConfig()
-	appConfig.KeyStore.KeyStoreType = "cosmos"
-	appConfig.KeyStore.CosmosKeyStore.ChainID = "test-chain"
-	appConfig.KeyStore.CosmosKeyStore.Passphrase = passphrase
-	appConfig.KeyStore.CosmosKeyStore.KeyName = "test-key"
-	appConfig.KeyStore.CosmosKeyStore.KeyDirectory = ""
-	appConfig.KeyStore.CosmosKeyStore.KeyringBackend = "memory"
 
-	retriever, err := cosmos.NewCosmosKeyringRetriever(appConfig.KeyStore.CosmosKeyStore)
-	require.NoError(t, err)
+	var retriever *cosmos.CosmosKeyringRetriever
 
-	covPrivKey, err := btcec.NewPrivateKey()
-	require.NoError(t, err)
+	if useEncryptedFileKeyRing {
+		appConfig.KeyStore.KeyStoreType = "cosmos"
+		// ChainID does not influence keyring with key imported from hex string
+		appConfig.KeyStore.CosmosKeyStore.ChainID = ""
+		appConfig.KeyStore.CosmosKeyStore.Passphrase = "testtest"
+		appConfig.KeyStore.CosmosKeyStore.KeyName = "test"
+		appConfig.KeyStore.CosmosKeyStore.KeyDirectory = "./testkeyring"
+		appConfig.KeyStore.CosmosKeyStore.KeyringBackend = "file"
 
-	hexPrivKey := hex.EncodeToString(covPrivKey.Serialize())
+		retriever, err = cosmos.NewCosmosKeyringRetriever(appConfig.KeyStore.CosmosKeyStore)
+		require.NoError(t, err)
+	} else {
+		appConfig.KeyStore.KeyStoreType = "cosmos"
+		appConfig.KeyStore.CosmosKeyStore.ChainID = "test-chain"
+		appConfig.KeyStore.CosmosKeyStore.Passphrase = passphrase
+		appConfig.KeyStore.CosmosKeyStore.KeyName = "test-key"
+		appConfig.KeyStore.CosmosKeyStore.KeyDirectory = ""
+		appConfig.KeyStore.CosmosKeyStore.KeyringBackend = "memory"
 
-	// Import private key to keyring, from hex string
-	err = retriever.Kr.GetKeyring().ImportPrivKeyHex(
-		appConfig.KeyStore.CosmosKeyStore.KeyName,
-		hexPrivKey,
-		"secp256k1",
-	)
+		retriever, err = cosmos.NewCosmosKeyringRetriever(appConfig.KeyStore.CosmosKeyStore)
+		require.NoError(t, err)
+
+		covPrivKey, err := btcec.NewPrivateKey()
+		require.NoError(t, err)
+
+		hexPrivKey := hex.EncodeToString(covPrivKey.Serialize())
+
+		// Import private key to keyring, from hex string
+		err = retriever.Kr.GetKeyring().ImportPrivKeyHex(
+			appConfig.KeyStore.CosmosKeyStore.KeyName,
+			hexPrivKey,
+			"secp256k1",
+		)
+		require.NoError(t, err)
+	}
+
+	privKey, err := retriever.PrivKey(context.Background())
 	require.NoError(t, err)
 
 	app := signerapp.NewSignerApp(
@@ -110,7 +131,7 @@ func StartManager(
 		t:               t,
 		bitcoindHandler: h,
 		walletPass:      passphrase,
-		covenantPrivKey: covPrivKey,
+		covenantPrivKey: privKey,
 		signerConfig:    appConfig,
 		app:             app,
 		server:          server,
