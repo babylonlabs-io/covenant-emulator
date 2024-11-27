@@ -129,7 +129,7 @@ func buildDataToSign(t *testing.T, covnenantPublicKey *btcec.PublicKey) signerap
 	}
 }
 
-func ATestGetPublicKey(t *testing.T) {
+func TestGetPublicKey(t *testing.T) {
 	tm := StartManager(t, 100, false)
 
 	pubKey, err := signerservice.GetPublicKey(context.Background(), tm.SigningServerUrl(), 10*time.Second)
@@ -140,7 +140,7 @@ func ATestGetPublicKey(t *testing.T) {
 	require.Equal(t, hex.EncodeToString(pubKeyBytes), hex.EncodeToString(tm.covenantPrivKey.PubKey().SerializeCompressed()))
 }
 
-func ATestSigningTransactions(t *testing.T) {
+func TestSigningTransactions(t *testing.T) {
 	tm := StartManager(t, 100, false)
 
 	dataToSign := buildDataToSign(t, tm.covenantPrivKey.PubKey())
@@ -159,7 +159,7 @@ func ATestSigningTransactions(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func ATestRejectToLargeRequest(t *testing.T) {
+func TestRejectToLargeRequest(t *testing.T) {
 	tm := StartManager(t, 100, false)
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	tmContentLimit := tm.signerConfig.Server.MaxContentLength
