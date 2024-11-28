@@ -20,6 +20,7 @@ import (
 	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/keystore/cosmos"
 	signerMetrics "github.com/babylonlabs-io/covenant-emulator/covenant-signer/observability/metrics"
 	signerApp "github.com/babylonlabs-io/covenant-emulator/covenant-signer/signerapp"
+	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/signerservice"
 	signerService "github.com/babylonlabs-io/covenant-emulator/covenant-signer/signerservice"
 	covdkeyring "github.com/babylonlabs-io/covenant-emulator/keyring"
 	"github.com/babylonlabs-io/covenant-emulator/remotesigner"
@@ -93,7 +94,6 @@ func StartManager(t *testing.T, useRemoteSigner bool) *TestManager {
 		covenantConfig.RemoteSignerEnabled = true
 		signerConfig := signerCfg.DefaultConfig()
 		signerConfig.KeyStore.CosmosKeyStore.ChainID = covenantConfig.BabylonConfig.ChainID
-		signerConfig.KeyStore.CosmosKeyStore.Passphrase = passphrase
 		signerConfig.KeyStore.CosmosKeyStore.KeyName = covenantConfig.BabylonConfig.Key
 		signerConfig.KeyStore.CosmosKeyStore.KeyringBackend = covenantConfig.BabylonConfig.KeyringBackend
 		signerConfig.KeyStore.CosmosKeyStore.KeyDirectory = covenantConfig.BabylonConfig.KeyDirectory
@@ -132,6 +132,15 @@ func StartManager(t *testing.T, useRemoteSigner bool) *TestManager {
 
 		// Give some time to launch server
 		time.Sleep(3 * time.Second)
+
+		// unlock the signer before usage
+		err = signerservice.Unlock(
+			context.Background(),
+			covenantConfig.RemoteSigner.URL,
+			covenantConfig.RemoteSigner.Timeout,
+			passphrase,
+		)
+		require.NoError(t, err)
 
 		t.Cleanup(func() {
 			_ = server.Stop(context.TODO())
