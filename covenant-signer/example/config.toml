@@ -12,8 +12,6 @@ key-directory = ""
 keyring-backend = ""
 # The name of the key to use
 key-name = ""
-# Passphrase
-passphrase = ""
 
 [server-config]
 # The address to listen on

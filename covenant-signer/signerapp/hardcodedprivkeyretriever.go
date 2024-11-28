@@ -27,3 +27,13 @@ func (r *HardcodedPrivKeyRetriever) PrivKey(ctx context.Context) (*btcec.Private
 
 	return newPrivKey, nil
 }
+
+// Key is always unlocked in this implementation
+func (r *HardcodedPrivKeyRetriever) Unlock(ctx context.Context, passphrase string) error {
+	return nil
+}
+
+// Key is always unlocked in this implementation
+func (r *HardcodedPrivKeyRetriever) Lock(ctx context.Context) error {
+	return nil
+}

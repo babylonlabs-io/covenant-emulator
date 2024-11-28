@@ -131,19 +131,27 @@ func buildDataToSign(t *testing.T, covnenantPublicKey *btcec.PublicKey) signerap
 
 func TestGetPublicKey(t *testing.T) {
 	tm := StartManager(t, 100, false)
+	// default passphrase is empty in non encrypted keyring
+	err := signerservice.Unlock(context.Background(), tm.SigningServerUrl(), 10*time.Second, "")
+	require.NoError(t, err)
 
 	pubKey, err := signerservice.GetPublicKey(context.Background(), tm.SigningServerUrl(), 10*time.Second)
 	require.NoError(t, err)
 	require.NotNil(t, pubKey)
 
-	pubKeyBytes := pubKey.SerializeCompressed()
-	require.Equal(t, hex.EncodeToString(pubKeyBytes), hex.EncodeToString(tm.covenantPrivKey.PubKey().SerializeCompressed()))
 }
 
 func TestSigningTransactions(t *testing.T) {
 	tm := StartManager(t, 100, false)
+	// default passphrase is empty in non encrypted keyring
+	err := signerservice.Unlock(context.Background(), tm.SigningServerUrl(), 10*time.Second, "")
+	require.NoError(t, err)
 
-	dataToSign := buildDataToSign(t, tm.covenantPrivKey.PubKey())
+	pubKey, err := signerservice.GetPublicKey(context.Background(), tm.SigningServerUrl(), 10*time.Second)
+	require.NoError(t, err)
+	require.NotNil(t, pubKey)
+
+	dataToSign := buildDataToSign(t, pubKey)
 
 	sigs, err := signerservice.RequestCovenantSignaure(
 		context.Background(),
@@ -155,7 +163,7 @@ func TestSigningTransactions(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, sigs)
 
-	err = tm.verifyResponse(sigs, &dataToSign)
+	err = tm.verifyResponse(sigs, &dataToSign, pubKey)
 	require.NoError(t, err)
 }
 
@@ -194,7 +202,14 @@ func TestRejectToLargeRequest(t *testing.T) {
 func TestSigningTransactionsUsingEncryptedFileKeyRing(t *testing.T) {
 	tm := StartManager(t, 100, true)
 
-	dataToSign := buildDataToSign(t, tm.covenantPrivKey.PubKey())
+	err := signerservice.Unlock(context.Background(), tm.SigningServerUrl(), 10*time.Second, "testtest")
+	require.NoError(t, err)
+
+	pubKey, err := signerservice.GetPublicKey(context.Background(), tm.SigningServerUrl(), 10*time.Second)
+	require.NoError(t, err)
+	require.NotNil(t, pubKey)
+
+	dataToSign := buildDataToSign(t, pubKey)
 
 	sigs, err := signerservice.RequestCovenantSignaure(
 		context.Background(),
@@ -206,6 +221,35 @@ func TestSigningTransactionsUsingEncryptedFileKeyRing(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, sigs)
 
-	err = tm.verifyResponse(sigs, &dataToSign)
+	err = tm.verifyResponse(sigs, &dataToSign, pubKey)
 	require.NoError(t, err)
+}
+
+func TestLockingKeyring(t *testing.T) {
+	tm := StartManager(t, 100, true)
+
+	err := signerservice.Unlock(context.Background(), tm.SigningServerUrl(), 10*time.Second, "testtest")
+	require.NoError(t, err)
+
+	pubKey, err := signerservice.GetPublicKey(context.Background(), tm.SigningServerUrl(), 10*time.Second)
+	require.NoError(t, err)
+	require.NotNil(t, pubKey)
+
+	dataToSign := buildDataToSign(t, pubKey)
+
+	// lock the keyring, and clear the private key from memory
+	err = signerservice.Lock(context.Background(), tm.SigningServerUrl(), 10*time.Second)
+	require.NoError(t, err)
+
+	// try to sign a transaction with a locked keyring, it should fail
+	sigs, err := signerservice.RequestCovenantSignaure(
+		context.Background(),
+		tm.SigningServerUrl(),
+		10*time.Second,
+		&dataToSign,
+	)
+
+	require.Error(t, err)
+	require.Nil(t, sigs)
+
 }

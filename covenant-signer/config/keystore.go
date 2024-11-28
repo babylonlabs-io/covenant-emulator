@@ -31,7 +31,6 @@ type CosmosKeyStoreConfig struct {
 	KeyDirectory   string `mapstructure:"key-directory"`
 	KeyringBackend string `mapstructure:"keyring-backend"`
 	KeyName        string `mapstructure:"key-name"`
-	Passphrase     string `mapstructure:"passphrase"`
 }
 
 type KeyStoreConfig struct {

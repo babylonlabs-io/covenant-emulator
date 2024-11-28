@@ -45,6 +45,8 @@ private key to the cosmos keyring
 to derive child private keys from the master key
 * [#45](https://github.com/babylonlabs-io/covenant-emulator/pull/45) Add e2e test
 with encrypted file keyring usage
+* [#47](https://github.com/babylonlabs-io/covenant-emulator/pull/47) Add unlocking keyring
+through API
 
 ## v0.9.0
 

@@ -10,4 +10,6 @@ import (
 // the signing
 type PrivKeyRetriever interface {
 	PrivKey(ctx context.Context) (*btcec.PrivateKey, error)
+	Unlock(ctx context.Context, passphrase string) error
+	Lock(ctx context.Context) error
 }

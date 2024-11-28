@@ -54,3 +54,27 @@ func (h *Handler) GetPublicKey(request *http.Request) (*Result, *types.Error) {
 
 	return NewResult(resp), nil
 }
+
+func (h *Handler) Unlock(request *http.Request) (*Result, *types.Error) {
+	payload := &types.UnlockRequest{}
+	err := json.NewDecoder(request.Body).Decode(payload)
+	if err != nil {
+		return nil, types.NewErrorWithMsg(http.StatusBadRequest, types.BadRequest, "invalid request payload")
+	}
+
+	err = h.s.Unlock(request.Context(), payload.Passphrase)
+	if err != nil {
+		return nil, types.NewErrorWithMsg(http.StatusBadRequest, types.BadRequest, err.Error())
+	}
+
+	return NewResult(&types.UnlockResponse{}), nil
+}
+
+func (h *Handler) Lock(request *http.Request) (*Result, *types.Error) {
+	err := h.s.Lock(request.Context())
+	if err != nil {
+		return nil, types.NewErrorWithMsg(http.StatusBadRequest, types.BadRequest, err.Error())
+	}
+
+	return NewResult(&types.LockResponse{}), nil
+}

@@ -46,10 +46,6 @@ func (s *SignerApp) SignTransactions(
 ) (*ParsedSigningResponse, error) {
 	privKey, err := s.pkr.PrivKey(ctx)
 
-	defer func() {
-		privKey.Zero()
-	}()
-
 	if err != nil {
 		return nil, err
 	}
@@ -78,12 +74,19 @@ func (s *SignerApp) SignTransactions(
 	}, nil
 }
 
+func (s *SignerApp) Unlock(ctx context.Context, passphrase string) error {
+	return s.pkr.Unlock(ctx, passphrase)
+}
+
+func (s *SignerApp) Lock(ctx context.Context) error {
+	return s.pkr.Lock(ctx)
+}
+
 func (s *SignerApp) PubKey(ctx context.Context) (*btcec.PublicKey, error) {
 	privKey, err := s.pkr.PrivKey(ctx)
 	if err != nil {
 		return nil, err
 	}
-	defer privKey.Zero()
 
 	return privKey.PubKey(), nil
 }
