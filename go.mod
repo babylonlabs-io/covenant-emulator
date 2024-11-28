@@ -9,7 +9,7 @@ require (
 	cosmossdk.io/math v1.4.0
 	github.com/avast/retry-go/v4 v4.5.1
 	github.com/babylonlabs-io/babylon v0.17.1
-	github.com/babylonlabs-io/covenant-emulator/covenant-signer v0.1.0
+	github.com/babylonlabs-io/covenant-emulator/covenant-signer v0.2.0
 	github.com/btcsuite/btcd v0.24.2
 	github.com/btcsuite/btcd/btcec/v2 v2.3.2
 	github.com/btcsuite/btcd/btcutil v1.1.6

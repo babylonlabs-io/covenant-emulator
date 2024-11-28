@@ -47,6 +47,8 @@ to derive child private keys from the master key
 with encrypted file keyring usage
 * [#47](https://github.com/babylonlabs-io/covenant-emulator/pull/47) Add unlocking keyring
 through API
+* [#48](https://github.com/babylonlabs-io/covenant-emulator/pull/48) Add covenant
+signer version that requires unlocking
 
 ## v0.9.0
 
