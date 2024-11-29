@@ -13,23 +13,26 @@
 
 ## 1. Purpose of this guide
 
-This guide outlines the transition from solely using the covenant-signer to an integrated setup that includes the covenant emulator.
+This guide outlines the transition from solely using the covenant signer to an integrated setup that includes the covenant emulator.
 
 Previously, the [covenant signer](https://github.com/babylonlabs-io/covenant-signer), was limited to signing unbonding signatures.  With this 
 transition we are introducing the [covenant emulator](https://github.com/babylonlabs-io/covenant-emulator), which retrieves delegations from Babylon chain
  and signs them by communicating with the updated [covenant signer](https://github.com/babylonlabs-io/covenant-emulator/tree/main/covenant-signer). This means that the 
- covenant emulator can now generate both unbonding signatures and adaptor signatures, 
- whereas previously it was limited to creating only unbonding signatures.
+ covenant emulator can now generate both unbonding signatures and adaptor signatures.
 
 In this guide, we will cover exporting the key from the Bitcoin node and importing 
 it into the new integrated keyring in the covenant signer. 
 
 ## 2. Prerequisites
 
-To complete the guide you will need to have the following setup:
+To successfully complete this guide, ensure the following setup and resources 
+are in place:
 
-1. Setup of bitcoin node in order to retrieve keys, seen [here](https://github.com/babylonlabs-io/covenant-signer/blob/main/docs/deployment.md#2-bitcoind-setup).
-2. Access to the private Bitcoin key (covenant emulator key).
+1. Setup of bitcoin node in order to retrieve keys. For more information, refer to 
+   [Bitcoin Node Setup](https://github.com/babylonlabs-io/covenant-signer/blob/main/docs/deployment.md#2-bitcoind-setup).
+2. Ensure you have access to the private Bitcoin key, also referred to as the 
+   covenant emulator key, which will be used for signing operations.
+<!-- 3 should we include the babylon node setup? -->
 
 ## 3. Install covenant emulator binary 
 
@@ -124,6 +127,8 @@ Key = covenant-key
 # ref https://docs.cosmos.network/v0.46/run-node/keyring.html#available-backends-for-the-keyring
 KeyringBackend = test
 ```
+
+Now we are ready to import the keys from the prior setup.
 
 ## 5. Importing your keys from the prior setup
 
