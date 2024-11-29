@@ -8,9 +8,8 @@
 4. [Setting up the Covenant Emulator Program](#4-setting-up-the-covenant-emulator-program)
 	1. [Initialize directories](#41-initialize-directories)
 	2. [Configure the covenant emulator](#42-configure-the-covenant-emulator)
-5. [Setting up the Covenant Signer](#5-setting-up-the-covenant-signer)
-6. [Importing your keys from the prior setup](#6-importing-your-keys-from-the-prior-setup)
-7. [Verifying Your Setup](#7-verifying-your-setup)
+5. [Importing your keys from the prior setup](#5-importing-your-keys-from-the-prior-setup)
+6. [Verifying Your Setup](#6-verifying-your-setup)
 
 ## 1. Purpose of this guide
 
@@ -127,14 +126,7 @@ Key = covenant-key
 KeyringBackend = test
 ```
 
-## 5. Setting up the covenant signer
-
-Before proceeding, ensure you have completed the [Covenant Signer Setup](https://github.com/babylonlabs-io/covenant-signer/blob/main/docs/deployment.md#4-covenant-signer-setup). 
-This involves deploying the Covenant Signer server, which is responsible for 
-receiving unbonding transactions and returning them signed by the covenant 
-emulator's key.
-
-## 6. Importing your keys from the prior setup
+## 5. Importing your keys from the prior setup
 
 At this stage, you should already have access to the Bitcoin node. If you need a
 refresher on setting up `bitcoind`, refer to the [setup guide](https://github.com/babylonlabs-io/covenant-signer/blob/main/docs/deployment.md#2-bitcoind-setup). 
@@ -255,7 +247,7 @@ following command:
 babylond keys import-hex cov fe1c56c494c730f13739c0655bf06e615409870200047fc65cdf781837cf7f06
 ```
 
-## 7. Verifying your setup
+## 6. Verifying your setup
 
 To confirm that the import was successful, run:
 
