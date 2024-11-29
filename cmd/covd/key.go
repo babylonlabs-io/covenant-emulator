@@ -31,7 +31,7 @@ var createKeyCommand = cli.Command{
 		},
 		cli.StringFlag{
 			Name:     keyNameFlag,
-			Usage:    "The unique name of the Covenant key",
+			Usage:    "The unique name of the covenant key",
 			Required: true,
 		},
 		cli.StringFlag{
@@ -113,12 +113,12 @@ var showKeyCommand = cli.Command{
 		},
 		cli.StringFlag{
 			Name:     keyNameFlag,
-			Usage:    "The unique name of the Covenant key",
+			Usage:    "The name of the covenant key",
 			Required: true,
 		},
 		cli.StringFlag{
 			Name:  passphraseFlag,
-			Usage: "The pass phrase used to encrypt the keys",
+			Usage: "The pass phrase used to decrypt the key",
 			Value: defaultPassphrase,
 		},
 		cli.StringFlag{
