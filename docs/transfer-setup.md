@@ -13,8 +13,7 @@
 
 ## 1. Purpose of this guide
 
-This guide explains how to transition your setup from solely using the covenant 
-signer to integrating the covenant emulator alongside the covenant signer.
+This guide outlines the transition from solely using the covenant-signer to an integrated setup that includes the covenant emulator.
 
 Previously, the [covenant signer](https://github.com/babylonlabs-io/covenant-signer), was limited to signing unbonding signatures.  With this 
 transition we are introducing the [covenant emulator](https://github.com/babylonlabs-io/covenant-emulator), which retrieves delegations from Babylon chain
