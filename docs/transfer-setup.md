@@ -233,7 +233,6 @@ As seen, the **Derived Public Key**:
 
 ```
 023a79b546c79d7f7c5ff20620d914b5cf7250631d12f6e26427ed9d3f98c5ccb1
-
 ```
 
 Matches the public key obtained earlier using the `getaddressinfo` command.
