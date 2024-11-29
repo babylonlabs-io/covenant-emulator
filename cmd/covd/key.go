@@ -5,7 +5,9 @@ import (
 	"fmt"
 
 	"github.com/babylonlabs-io/babylon/types"
+	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/jessevdk/go-flags"
+
 	"github.com/urfave/cli"
 
 	covcfg "github.com/babylonlabs-io/covenant-emulator/config"
@@ -29,7 +31,7 @@ var createKeyCommand = cli.Command{
 		},
 		cli.StringFlag{
 			Name:     keyNameFlag,
-			Usage:    "The unique name of the Covenant key",
+			Usage:    "The unique name of the covenant key",
 			Required: true,
 		},
 		cli.StringFlag{
@@ -97,6 +99,74 @@ func createKey(ctx *cli.Context) error {
 	fileParser := flags.NewParser(cfg, flags.Default)
 
 	return flags.NewIniParser(fileParser).WriteFile(covcfg.ConfigFile(homePath), flags.IniIncludeComments|flags.IniIncludeDefaults)
+}
+
+var showKeyCommand = cli.Command{
+	Name:      "show-key",
+	ShortName: "sk",
+	Usage:     "Show a Covenant account in the keyring.",
+	Flags: []cli.Flag{
+		cli.StringFlag{
+			Name:  chainIdFlag,
+			Usage: "The chainID of the consumer chain",
+			Value: defaultChainID,
+		},
+		cli.StringFlag{
+			Name:     keyNameFlag,
+			Usage:    "The name of the covenant key",
+			Required: true,
+		},
+		cli.StringFlag{
+			Name:  passphraseFlag,
+			Usage: "The pass phrase used to decrypt the key",
+			Value: defaultPassphrase,
+		},
+		cli.StringFlag{
+			Name:  keyringBackendFlag,
+			Usage: "Select keyring's backend",
+			Value: defaultKeyringBackend,
+		},
+		cli.StringFlag{
+			Name:  homeFlag,
+			Usage: "The home directory for the covenant",
+			Value: covcfg.DefaultCovenantDir,
+		},
+	},
+	Action: showKey,
+}
+
+func showKey(ctx *cli.Context) error {
+	homePath := ctx.String(homeFlag)
+	chainID := ctx.String(chainIdFlag)
+	keyName := ctx.String(keyNameFlag)
+	backend := ctx.String(keyringBackendFlag)
+	passphrase := ctx.String(passphraseFlag)
+
+	sdkCtx, err := keyring.CreateClientCtx(homePath, chainID)
+	if err != nil {
+		return err
+	}
+
+	krController, err := keyring.NewChainKeyringController(sdkCtx, keyName, backend)
+	if err != nil {
+		return err
+	}
+
+	privKey, err := krController.GetChainPrivKey(passphrase)
+	if err != nil {
+		return err
+	}
+
+	_, pk := btcec.PrivKeyFromBytes(privKey.Key)
+	bip340Key := types.NewBIP340PubKeyFromBTCPK(pk)
+	printRespJSON(
+		&covenantKey{
+			Name:      ctx.String(keyNameFlag),
+			PublicKey: bip340Key.MarshalHex(),
+		},
+	)
+
+	return nil
 }
 
 func printRespJSON(resp interface{}) {
