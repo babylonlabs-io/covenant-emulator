@@ -49,6 +49,7 @@ with encrypted file keyring usage
 through API
 * [#48](https://github.com/babylonlabs-io/covenant-emulator/pull/48) Add covenant
 signer version that requires unlocking
+* [#49](https://github.com/babylonlabs-io/covenant-emulator/pull/49) Add show-key command
 
 ## v0.9.0
 
