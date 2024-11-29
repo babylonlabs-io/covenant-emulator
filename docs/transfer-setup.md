@@ -18,8 +18,8 @@ signer to integrating the covenant emulator alongside the covenant signer.
 
 Previously, the [covenant signer](https://github.com/babylonlabs-io/covenant-signer), was limited to signing unbonding signatures.  With this 
 transition we are introducing the [covenant emulator](https://github.com/babylonlabs-io/covenant-emulator), which retrieves delegations from Babylon chain
- and signs them by communicating with the updated [covenant signer](https://github.com/babylonlabs-io/covenant-emulator/tree/main/covenant-signer). The updated 
- covenant signer can now generate both unbonding signatures and adaptor signatures, 
+ and signs them by communicating with the updated [covenant signer](https://github.com/babylonlabs-io/covenant-emulator/tree/main/covenant-signer). This means that the 
+ covenant emulator can now generate both unbonding signatures and adaptor signatures, 
  whereas previously it was limited to creating only unbonding signatures.
 
 In this guide, we will cover exporting the key from the Bitcoin node and importing 
