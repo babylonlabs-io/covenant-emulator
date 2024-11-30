@@ -25,6 +25,7 @@ jobs:
       publish: false
       dockerfile: ./Dockerfile
       repoName: covenant-emulator
+      docker_scan: true
 
   go_sec_covenant_signer:
     runs-on: ubuntu-24.04
@@ -53,3 +54,4 @@ jobs:
       dockerfile: ./covenant-signer/Dockerfile
       dockerContext: ./covenant-signer 
       repoName: covenant-signer
+      docker_scan: true
