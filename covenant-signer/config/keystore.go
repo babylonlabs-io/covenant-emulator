@@ -34,8 +34,8 @@ type CosmosKeyStoreConfig struct {
 }
 
 type KeyStoreConfig struct {
-	KeyStoreType   string `mapstructure:"keystore-type"`
-	CosmosKeyStore *CosmosKeyStoreConfig
+	KeyStoreType   string                `mapstructure:"keystore-type"`
+	CosmosKeyStore *CosmosKeyStoreConfig `mapstructure:"cosmos"`
 }
 
 func DefaultKeyStoreConfig() *KeyStoreConfig {
