@@ -45,3 +45,12 @@ jobs:
         working-directory: ./covenant-signer
         run: gosec ./...
 
+  docker_pipeline_covenant_signer:
+    needs: ["go_sec_covenant_signer"]
+    uses: babylonlabs-io/.github/.github/workflows/reusable_docker_pipeline.yml@v0.10.2
+    secrets: inherit
+    with:
+      publish: false
+      dockerfile: ./covenant-signer/Dockerfile
+      dockerContext: ./covenant-signer 
+      repoName: covenant-signer
