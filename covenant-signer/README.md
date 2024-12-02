@@ -1,32 +1,17 @@
 # Covenant Signer
 
 ## Table of Contents
-1. [Purpose of this guide](#1-purpose-of-this-guide)
-2. [Prerequisites](#2-prerequisites)
-3. [Install covenant signer](#3-install-covenant-signer-binary)
-4. [Export the key from the Bitcoin node](#4-export-the-key-from-the-bitcoin-node)
-5. [Import the key into the cosmos keyring](#5-import-the-key-into-the-cosmos-keyring)
-6. [Create the configuration file](#6-create-the-configuration-file)
-7. [Running the Covenant Signer](#7-running-the-covenant-signer)
-8. [Using the covenant signer for signing transactions](#8-using-the-covenant-signer-for-signing-transactions)
 
-## 1. Purpose of this guide
+1. [Prerequisites](#1-prerequisites)
+2. [Install covenant signer](#2-install-covenant-signer-binary)
+3. [Export the key from the Bitcoin node](#3-export-the-key-from-the-bitcoin-node)
+4. [Import the key into the cosmos keyring](#4-import-the-key-into-the-cosmos-keyring)
+5. [Create the configuration file](#5-create-the-configuration-file)
+6. [Running the Covenant Signer](#6-running-the-covenant-signer)
+7. [Using the covenant signer for signing transactions](#7-using-the-covenant-signer-for-signing-transactions)
 
-This guide outlines the transition from solely using the covenant signer to an 
-integrated setup that includes the covenant emulator.
 
-Previously, the [covenant signer](https://github.com/babylonlabs-io/covenant-signer), 
-was limited to signing unbonding signatures.  In this transition we are introducing 
-the [covenant emulator](https://github.com/babylonlabs-io/covenant-emulator), which 
-retrieves delegations from Babylon chain and signs them by communicating with the 
-updated [covenant signer](https://github.com/babylonlabs-io/covenant-emulator/tree/main/covenant-signer). 
-This means that the covenant emulator can now generate both unbonding signatures 
-unbonding signatures and adaptor signatures.
-
-In this guide, we will cover exporting the key from the Bitcoin node and importing 
-it into the new integrated keyring in the covenant signer. 
-
-## 2. Prerequisites
+## 1. Prerequisites
 
 To successfully complete this guide, ensure you have the bitcoin node setup and you 
 have access to the private Bitcoin key you used previously when you generated your 
@@ -35,7 +20,7 @@ address as it contains the covenant key.
 For a refresher on setting up the bitcoin node, refer to the 
 [deployment guide](https://github.com/babylonlabs-io/covenant-signer/blob/main/docs/deployment.md#2-bitcoind-setup).
 
-## 3. Install covenant signer binary
+## 2. Install covenant signer binary
 
 If you havent already, download [Golang 1.21](https://go.dev/dl) 
 
@@ -75,7 +60,7 @@ export PATH=$HOME/go/bin:$PATH
 echo 'export PATH=$HOME/go/bin:$PATH' >> ~/.profile
 ```
 
-## 4. Export the key from the Bitcoin node
+## 3. Export the key from the Bitcoin node
 
 At this stage, you should already have access to the Bitcoin node. 
 If you need a refresher on setting up `bitcoind`, refer to the [setup guide](https://github.com/babylonlabs-io/covenant-signer/blob/main/docs/deployment.md#2-bitcoind-setup). 
@@ -187,7 +172,7 @@ As seen, the **Derived Public Key**:
 
 Matches the public key obtained earlier using the `getaddressinfo` command.
 
-#### 5. Importing the Derived Private Key into the Cosmos Keyring
+#### 4. Importing the Derived Private Key into the Cosmos Keyring
 
 The derived private key can now be imported into the Cosmos keyring. Use the 
 following command:
@@ -225,7 +210,7 @@ and `derive-child-key`.
 Congratulations! You have successfully imported your keys from the prior setup 
 and verified your setup for the covenant emulator.
 
-## 6. Create the configuration file
+## 5. Create the configuration file
 
 Use the example configuration [file](./example/config.toml) to create your own 
 configuration file. Then, replace the placeholder values with your own configuration.
@@ -256,7 +241,7 @@ host = "127.0.0.1"
 port = 2113
 ```
 
-## 7. Running the Covenant Signer
+## 6. Running the Covenant Signer
 
 The covenant signer can be run using the following command:
 
@@ -276,7 +261,7 @@ It's important to note that the key specified in the covenant emulator's
 configuration is not the covenant key itself. Instead, it is a 
 key used for sending Cosmos transactions.
 
-## 8. Using the covenant signer for signing transactions
+## 7. Using the covenant signer for signing transactions
 
 To enable signing transactions with the covenant key, you need to unlock it first.
 
