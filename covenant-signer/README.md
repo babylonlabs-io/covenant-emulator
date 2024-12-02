@@ -5,7 +5,7 @@
 1. [Prerequisites](#1-prerequisites)
 2. [Install covenant signer](#2-install-covenant-signer-binary)
 3. [Export the key from the Bitcoin node](#3-export-the-key-from-the-bitcoin-node)
-4. [Import the key into the cosmos keyring](#4-import-the-key-into-the-cosmos-keyring)
+4. [Importing the Derived Private Key into the Cosmos Keyring](#4-importing-the-derived-private-key-into-the-cosmos-keyring)
 5. [Create the configuration file](#5-create-the-configuration-file)
 6. [Running the Covenant Signer](#6-running-the-covenant-signer)
 7. [Using the covenant signer for signing transactions](#7-using-the-covenant-signer-for-signing-transactions)
@@ -172,7 +172,7 @@ As seen, the **Derived Public Key**:
 
 Matches the public key obtained earlier using the `getaddressinfo` command.
 
-#### 4. Importing the Derived Private Key into the Cosmos Keyring
+## 4. Importing the Derived Private Key into the Cosmos Keyring
 
 The derived private key can now be imported into the Cosmos keyring. Use the 
 following command:
