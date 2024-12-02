@@ -22,7 +22,7 @@ For a refresher on setting up the bitcoin node, refer to the
 
 ## 2. Install covenant signer binary
 
-If you havent already, download [Golang 1.21](https://go.dev/dl) and the repository.
+If you havent already, download [Golang 1.21](https://go.dev/dl).
 
 Using the go version 1.21. Once installed run: 
 
@@ -30,7 +30,7 @@ Using the go version 1.21. Once installed run:
 go version
 ```
 
-And to clone the repository please run:
+If you also still have not yet cloned the repository, run:
 
 ```shell
 git clone git@github.com:babylonlabs-io/covenant-emulator.git
