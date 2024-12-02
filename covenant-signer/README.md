@@ -1,5 +1,11 @@
 # Covenant Signer
 
+This program is a separate implementation from the original 
+[covenant signer](https://github.com/babylonlabs-io/covenant-signer/blob/main/README.md) 
+and serves as part of the transition to a new architecture. It should not be 
+confused with the earlier version.
+
+
 ## Table of Contents
 
 1. [Prerequisites](#1-prerequisites)
@@ -13,9 +19,12 @@
 
 ## 1. Prerequisites
 
-To successfully complete this guide, ensure you have the bitcoin node setup and you 
-have access to the private Bitcoin key you used previously when you generated your 
-address as it contains the covenant key.
+This guide requires that:
+
+1. you have a Bitcoin node setup for the Bitcoin
+network you intend to operate your covenant signer in and
+2. you have access to the the private Bitcoin key you
+set up your covenant with.
 
 For a refresher on setting up the bitcoin node, refer to the 
 [deployment guide](https://github.com/babylonlabs-io/covenant-signer/blob/main/docs/deployment.md#2-bitcoind-setup).
@@ -63,7 +72,8 @@ echo 'export PATH=$HOME/go/bin:$PATH' >> ~/.profile
 ## 3. Export the key from the Bitcoin node
 
 At this stage, you should already have access to the Bitcoin node. 
-If you need a refresher on setting up `bitcoind`, refer to the [setup guide](https://github.com/babylonlabs-io/covenant-signer/blob/main/docs/deployment.md#2-bitcoind-setup). 
+If you need a refresher on setting up `bitcoind`, refer to the 
+[setup guide](https://github.com/babylonlabs-io/covenant-signer/blob/main/docs/deployment.md#2-bitcoind-setup). 
 Once you have node access, you can proceed with the next steps.
 
 Load wallet with your covenant key.
@@ -139,22 +149,27 @@ The terminal should produce output similar to the following:
 }
 
 ```
-
 The most important field to note is the `desc` value:
 
 ```json
 "desc": "wpkh(tprv8ZgxMBicQKsPe9aCeUQgMEMy2YMZ6PHnn2iCuG12y5E8oYhYNEvUqUkNy6sJ7ViBmFUMicikHSK2LBUNPx5do5EDJBjG7puwd6azci2wEdq/84h/1h/0h/0/*)#sachkrde"
 ```
 
-Here, you can see the string starting with `tprv8ZgxMBicQKsPe9aCeUQgMEMy2YMZ6PHnn2iCuG12y5E8oYhYNEvUqUkNy6sJ7ViBmFUMicikHSK2LBUNPx5do5EDJBjG7puwd6azci2wEdq`is the **base58-encoded master private key** of the covenant wallet. This key is critical for signing operations and should be securely stored.
+Here, you can see the string starting with `tprv8ZgxMBicQKsPe9aCeUQgMEMy2YMZ6PHnn2iCuG12y5E8oYhYNEvUqUkNy6sJ7ViBmFUMicikHSK2LBUNPx5do5EDJBjG7puwd6azci2wEdq`
+is the **base58-encoded master private key** of the covenant wallet. 
+This key is critical for signing operations and should be securely stored.
 
 
 #### Deriving the Covenant Private Key from the Master Key
 
-You can derive the covenant private key from the master key by performing a **BIP32 derivation**. The `covenant-signer`repository includes a command to accomplish this:
+You can derive the covenant private key from the master key by performing a 
+**BIP32 derivation**. The `covenant-signer`repository includes a command to 
+accomplish this:
 
 ```shell
-covenant-signer derive-child-key \ tprv8ZgxMBicQKsPe9aCeUQgMEMy2YMZ6PHnn2iCuG12y5E8oYhYNEvUqUkNy6sJ7ViBmFUMicikHSK2LBUNPx5do5EDJBjG7puwd6azci2wEdq \ 84h/1h/0h/0/0
+covenant-signer derive-child-key \
+  tprv8ZgxMBicQKsPe9aCeUQgMEMy2YMZ6PHnn2iCuG12y5E8oYhYNEvUqUkNy6sJ7ViBmFUMicikHSK2LBUNPx5do5EDJBjG7puwd6azci2wEdq \
+  84h/1h/0h/0/0
 ```
 
 The output will display the derived private and public keys:
@@ -213,7 +228,8 @@ and verified your setup for the covenant emulator.
 ## 5. Create the configuration file
 
 Use the example configuration [file](./example/config.toml) to create your own 
-configuration file. Then, replace the placeholder values with your own configuration.
+configuration file. Then, replace the placeholder values with your own 
+configuration.
 
 ```toml
 [keystore]
@@ -233,13 +249,28 @@ key-name = "your-key-name"
 chain-id = "your-chain-id"
 
 [server-config]
+# The IP address where the covenant-signer server will listen
 host = "127.0.0.1"
+# The TCP port number where the covenant-signer server will listen
 port = 9791
 
 [metrics]
+# The IP address where the Prometheus metrics server will listen
 host = "127.0.0.1"
+# This port is used to expose metrics that can be scraped by Prometheus
 port = 2113
 ```
+
+Parameters:
+- `keystore-type`: Type of keystore used, e.g., "cosmos" for Cosmos SDK compatibility.
+- `key-directory`: Path where keys are stored on the filesystem.
+- `keyring-backend`: Backend system for key management, e.g., "file", "os".
+- `key-name`: Name of the key used for signing transactions.
+- `chain-id`: Identifier of the blockchain network.
+- `host` (server-config): IP address where the server listens, typically "127.0.0.1" for local access.
+- `port` (server-config): TCP port number for the server.
+- `host` (metrics): IP address for the Prometheus metrics server, typically "127.0.0.1".
+- `port` (metrics): TCP port number for the Prometheus metrics server.
 
 ## 6. Running the Covenant Signer
 
@@ -249,13 +280,13 @@ The covenant signer can be run using the following command:
 covenant-signer start --config ./path/to/config.toml
 ```
 
-the covenant signer must be run in a secure network and only accessible by the 
+The covenant signer must be run in a secure network and only accessible by the 
 covenant emulator.
 
 Once the covenant signer is set up and unlocked, you can configure the covenant 
-emulator to use it. The URL of the covenant signer, which is http://127.0.0.1:9791, 
-should be specified in the covenant emulator's configuration file under the 
-remotesigner section.
+emulator to use it. The URL of the covenant signer, which is 
+http://127.0.0.1:9791, should be specified in the covenant emulator's 
+configuration file under the `remotesigner` section.
 
 It's important to note that the key specified in the covenant emulator's 
 configuration is not the covenant key itself. Instead, it is a 
@@ -263,24 +294,27 @@ key used for sending Cosmos transactions.
 
 ## 7. Using the covenant signer for signing transactions
 
-To enable signing transactions with the covenant key, you need to unlock it first.
+Before you can sign transactions with the covenant key, you need to unlock the 
+keyring that stores it. The passphrase here must match the one you used when 
+importing the covenant key into the keyring. Once the keyring is unlocked, you 
+can use the covenant key to sign transactions.
 
 ```shell
 curl -X POST http://127.0.0.1:9791/v1/unlock -d '{"passphrase": "<passphrase>"}'
 ```
 
 Now that the key is unlocked you can add its url to the covenant emulator's 
-configuration file. See [here](./docs/transfer-setup.md#42-configure-the-covenant-emulator) 
+configuration file. See [here](../docs/transfer-setup.md#42-configure-the-covenant-emulator) 
 for more information.
 
 You can sign transactions using the following command. However, ensure that both 
-the staking and unbonding transactions are provided in hex format:
+the staking and unbonding transactions are provided in hex format.
 
 ```shell
 curl -X POST http://127.0.0.1:9791/v1/sign-transactions \
   -d '{
-    "staking_tx_hex": "",
-    "unbonding_tx_hex": ""
+    "staking_tx_hex": "<hex_encoded_staking_transaction>",
+    "unbonding_tx_hex": "<hex_encoded_unbonding_transaction>"
   }'
 ```
 

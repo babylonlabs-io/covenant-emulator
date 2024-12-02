@@ -1,4 +1,4 @@
-# Transfer your setup from a covenant signer to a covenant emulator
+# Configuring the Covenant Emulator
 
 ## Table of Contents 
 
