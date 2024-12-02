@@ -8,43 +8,38 @@
 4. [Setting up the Covenant Emulator Program](#4-setting-up-the-covenant-emulator-program)
 	1. [Initialize directories](#41-initialize-directories)
 	2. [Configure the covenant emulator](#42-configure-the-covenant-emulator)
-5. [Importing your keys from the prior setup](#5-importing-your-keys-from-the-prior-setup)
-6. [Verifying Your Setup](#6-verifying-your-setup)
+5. [Generate key pairs](#5-generate-key-pairs)
+6. [Start the emulator daemon](#6-start-the-emulator-daemon)
 
 ## 1. Purpose of this guide
 
-This guide outlines the transition from solely using the covenant signer to an integrated setup that includes the covenant emulator.
+This guide outlines the transition from solely using the covenant signer to an 
+integrated setup that includes the covenant emulator.
 
-Previously, the [covenant signer](https://github.com/babylonlabs-io/covenant-signer), was limited to signing unbonding signatures.  With this 
-transition we are introducing the [covenant emulator](https://github.com/babylonlabs-io/covenant-emulator), which retrieves delegations from Babylon chain
- and signs them by communicating with the updated [covenant signer](https://github.com/babylonlabs-io/covenant-emulator/tree/main/covenant-signer). This means that the 
- covenant emulator can now generate both unbonding signatures and adaptor signatures.
+Previously, the [covenant signer](https://github.com/babylonlabs-io/covenant-signer), 
+was limited to signing unbonding signatures.  In this transition we are introducing 
+the [covenant emulator](https://github.com/babylonlabs-io/covenant-emulator), which 
+retrieves delegations from Babylon chain and signs them by communicating with the 
+updated [covenant signer](https://github.com/babylonlabs-io/covenant-emulator/tree/main/covenant-signer). 
+This means that the covenant emulator can now generate both unbonding signatures 
+unbonding signatures and adaptor signatures.
 
 In this guide, we will cover exporting the key from the Bitcoin node and importing 
 it into the new integrated keyring in the covenant signer. 
 
 ## 2. Prerequisites
 
-To successfully complete this guide, ensure the following setup and resources 
-are in place:
+To successfully complete this guide, you will need a running instance of the 
+[covenant signer](./covenant-signer) with your keys imported from `bitcoind` 
+wallet into the cosmos keyring.
 
-1. Setup of bitcoin node in order to retrieve keys. For more information, refer to 
-   [Bitcoin Node Setup](https://github.com/babylonlabs-io/covenant-signer/blob/main/docs/deployment.md#2-bitcoind-setup).
-2. Ensure you have access to the private Bitcoin key, also referred to as the 
-   covenant emulator key, which will be used for signing operations.
-<!-- 3 should we include the babylon node setup? -->
+Please follow the [covenant signer setup guide](covenant-signer/README.md) to 
+complete the setup of the covenant signer with your keys before proceeding.
 
-## 3. Install covenant emulator binary 
+## 3. Install covenant emulator binary
 
-Download [Golang 1.21](https://go.dev/dl) 
-
-Using the go version 1.21. Once installed run: 
-
-```shell
-go version
-```
-
-Subsequently clone the covenant [repository](https://github.com/babylonlabs-io/covenant-emulator).
+Once you have the covenant signer running, you can install the covenant emulator 
+binary.
 
 ```shell
 git clone git@github.com:babylonlabs-io/covenant-emulator.git
@@ -95,8 +90,10 @@ $ ls <path>
 
 ### 4.2. Configure the covenant emulator
 
-To set up the connection parameters for the Babylon chain and other covenant 
-emulator settings, configure the `covd.conf` file with the following parameters.
+As you have already set up the covenant signer, you can now configure the covenant 
+emulator to use it.
+
+Use the following parameters to configure the `covd.conf` file.
 
 ```
 # The interval between each query for pending BTC delegations
@@ -126,156 +123,56 @@ Key = covenant-key
 # supported backends - (os|file|kwallet|pass|test|memory)
 # ref https://docs.cosmos.network/v0.46/run-node/keyring.html#available-backends-for-the-keyring
 KeyringBackend = test
+
+[remotesigner]
+; URL of the remote signer
+URL = http://127.0.0.1:9792
+
+; client when making requests to the remote signer
+Timeout = 2s
+
+; if true, covenant will use the remote signer to sign transactions
+RemoteSignerEnabled = true
 ```
 
-Now we are ready to import the keys from the prior setup.
+Ensure that the covenant signer is running and unlocked before proceeding 
+otherwise you will be unable to run the emulator.
 
-## 5. Importing your keys from the prior setup
+## 5. Generate key pairs
 
-At this stage, you should already have access to the Bitcoin node. If you need a
-refresher on setting up `bitcoind`, refer to the [setup guide](https://github.com/babylonlabs-io/covenant-signer/blob/main/docs/deployment.md#2-bitcoind-setup). 
-Once you have node access, you can proceed with the next steps.
+The covenant emulator daemon requires the existence of a keyring that signs
+signatures and interacts with Babylon. Use the following command to generate the
+key:
 
-Load wallet with your covenant key.
-
-```shell
-bitcoind bitcoin-cli loadwallet "covenant-wallet"
-```
-
-If we want to then confirm that this was successful, we can then retrieve 
-information about our address to the corresponding key that was returned. 
-
-```shell
-bitcoind bitcoin-cli getaddressinfo bcrt1qazasawj3ard0ffwj04zpxlw2pt9cp7kwmnqyvk
-```
-
-This should generate output information on your address.
-
-```json
+```bash
+$ covd create-key --key-name covenant-key --chain-id chain-test
 {
-  "address": "bcrt1qazasawj3ard0ffwj04zpxlw2pt9cp7kwmnqyvk",
-  "scriptPubKey": "0014e8bb0eba51e8daf4a5d27d44137dca0acb80face",
-  "ismine": true,
-  "solvable": true,
-  "desc": "wpkh([5e174bde/84h/1h/0h/0/0]023a79b546c79d7f7c5ff20620d914b5cf7250631d12f6e26427ed9d3f98c5ccb1)#ye9usklr",
-  "parent_desc": "wpkh([5e174bde/84h/1h/0h]tpubDDeLN74J6FLfbwXGzwrqQ8ZCG9e4c9uVLP5TjLxLwZVNewFwZ5qB14mu7Fa1g1MStVvUAwXDZHkBzjjNpiRCq9JoA8yxDW9hh7xyqGkhter/0/*)#59fjcx8s",
-  "iswatchonly": false,
-  "isscript": false,
-  "iswitness": true,
-  "witness_version": 0,
-  "witness_program": "e8bb0eba51e8daf4a5d27d44137dca0acb80face",
-  "pubkey": "023a79b546c79d7f7c5ff20620d914b5cf7250631d12f6e26427ed9d3f98c5ccb1",
-  "ischange": false,
-  "timestamp": 1732624709,
-  "hdkeypath": "m/84h/1h/0h/0/0",
-  "hdseedid": "0000000000000000000000000000000000000000",
-  "hdmasterfingerprint": "5e174bde",
-  "labels": [
-    ""
-  ]
+    "name": "covenant-key",
+    "public-key": "9bd5baaba3d3fb5a8bcb8c2995c51793e14a1e32f1665cade168f638e3b15538"
 }
 ```
 
-The most important field to focus on is `hdkeypath` that contains derivation path 
-of our key. In the example it is `84h/1h/0h/0/0` (the intilal `m/` can be ignored).
+After executing the above command, the key name will be saved in the config file
+created in [step](#configuration).
+Note that the `public-key` in the output should be used as one of the inputs of
+the genesis of the Babylon chain.
+Also, this key will be used to pay for the fees due to the daemon submitting 
+signatures to Babylon.
 
-Next, list all descriptors in the wallet, ensuring that private keys are included 
-in the output:
+## 6. Start the emulator daemon
 
-```shell
-docker exec -it bitcoind bitcoin-cli -chain=regtest -rpcuser=user -rpcpassword=pass listdescriptors true
+You can start the covenant emulator daemon using the following command:
+
+```bash
+$ covd start
+2024-01-05T05:59:09.429615Z	info	Starting Covenant Emulator
+2024-01-05T05:59:09.429713Z	info	Covenant Emulator Daemon is fully active!
 ```
 
-The terminal should produce output similar to the following:
+All the available CLI options can be viewed using the `--help` flag. These
+options can also be set in the configuration file.
 
-```json
-{
-  "wallet_name": "covenant-wallet",
-  "descriptors": [
-    {
-      "desc": "wpkh(tprv8ZgxMBicQKsPe9aCeUQgMEMy2YMZ6PHnn2iCuG12y5E8oYhYNEvUqUkNy6sJ7ViBmFUMicikHSK2LBUNPx5do5EDJBjG7puwd6azci2wEdq/84h/1h/0h/0/*)#sachkrde",
-      "timestamp": 1732624709,
-      "active": true,
-      "internal": false,
-      "range": [
-        0,
-        1000
-      ],
-      "next": 1,
-      "next_index": 1
-    }
-    ...
-  ]
-}
+Next you will need to unlock the key and sign transactions. Please refer to the 
+[covenant signer setup guide](covenant-signer/README.md#using-the-covenant-signer-for-signing-transactions) 
+to unlock the key and sign any transactions that are needed.
 
-```
-
-The most important field to note is the `desc` value:
-
-```json
-"desc": "wpkh(tprv8ZgxMBicQKsPe9aCeUQgMEMy2YMZ6PHnn2iCuG12y5E8oYhYNEvUqUkNy6sJ7ViBmFUMicikHSK2LBUNPx5do5EDJBjG7puwd6azci2wEdq/84h/1h/0h/0/*)#sachkrde"
-```
-
-Here, you can see the string starting with `tprv8ZgxMBicQKsPe9aCeUQgMEMy2YMZ6PHnn2iCuG12y5E8oYhYNEvUqUkNy6sJ7ViBmFUMicikHSK2LBUNPx5do5EDJBjG7puwd6azci2wEdq`is the **base58-encoded master private key** of the covenant wallet. This key is critical for signing operations and should be securely stored.
-
-#### Deriving the Covenant Private Key from the Master Key
-
-You can derive the covenant private key from the master key by performing a **BIP32 derivation**. The `covenant-signer`repository includes a command to accomplish this:
-
-```shell
-covenant-signer derive-child-key \ tprv8ZgxMBicQKsPe9aCeUQgMEMy2YMZ6PHnn2iCuG12y5E8oYhYNEvUqUkNy6sJ7ViBmFUMicikHSK2LBUNPx5do5EDJBjG7puwd6azci2wEdq \ 84h/1h/0h/0/0
-```
-
-The output will display the derived private and public keys:
-
-```shell
-Derived private key: fe1c56c494c730f13739c0655bf06e615409870200047fc65cdf781837cf7f06
-Derived public key: 023a79b546c79d7f7c5ff20620d914b5cf7250631d12f6e26427ed9d3f98c5ccb1
-```
-
-As seen, the **Derived Public Key**:
-
-```
-023a79b546c79d7f7c5ff20620d914b5cf7250631d12f6e26427ed9d3f98c5ccb1
-```
-
-Matches the public key obtained earlier using the `getaddressinfo` command.
-
-#### Importing the Derived Private Key into the Cosmos Keyring
-
-The derived private key can now be imported into the Cosmos keyring. Use the 
-following command:
-
-```shell
-babylond keys import-hex cov fe1c56c494c730f13739c0655bf06e615409870200047fc65cdf781837cf7f06
-```
-
-## 6. Verifying your setup
-
-To confirm that the import was successful, run:
-
-```shell
-babylond keys show cov
-```
-
-The output will display the details of the imported key:
-
-```shell
-    address: bbn1azasawj3ard0ffwj04zpxlw2pt9cp7kwjcdqmc
-    name: cov
-    pubkey: '{"@type":"/cosmos.crypto.secp256k1.PubKey","key":"Ajp5tUbHnX98X/IGINkUtc9yUGMdEvbiZCftnT+Yxcyx"}'
-    type: local
-
-```
-
-Here, the `key` field contains the base64-encoded public key. After decoding, 
-this key:
-
-```shell
-023a79b546c79d7f7c5ff20620d914b5cf7250631d12f6e26427ed9d3f98c5ccb1
-```
-
-Matches the public key derived earlier and seen in the outputs of `getaddressinfo` and `derive-child-key`.
-
-Congratulations! You have successfully imported your keys from the prior setup 
-and verified your setup for the covenant emulator.
