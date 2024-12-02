@@ -1,30 +1,39 @@
 # Covenant Signer
 
 ## Table of Contents
-1. [Purpose of this guide](#purpose-of-this-guide)
-2. [Prerequisites](#prerequisites)
-3. [Install covenant emulator](#install-covenant-emulator)
+1. [Purpose of this guide](#1-purpose-of-this-guide)
+2. [Prerequisites](#2-prerequisites)
+3. [Install covenant emulator](#3-install-covenant-emulator)
 4. [Export the key from the Bitcoin node](#export-the-key-from-the-bitcoin-node)
-5. [Import the key into the cosmos keyring](#import-the-key-into-the-cosmos-keyring)
-6. [Create the configuration file](#create-the-configuration-file)
-7. [Running the Covenant Signer](#running-the-covenant-signer)
-8. [Using the covenant signer for signing transactions](#using-the-covenant-signer-for-signing-transactions)
+5. [Import the key into the cosmos keyring](#5-import-the-key-into-the-cosmos-keyring)
+6. [Create the configuration file](#6-create-the-configuration-file)
+7. [Running the Covenant Signer](#7-running-the-covenant-signer)
+8. [Using the covenant signer for signing transactions](#8-using-the-covenant-signer-for-signing-transactions)
 
 ## 1. Purpose of this guide
 
-This guide outlines the setup and configuration of the 
-[covenant signer](https://github.com/babylonlabs-io/covenant-emulator/tree/main/covenant-signer).
-in conjunction with the [covenant emulator](https://github.com/babylonlabs-io/covenant-emulator).
+This guide outlines the transition from solely using the covenant signer to an 
+integrated setup that includes the covenant emulator.
+
+Previously, the [covenant signer](https://github.com/babylonlabs-io/covenant-signer), 
+was limited to signing unbonding signatures.  In this transition we are introducing 
+the [covenant emulator](https://github.com/babylonlabs-io/covenant-emulator), which 
+retrieves delegations from Babylon chain and signs them by communicating with the 
+updated [covenant signer](https://github.com/babylonlabs-io/covenant-emulator/tree/main/covenant-signer). 
+This means that the covenant emulator can now generate both unbonding signatures 
+unbonding signatures and adaptor signatures.
+
+In this guide, we will cover exporting the key from the Bitcoin node and importing 
+it into the new integrated keyring in the covenant signer. 
 
 ## 2. Prerequisites
 
-To successfully complete this guide, ensure the following setup and resources 
-are in place:
+To successfully complete this guide, ensure you have the bitcoin node setup and you 
+have access to the private Bitcoin key you used previously when you generated your 
+address as it contains the covenant key.
 
-1. Setup of bitcoin node in order to retrieve keys. For more information, refer to 
-   [Bitcoin Node Setup](https://github.com/babylonlabs-io/covenant-signer/blob/main/docs/deployment.md#2-bitcoind-setup).
-2. Ensure you have access to the private Bitcoin key, also referred to as the 
-   covenant emulator key, which will be used for signing operations.
+For a refresher on setting up the bitcoin node, refer to the 
+[deployment guide](https://github.com/babylonlabs-io/covenant-signer/blob/main/docs/deployment.md#2-bitcoind-setup).
 
 ## 3. Install covenant signer binary
 
