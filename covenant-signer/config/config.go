@@ -66,6 +66,8 @@ const defaultConfigTemplate = `# This is a TOML config file.
 keystore-type = "{{ .KeyStore.KeyStoreType }}"
 
 [keystore.cosmos]
+# The chain id of the chain to connect to
+chain-id = "{{ .KeyStore.CosmosKeyStore.ChainID }}"
 # The directory to store the keys in
 key-directory = "{{ .KeyStore.CosmosKeyStore.KeyDirectory }}"
 # The keyring backend to use
