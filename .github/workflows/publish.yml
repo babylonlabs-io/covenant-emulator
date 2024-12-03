@@ -9,7 +9,7 @@ on:
 
 jobs:
   lint_test:
-    uses: babylonlabs-io/.github/.github/workflows/reusable_go_lint_test.yml@v0.7.0
+    uses: babylonlabs-io/.github/.github/workflows/reusable_go_lint_test.yml@v0.11.1
     with:
       go-version: '1.23'
       go-lint-version: 'v1.60.2'
@@ -22,7 +22,7 @@ jobs:
 
   docker_pipeline:
     needs: ["lint_test"]
-    uses: babylonlabs-io/.github/.github/workflows/reusable_docker_pipeline.yml@v0.10.2
+    uses: babylonlabs-io/.github/.github/workflows/reusable_docker_pipeline.yml@v0.11.1
     secrets: inherit
     with:
       publish: true
@@ -53,3 +53,19 @@ jobs:
       - name: Run Gosec (covenant-signer)
         working-directory: ./covenant-signer
         run: gosec ./...
+  
+  docker_pipeline_covenant_signer:
+    needs: ["go_sec_covenant_signer"]
+    uses: babylonlabs-io/.github/.github/workflows/reusable_docker_pipeline.yml@v0.11.1
+    secrets: inherit
+    with:
+      publish: true
+      dockerfile: ./covenant-signer/Dockerfile
+      dockerContext: ./covenant-signer 
+      repoName: covenant-signer
+      docker_scan: true
+    permissions:
+      # required for all workflows
+      security-events: write
+      # required to fetch internal or private CodeQL packs
+      packages: read
