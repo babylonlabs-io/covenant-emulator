@@ -24,10 +24,10 @@ are transitioning their phase-1 set up to the phase-2 one.
 2. [Installation](#2-installation)
 3. [Transitioning your covenant key from phase-1 setup](#3-transitioning-your-covenant-key-from-phase-1-setup)
 4. [Operation](#4-operation)
-  1. [Configuration](#41-configuration)
-  2. [Starting the daemon](#42-starting-the-daemon)
-  3. [Unlocking the key](#43-unlocking-the-key)
-  4. [Testing the setup](#44-testing-the-setup)
+    1. [Configuration](#41-configuration)
+    2. [Starting the daemon](#42-starting-the-daemon)
+    3. [Unlocking the key](#43-unlocking-the-key)
+    4. [Testing the setup](#44-testing-the-setup)
 
 ## 1. Prerequisites
 
