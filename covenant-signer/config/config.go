@@ -65,7 +65,7 @@ const defaultConfigTemplate = `# This is a TOML config file.
 # The type of the key store
 keystore-type = "{{ .KeyStore.KeyStoreType }}"
 
-[keystore.cosmos]
+[keystore.cosmoskeystore]
 # The directory to store the keys in
 key-directory = "{{ .KeyStore.CosmosKeyStore.KeyDirectory }}"
 # The keyring backend to use

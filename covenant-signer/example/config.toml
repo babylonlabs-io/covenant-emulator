@@ -5,7 +5,7 @@
 # The type of the key store
 keystore-type = "cosmos"
 
-[keystore.cosmos]
+[keystore.cosmoskeystore]
 # The directory to store the keys in
 key-directory = ""
 # The keyring backend to use
