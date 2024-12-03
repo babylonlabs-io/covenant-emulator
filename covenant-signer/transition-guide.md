@@ -99,25 +99,29 @@ contains your covenant key.
 bitcoin-cli loadwallet "covenant-wallet"
 ```
 
-Parameters:
+Action:
 - `loadwallet`: (string, required) The wallet directory or .dat file. In our 
   example we have named it `covenant-wallet`.
 
 The above input will output the following response:
 
+```json
 {
   "name": "covenant-wallet"
 }
+```
 
 To verify the key was successfully imported, you can retrieve the key information 
-using the command below. Make note of the HD key path information - you'll need 
-it later when deriving the covenant private key from the master key. 
+using the command below. 
+
+> ⚡ Note: Make note of the `hdkeypath` information - you'll need it later when 
+> deriving the covenant private key from the master key. 
 
 ```shell
 bitcoin-cli getaddressinfo bcrt1qazasawj3ard0ffwj04zpxlw2pt9cp7kwmnqyvk
 ```
 
-Parameters:
+Action:
 - `getaddressinfo`: (string, required) The Bitcoin address for which to get 
   information on.
 
@@ -152,19 +156,18 @@ As mentioned above, the most important field to focus on is `hdkeypath` that
 contains the derivation path of our key. In the example it is `84h/1h/0h/0/0` 
 (the initial `m/` can be ignored).
 
-Next, we need to retrieve the **base58-encoded master private key** from the 
-wallet. This is the key we will use to derive the covenant private key. From 
-here we will be able to import this directly into the Cosmos keyring.
+Next, retrieve the **base58-encoded master private key** from the Bitcoin wallet. 
+This key will be used to derive the covenant private key, which can then be 
+imported directly into the Cosmos keyring.
 
-To do this, we need to list all descriptors in the wallet ensuring that private 
-keys are included in the output. We do this as we need to collect the descriptor 
-of the key we want to derive the private key from.
+List all descriptors in the wallet with private keys included in the output. 
+This will provide the descriptor needed to derive the private key.
 
 ```shell
 bitcoin-cli -chain=regtest -rpcuser=user -rpcpassword=pass listdescriptors true | jq -r '.descriptors[] | select(.desc | contains("wpkh(")) | .desc | capture("wpkh\\((?<key>.*?)\\)").key | sub("/\\*$"; "")'
 ```
 
-The terminal will output your base58-encoded master private key and the 
+The terminal will output your **base58-encoded master private key** and the 
 `hdkeypath`, which should match above. 
 
 ```shell
@@ -178,13 +181,11 @@ important pieces of information:
 2. The `hdkeypath` which should be similar to what we saved in the 
 `getaddressinfo` above.
 
-#### 3.2 Deriving the Covenant Private Key from the Master Key
+Next, derive the covenant private key from the master key using **BIP32 
+derivation**. You'll need:
 
-Next, we'll derive the covenant private key from the master key using 
-**BIP32 derivation**. You'll need:
-
-1. The `hdkeypath` we saved from the `getaddressinfo` command
-2. Access to the `covenant-signer` directory, which contains the derivation tool
+  1. The `hdkeypath` we saved from the `getaddressinfo` command
+  2. Access to the `covenant-signer` directory, which contains the derivation tool
 
 Navigate to the `covenant-signer` directory and run the following command:
 
@@ -201,11 +202,14 @@ Derived private key: fe1c56c494c730f13739c0655bf06e615409870200047fc65cdf781837c
 Derived public key: 023a79b546c79d7f7c5ff20620d914b5cf7250631d12f6e26427ed9d3f98c5ccb1
 ```
 
-You can see that the derived public key matches the public key obtained earlier 
-using the `getaddressinfo` command.
+Matches the public key derived earlier and seen in the outputs of `getaddressinfo` 
+and `derive-child-key`.
 
-We will now use the derived private key from above and import it into the 
-Cosmos keyring. To do this, use the following command:
+Verify that the derived public key matches the one obtained earlier from the 
+`getaddressinfo` command.
+
+Next, import the derived private key into the Cosmos keyring using the following 
+command:
 
 ```shell
 babylond keys import-hex cov fe1c56c494c730f13739c0655bf06e615409870200047fc65cdf781837cf7f06 --keyring-backend file
@@ -231,16 +235,6 @@ The output will display the details of the imported key:
     type: local
 
 ```
-
-Here, the `key` field contains the base64-encoded public key. After decoding, 
-this key:
-
-```shell
-023a79b546c79d7f7c5ff20620d914b5cf7250631d12f6e26427ed9d3f98c5ccb1
-```
-
-Matches the public key derived earlier and seen in the outputs of `getaddressinfo` 
-and `derive-child-key`.
 
 Congratulations! You have successfully imported your keys from the prior setup 
 and verified your setup for the covenant emulator.
@@ -283,6 +277,7 @@ port = 2113
 ```
 
 Below are brief explanations of the configuration entries:
+
 - `keystore-type`: Type of keystore used, which is "cosmos"
 - `key-directory`: Path where keys are stored on the filesystem.
 - `keyring-backend`: Backend system for key management, e.g., "file", "os".
@@ -305,12 +300,12 @@ The covenant signer must be run in a secure network and only accessible by the
 covenant emulator.
 
 Once the covenant signer is set up and unlocked, you can configure the covenant 
-emulator to use it. The URL of the covenant signer, which is configured by the 
+emulator to use it. The URL of the covenant signer is configured by the 
 covenant members but in this example we use the default value of 
-`http://127.0.0.1:9791`, should be specified in the covenant emulator's 
+`http://127.0.0.1:9791`. This is specified in the covenant emulator's 
 configuration file under the `remotesigner` section.
 
-It's important to note that the key specified in the covenant emulator's 
+> ⚡ Note: It's important to note that the key specified in the covenant emulator's 
 configuration is not the covenant key itself. Instead, it is a 
 key used for sending Cosmos transactions.
 

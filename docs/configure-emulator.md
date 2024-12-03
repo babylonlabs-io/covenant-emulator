@@ -29,9 +29,12 @@ it into the new integrated keyring in the covenant signer.
 
 ## 2. Prerequisites
 
-To successfully complete this guide, you will need a running instance of the 
-[covenant signer](./covenant-signer) with your keys imported from `bitcoind` 
-wallet into the cosmos keyring.
+To successfully complete this guide, you will need 
+
+1. To successfully complete this guide, you will need a running instance of the 
+[covenant signer](../covenant-signer)
+2. A connection to a Babylon node. To run your own node, please refer to the 
+[Babylon Node Setup Guide](https://github.com/babylonlabs-io/networks/blob/sam/bbn-test-5/bbn-test-5/babylon-node/README.md).
 
 Please follow the [covenant signer setup guide](covenant-signer/README.md) to 
 complete the setup of the covenant signer with your keys before proceeding.
@@ -44,9 +47,9 @@ binary.
 ```shell
 git clone git@github.com:babylonlabs-io/covenant-emulator.git
 cd covenant-emulator
-git checkout <tag>
+git checkout v0.10.0
 ```
-
+<!-- TODO: check the version of the tag after babylon release -->
 Run the following command to build the binaries and
 install them to your `$GOPATH/bin` directory:
 
@@ -74,7 +77,7 @@ echo 'export PATH=$HOME/go/bin:$PATH' >> ~/.profile
 
 Next, we initialize the node and home directory. It should generate all of the 
 necessary files such as `covd.config`, these files will live in the `<path>` 
-that you set for the `--home`with the below command.
+that you set for the `--home` with the below command.
 
 ```shell
 covd init --home <path>
@@ -121,7 +124,7 @@ Key = covenant-key
 
 # Type of keyring to use,
 # supported backends - (os|file|kwallet|pass|test|memory)
-# ref https://docs.cosmos.network/v0.46/run-node/keyring.html#available-backends-for-the-keyring
+# ref https://docs.cosmos.network/v0.50/run-node/keyring.html#available-backends-for-the-keyring
 KeyringBackend = test
 
 [remotesigner]
@@ -135,17 +138,31 @@ Timeout = 2s
 RemoteSignerEnabled = true
 ```
 
+Below are brief explanations of the configuration entries:
+
+- `QueryInterval` - How often to check for new BTC delegations that need processing
+- `DelegationLimit` - Maximum number of delegations to process in a single batch
+- `BitcoinNetwork` - Which Bitcoin network to connect to (mainnet, testnet, simnet, etc.)
+- `ChainID` - Unique identifier of the Babylon blockchain network
+- `RPCAddr` - HTTP endpoint for connecting to a Babylon node
+- `GRPCAddr` - gRPC endpoint for connecting to a Babylon node
+- `Key` - Name of the key in the keyring used for transaction signing
+- `KeyringBackend` - Storage backend for the keyring (os, file, kwallet, pass, test, memory)
+- `URL` - Endpoint where the remote signing service is running
+- `Timeout` - Maximum time to wait for remote signer responses
+- `RemoteSignerEnabled` - Whether to use the remote signing service
+
 Ensure that the covenant signer is running and unlocked before proceeding 
 otherwise you will be unable to run the emulator.
 
 ## 5. Generate key pairs
 
-The covenant emulator daemon requires the existence of a keyring that signs
-signatures and interacts with Babylon. Use the following command to generate the
-key:
+The covenant emulator daemon requires the existence of a Babylon keyring that 
+signs signatures and interacts with Babylon. Use the following command to generate 
+the key:
 
 ```bash
-$ covd create-key --key-name covenant-key --chain-id chain-test
+$ covd create-key --key-name covenant-key --chain-id bbn-test-5
 {
     "name": "covenant-key",
     "public-key": "9bd5baaba3d3fb5a8bcb8c2995c51793e14a1e32f1665cade168f638e3b15538"
@@ -153,11 +170,20 @@ $ covd create-key --key-name covenant-key --chain-id chain-test
 ```
 
 After executing the above command, the key name will be saved in the config file
-created in [step](#configuration).
+created in the last [step](#42-configure-the-covenant-emulator).
 Note that the `public-key` in the output should be used as one of the inputs of
 the genesis of the Babylon chain.
+
 Also, this key will be used to pay for the fees due to the daemon submitting 
 signatures to Babylon.
+
+To check your balance, you will need to use the `babylond` CLI.
+
+```shell
+babylond query bank balances <key-name>
+```
+
+This will return the balance of the key provided.
 
 ## 6. Start the emulator daemon
 
