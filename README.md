@@ -1,10 +1,10 @@
-# Covenant Emulator
+# Covenant Emulation Toolset
 
 ## Overview
 
-Covenant emulator is a daemon program run by every member of the covenant 
-committee of the BTC staking protocol. The role of the covenant committee 
-is to protect PoS systems against attacks from the BTC stakers and 
+The covenant emulation toolset is a set of programs operated by every member of 
+the covenant committee of the BTC staking protocol. The role of the covenant 
+committee is to protect PoS systems against attacks from the BTC stakers and 
 validators. It achieves this by representing itself as an M-out-of-N 
 multi-signature that co-signs BTC transactions with the BTC staker.
 
@@ -67,12 +67,15 @@ Each committee member runs two components:
 monitors staking requests on the Babylon chain, verifies the validity of the 
 Bitcoin transactions that are involved with them, and sends the necessary 
 signatures if verification is passed.
-2. A Covenant Signer instance, which securely manages the private key and 
+2. The `covenant-signer` daemon, which securely manages the private key and 
 performs signing operations in an isolated environment.
 
 The staking requests can only become active and receive voting power if a 
 sufficient quorum of covenant committee members have verified the validity 
 of the transactions and sent corresponding signatures.
+
+
+## Covenant Emulator Daemon
 
 Upon a pending staking request being found, the covenant emulation daemon 
 (`covd`), validates it against the spending rules defined in
@@ -96,10 +99,12 @@ For instructions on how to run the Covenant Emulator, please refer to the
 
 ## Covenant Signer
 
-The Covenant Signer works alongside the Covenant Emulator. It is designed to 
-securely handle private keys for signing operations. The signer has been 
-redesigned to prioritize security through isolation - separating the private key 
-handling from the more exposed emulator program.
+The Covenant Signer operates in tandem with the Covenant Emulator and
+is purpose-built to securely manage private keys for signing operations.
+It prioritizes security through isolation,
+ensuring that private key handling is confined to an instance with
+minimal connectivity and simpler application logic compared to the
+Covenant Emulator daemon.
 
 Previously, private keys were stored in the Bitcoin wallet using PSBT (Partially 
 Signed Bitcoin Transactions) for signing operations. The new design uses a 
@@ -125,10 +130,8 @@ signing data, which includes transactions requiring slashing signatures
 unbonding slashing signatures (adaptor signatures). This data is then forwarded 
 to the Covenant Signer.
 
-The Covenant Signer, upon receiving the request, retrieves the private key from 
-its keyring and performs the signing operations. The generated signatures are 
-returned to the emulator, which then submits them to the Babylon blockchain.
-
 This flow ensures that all private key operations remain isolated within the 
 secure Covenant Signer while the emulator handles the blockchain interaction 
 and validation logic.
+
+![Covenant Architecture](./static/covenant.png)
