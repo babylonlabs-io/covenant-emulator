@@ -65,6 +65,7 @@ to v0.17.1
 to the covenant emulator
 * [#40](https://github.com/babylonlabs-io/covenant-emulator/pull/40) Fix min unbonding time
 validation
+* [#53](https://github.com/babylonlabs-io/covenant-emulator/pull/53) CosmosKeyStore config change
 
 ## v0.8.0
 
