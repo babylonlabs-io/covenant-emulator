@@ -208,8 +208,13 @@ We will now use the derived private key from above and import it into the
 Cosmos keyring. To do this, use the following command:
 
 ```shell
-babylond keys import-hex cov fe1c56c494c730f13739c0655bf06e615409870200047fc65cdf781837cf7f06
+babylond keys import-hex cov fe1c56c494c730f13739c0655bf06e615409870200047fc65cdf781837cf7f06 --keyring-backend file
 ```
+
+> ⚡ Note: Use the `file` backend to store the private key in encrypted form on 
+disk. When running `import-hex` with the encrypted file backend, you will be 
+prompted for a passphrase. This passphrase will be required to unlock the signer 
+later.
 
 To confirm that the import was successful, run:
 
@@ -300,8 +305,9 @@ The covenant signer must be run in a secure network and only accessible by the
 covenant emulator.
 
 Once the covenant signer is set up and unlocked, you can configure the covenant 
-emulator to use it. The URL of the covenant signer, which is 
-http://127.0.0.1:9791, should be specified in the covenant emulator's 
+emulator to use it. The URL of the covenant signer, which is configured by the 
+covenant members but in this example we use the default value of 
+`http://127.0.0.1:9791`, should be specified in the covenant emulator's 
 configuration file under the `remotesigner` section.
 
 It's important to note that the key specified in the covenant emulator's 
