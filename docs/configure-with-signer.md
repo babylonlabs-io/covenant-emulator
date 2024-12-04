@@ -1,4 +1,4 @@
-# Configuring the Covenant Emulator
+# Configuring the Covenant Emulator with covenant Signer
 
 ## Table of Contents 
 
@@ -29,10 +29,10 @@ it into the new integrated keyring in the covenant signer.
 
 ## 2. Prerequisites
 
-To successfully complete this guide, you will need 
+To successfully complete this guide, you will need:
 
-1. To successfully complete this guide, you will need a running instance of the 
-[covenant signer](../covenant-signer)
+1. A running instance of the [covenant signer](../covenant-signer) 
+with the url that you configured it to. 
 2. A connection to a Babylon node. To run your own node, please refer to the 
 [Babylon Node Setup Guide](https://github.com/babylonlabs-io/networks/blob/sam/bbn-test-5/bbn-test-5/babylon-node/README.md).
 
@@ -41,8 +41,15 @@ complete the setup of the covenant signer with your keys before proceeding.
 
 ## 3. Install covenant emulator binary
 
-Once you have the covenant signer running, you can install the covenant emulator 
-binary.
+If you haven't already, download [Golang 1.23](https://go.dev/dl).
+
+Once installed run: 
+
+```shell
+go version
+```
+
+If you have not yet cloned the repository, run:
 
 ```shell
 git clone git@github.com:babylonlabs-io/covenant-emulator.git
@@ -94,7 +101,7 @@ $ ls <path>
 ### 4.2. Configure the covenant emulator
 
 As you have already set up the covenant signer, you can now configure the covenant 
-emulator to use it.
+emulator to use it. 
 
 Use the following parameters to configure the `covd.conf` file.
 
