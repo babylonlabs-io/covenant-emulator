@@ -4,12 +4,13 @@ on:
   push:
     branches:
       - 'main'
+      - 'hiep/fix-docker-pipeline'
     tags:
       - '*'
 
 jobs:
   lint_test:
-    uses: babylonlabs-io/.github/.github/workflows/reusable_go_lint_test.yml@v0.11.1
+    uses: babylonlabs-io/.github/.github/workflows/reusable_go_lint_test.yml@hiep/fix-duplicate-artifact
     with:
       go-version: '1.23'
       go-lint-version: 'v1.60.2'
@@ -22,7 +23,7 @@ jobs:
 
   docker_pipeline:
     needs: ["lint_test"]
-    uses: babylonlabs-io/.github/.github/workflows/reusable_docker_pipeline.yml@v0.11.1
+    uses: babylonlabs-io/.github/.github/workflows/reusable_docker_pipeline.yml@hiep/fix-duplicate-artifact
     secrets: inherit
     with:
       publish: true
@@ -56,7 +57,7 @@ jobs:
   
   docker_pipeline_covenant_signer:
     needs: ["go_sec_covenant_signer"]
-    uses: babylonlabs-io/.github/.github/workflows/reusable_docker_pipeline.yml@v0.11.1
+    uses: babylonlabs-io/.github/.github/workflows/reusable_docker_pipeline.yml@hiep/fix-duplicate-artifact
     secrets: inherit
     with:
       publish: true
