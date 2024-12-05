@@ -30,8 +30,8 @@ type StakingParams struct {
 	// Minimum commission rate
 	MinComissionRate sdkmath.LegacyDec
 
-	// The minimum time for unbonding transaction timelock in BTC blocks
-	MinUnbondingTime uint32
+	// The time for unbonding transaction timelock in BTC blocks
+	UnbondingTimeBlocks uint32
 
 	// Fee required by unbonding transaction
 	UnbondingFee btcutil.Amount

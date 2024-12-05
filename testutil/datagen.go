@@ -73,7 +73,7 @@ func GenRandomParams(r *rand.Rand, t *testing.T) *types.StakingParams {
 	return &types.StakingParams{
 		ComfirmationTimeBlocks:    10,
 		FinalizationTimeoutBlocks: 100,
-		MinUnbondingTime:          100,
+		UnbondingTimeBlocks:       101,
 		MinSlashingTxFeeSat:       1,
 		CovenantPks:               covenantPks,
 		SlashingPkScript:          slashingPkScript,

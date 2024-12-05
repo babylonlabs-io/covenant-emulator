@@ -134,7 +134,7 @@ func (bc *BabylonController) QueryStakingParamsByVersion(version uint32) (*types
 		CovenantQuorum:            stakingParamRes.Params.CovenantQuorum,
 		SlashingRate:              stakingParamRes.Params.SlashingRate,
 		MinComissionRate:          stakingParamRes.Params.MinCommissionRate,
-		MinUnbondingTime:          stakingParamRes.Params.MinUnbondingTimeBlocks,
+		UnbondingTimeBlocks:       stakingParamRes.Params.UnbondingTimeBlocks,
 		UnbondingFee:              btcutil.Amount(stakingParamRes.Params.UnbondingFeeSat),
 		MinStakingTime:            minStakingTimeBlocksUint16,
 		MaxStakingTime:            maxStakingTimeBlocksUint16,

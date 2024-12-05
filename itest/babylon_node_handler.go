@@ -143,7 +143,7 @@ func NewBabylonNodeHandler(t *testing.T, covenantPk *types.BIP340PubKey) *Babylo
 		"--min-staking-amount-sat=10000",
 		// default checkpoint finalization timeout is 20, so we set min unbonding time
 		// to be 1 block more
-		"--min-unbonding-time=21",
+		"--unbonding-time=21",
 		fmt.Sprintf("--slashing-pk-script=%s", hex.EncodeToString(pkScript)),
 		fmt.Sprintf("--covenant-pks=%s", covenantPk.MarshalHex()),
 		"--covenant-quorum=1",
