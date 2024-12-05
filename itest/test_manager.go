@@ -337,7 +337,7 @@ func (tm *TestManager) InsertBTCDelegation(
 	delBtcPrivKey, delBtcPubKey, err := datagen.GenRandomBTCKeyPair(r)
 	require.NoError(t, err)
 
-	unbondingTime := uint16(tm.StakingParams.MinUnbondingTime)
+	unbondingTime := uint16(tm.StakingParams.UnbondingTimeBlocks)
 	testStakingInfo := testutil.GenBTCStakingSlashingInfo(
 		r,
 		t,
