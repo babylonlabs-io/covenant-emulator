@@ -51,6 +51,7 @@ through API
 signer version that requires unlocking
 * [#49](https://github.com/babylonlabs-io/covenant-emulator/pull/49) Add show-key command
 * [#52](https://github.com/babylonlabs-io/covenant-emulator/pull/52) Fix CosmosKeyStoreConfig
+* [#57](https://github.com/babylonlabs-io/covenant-emulator/pull/57) Bump babylon to v0.18.0
 
 ## v0.9.0
 
