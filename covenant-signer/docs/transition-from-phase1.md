@@ -32,9 +32,9 @@ are transitioning their phase-1 set up to the phase-2 one.
 
 This guide requires that:
 
-1. you have a Bitcoin node setup for the Bitcoin
-network you intend to operate your covenant signer on and
-2. you have access to the private Bitcoin key you
+1. You have a Bitcoin node setup for the Bitcoin
+network you intend to operate your covenant signer on.
+2. You have access to the private Bitcoin key you
 set up your covenant with.
 3. A connection to a Babylon node. To run your own node, please refer to the 
 [Babylon Node Setup Guide](https://github.com/babylonlabs-io/networks/blob/sam/bbn-test-5/bbn-test-5/babylon-node/README.md).
@@ -167,8 +167,9 @@ bitcoin-cli listdescriptors true | jq -r '
   select(.desc | contains("<hdkeypath>")) |
   .desc
 ' descriptors.json
-
-wpkh(tprv8ZgxMBicQKsPe9aCeUQgMEMy2YMZ6PHnn2iCuG12y5E8oYhYNEvUqUkNy6sJ7ViBmFUMicikHSK2LBUNPx5do5EDJBjG7puwd6azci2wEdq/84h/1h/0h/0/*)#sachkrde
+{
+  wpkh(tprv8ZgxMBicQKsPe9aCeUQgMEMy2YMZ6PHnn2iCuG12y5E8oYhYNEvUqUkNy6sJ7ViBmFUMicikHSK2LBUNPx5do5EDJBjG7puwd6azci2wEdq/84h/1h/0h/0/*)#sachkrde
+}
 ```
 <!-- TODO: maybe there could be many descriptors
 and in order to find the right one, we need to match the `hdkeypath`
@@ -206,8 +207,10 @@ Use the following command to derive the covenant private key:
 covenant-signer derive-child-key \
     tprv8ZgxMBicQKsPe9aCeUQgMEMy2YMZ6PHnn2iCuG12y5E8oYhYNEvUqUkNy6sJ7ViBmFUMicikHSK2LBUNPx5do5EDJBjG7puwd6azci2wEdq \
     84h/1h/0h/0/0
-Derived private key: fe1c56c494c730f13739c0655bf06e615409870200047fc65cdf781837cf7f06
-Derived public key: 023a79b546c79d7f7c5ff20620d914b5cf7250631d12f6e26427ed9d3f98c5ccb1
+{
+  "derived_private_key": "fe1c56c494c730f13739c0655bf06e615409870200047fc65cdf781837cf7f06",
+  "derived_public_key": "023a79b546c79d7f7c5ff20620d914b5cf7250631d12f6e26427ed9d3f98c5ccb1"
+}
 ```
 
 The above output displays the derived private and public keys. Please make note 
