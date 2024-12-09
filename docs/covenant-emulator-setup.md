@@ -1,4 +1,4 @@
-# Configuring the Covenant Emulator with covenant Signer
+# Covenant Emulator Setup
 
 ## Table of Contents 
 
@@ -13,16 +13,15 @@
 
 ## 1. Purpose of this guide
 
-This guide outlines the transition from solely using the covenant signer to an 
-integrated setup that includes the covenant emulator.
+This guide outlines the transition from solely using the phase-1 covenant signer
+to the phase-2 covenant emulator full setup.
 
-Previously, the [covenant signer](https://github.com/babylonlabs-io/covenant-signer), 
-was limited to signing unbonding signatures.  In this transition we are introducing 
-the [covenant emulator](https://github.com/babylonlabs-io/covenant-emulator), which 
+The [phase-1 covenant signer](https://github.com/babylonlabs-io/covenant-signer), 
+was limited to signing unbonding signatures.  Phase-2 requires additional 
+functionality that is covered by the 
+[covenant emulator](https://github.com/babylonlabs-io/covenant-emulator), which 
 retrieves delegations from Babylon chain and signs them by communicating with the 
-updated [covenant signer](https://github.com/babylonlabs-io/covenant-emulator/tree/main/covenant-signer). 
-This means that the covenant emulator can now generate both unbonding signatures 
-unbonding signatures and adaptor signatures.
+a new [covenant signer daemon](https://github.com/babylonlabs-io/covenant-emulator/tree/main/covenant-signer), specifically focused on phase-2 functionality.
 
 In this guide, we will cover exporting the key from the Bitcoin node and importing 
 it into the new integrated keyring in the covenant signer. 
@@ -32,12 +31,11 @@ it into the new integrated keyring in the covenant signer.
 To successfully complete this guide, you will need:
 
 1. A running instance of the [covenant signer](../covenant-signer) 
-with the url that you configured it to. 
+  with the url that you configured it to. Please follow the 
+  [covenant signer setup guide](covenant-signer/README.md) to 
+  complete the setup of the covenant signer with your keys before proceeding.
 2. A connection to a Babylon node. To run your own node, please refer to the 
-[Babylon Node Setup Guide](https://github.com/babylonlabs-io/networks/blob/sam/bbn-test-5/bbn-test-5/babylon-node/README.md).
-
-Please follow the [covenant signer setup guide](covenant-signer/README.md) to 
-complete the setup of the covenant signer with your keys before proceeding.
+  [Babylon Node Setup Guide](https://github.com/babylonlabs-io/networks/blob/sam/bbn-test-5/bbn-test-5/babylon-node/README.md).
 
 ## 3. Install covenant emulator binary
 
@@ -54,9 +52,9 @@ If you have not yet cloned the repository, run:
 ```shell
 git clone git@github.com:babylonlabs-io/covenant-emulator.git
 cd covenant-emulator
-git checkout v0.10.0
+git checkout <tag>
 ```
-<!-- TODO: check the version of the tag after babylon release -->
+
 Run the following command to build the binaries and
 install them to your `$GOPATH/bin` directory:
 
@@ -169,7 +167,7 @@ signs signatures and interacts with Babylon. Use the following command to genera
 the key:
 
 ```bash
-$ covd create-key --key-name covenant-key --chain-id bbn-test-5
+$ covd create-key --key-name <name> --chain-id bbn-test-5 --keyring-backend <backend>
 {
     "name": "covenant-key",
     "public-key": "9bd5baaba3d3fb5a8bcb8c2995c51793e14a1e32f1665cade168f638e3b15538"
@@ -184,13 +182,10 @@ the genesis of the Babylon chain.
 Also, this key will be used to pay for the fees due to the daemon submitting 
 signatures to Babylon.
 
-To check your balance, you will need to use the `babylond` CLI.
+To check your balance, View your account on the 
+[Babylon Explorer](https://babylon-testnet.l2scan.co) by searching for your 
+address.
 
-```shell
-babylond query bank balances <key-name>
-```
-
-This will return the balance of the key provided.
 
 ## 6. Start the emulator daemon
 
@@ -204,8 +199,3 @@ $ covd start
 
 All the available CLI options can be viewed using the `--help` flag. These
 options can also be set in the configuration file.
-
-Next you will need to unlock the key and sign transactions. Please refer to the 
-[covenant signer setup guide](covenant-signer/README.md#using-the-covenant-signer-for-signing-transactions) 
-to unlock the key and sign any transactions that are needed.
-

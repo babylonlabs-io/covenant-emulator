@@ -7,16 +7,16 @@ signatures.
 
 It prioritizes security through isolation, ensuring that private key handling
 is confined to an instance with minimal connectivity and simpler application 
-logic compared to the Covenant Emulator daemon.
+logic.
 
 > ⚡ Note: This program is a separate implementation from the
-[covenant signer](https://github.com/babylonlabs-io/covenant-signer/)
-program used for phase-1. All covenant committee members
-are required to transition their keys to this program to participate
-in phase-2.
+> [covenant signer](https://github.com/babylonlabs-io/covenant-signer/)
+> program used for phase-1. All covenant committee members
+> are required to transition their keys to this program to participate
+> in phase-2.
 
 This document is intended for covenant committee members that
-are transitioning their phase-1 set up to the phase-2 one.
+are transitioning their phase-1 setup to the phase-2 one.
 
 ## Table of Contents
 
@@ -37,7 +37,7 @@ network you intend to operate your covenant signer on.
 2. You have access to the private Bitcoin key you
 set up your covenant with.
 3. A connection to a Babylon node. To run your own node, please refer to the 
-[Babylon Node Setup Guide](https://github.com/babylonlabs-io/networks/blob/sam/bbn-test-5/bbn-test-5/babylon-node/README.md).
+[Babylon Node Setup Guide](https://github.com/babylonlabs-io/networks/blob/main/bbn-test-5/bbn-test-5/babylon-node/README.md).
 
 For a refresher on setting up the Bitcoin node, refer to the 
 [deployment guide of your phase-1 covenant signer setup](https://github.com/babylonlabs-io/covenant-signer/blob/main/docs/deployment.md#2-bitcoind-setup).
@@ -120,11 +120,7 @@ bitcoin-cli loadwallet "covenant-wallet"
 ```
 
 #### Step 2: Extract the covenant address' `hdkeypath`
-<!-- you correctly guessed it later i.e there could be many descriptors and in order to find the right one, we need to match the `hdkeypath`
-that we received previously.  Each bitcoind wallet will by default have 6 differet descriptors we need to retrieve correct one
- -->
 
- <!-- RESPONSE FROM KONRAD: this is needed to find the correct hdkeypath for the descriptor -->
 Next, we are going to retrieve the `hdkeypath` of the Bitcoin address
 associated with our covenant key.
 
@@ -171,12 +167,7 @@ bitcoin-cli listdescriptors true | jq -r '
   wpkh(tprv8ZgxMBicQKsPe9aCeUQgMEMy2YMZ6PHnn2iCuG12y5E8oYhYNEvUqUkNy6sJ7ViBmFUMicikHSK2LBUNPx5do5EDJBjG7puwd6azci2wEdq/84h/1h/0h/0/*)#sachkrde
 }
 ```
-<!-- TODO: maybe there could be many descriptors
-and in order to find the right one, we need to match the `hdkeypath`
-that we received previously. If so, this should be explained here
-and we can avoid being overly smart by simplifying the above command. -->
 
-<!-- ADDED please see below -->
 As you can see above there is a concatenated string of your private key and 
 part of your `hdkeypath`. To extract the private key:
 
@@ -190,17 +181,10 @@ below:
 ```
 tprv8ZgxMBicQKsPe9aCeUQgMEMy2YMZ6PHnn2iCuG12y5E8oYhYNEvUqUkNy6sJ7ViBmFUMicikHSK2LBUNPx5do5EDJBjG7puwd6azci2wEdq
 ```
-Now you have your **base58-encoded master private key**, will now pass the above 
-information to the `covenant-signer` binary to derive the covenant private key 
-from the master key using **BIP32 derivation**.
+Now you have your **base58-encoded master private key**.
+You can now pass the above information to the `covenant-signer` binary to 
+derive the covenant private key from the master key using **BIP32 derivation**.
 
-<!-- TODO: ask Konrad: given that the descriptor output contains a single string,
-why did we decide for the covenant-signer CLI to have two parameters instead of a single string? -->
-<!-- RESPONSE FROM KONRAD:
-- becouse the descriptor string does not contain full path to the derived kay, 
-but part of it i.e it has /84h/1h/0h/0/* so the user still would need to provide 
-the path under the * 
-- it simplified a bit parsing on program side -->
 Use the following command to derive the covenant private key:
 
 ```shell
@@ -213,36 +197,32 @@ covenant-signer derive-child-key \
 }
 ```
 
-The above output displays the derived private and public keys. Please make note 
-of your private key for the next step.
+Parameters:
+- `<master-private-key>`: The base58-encoded master private key from your 
+Bitcoin wallet (first parameter)
+- `<derivation-path>`: The HD derivation path that specifies how to derive 
+the child key (second parameter)
 
-<!-- TODO: leftover sentences. It's nice that there's some verification steps though.
-Wonder if we can have something in their place -->
-<!-- CHANGED: Let me know if this is ok. -->
-Additionally, you can verify your key derivation was successful by checking that 
-the public key matches the one shown earlier in both:
-- The `getaddressinfo` command output in step 2
-- The `derive-child-key` command output in this step
+To verify, you can execute the following
 
-This verification ensures you've extracted the correct master private key from 
-the descriptor.
+```shell
+bitdoind getaddressinfo <address> | jq .publickey
+```
+
+If the public key matches the derived_public_key output from the 
+`derive-child-key` command, the verification is successful.
 
 #### Step 4: Import the private key into a Cosmos Keyring
 
-Now that we have the derived private key, we need to import it into the Cosmos keyring. 
-This requires access to the `babylond` binary, which is part of your Babylon node 
-installation. Navigate to your Babylon node directory and run:
+Next, we are going to import the derived private key into the Cosmos keyring.
+At the moment, the `covenant-signer` has not implemented functionality
+for Cosmos key imports. To overcome this, we are going to utilize
+the Babylon node binary `babylond` which has support for them.
+You can install the binary by following the first section of the
+[Babylon Node Setup Guide](https://github.com/babylonlabs-io/networks/blob/main/bbn-test-5/babylon-node/README.md).
 
-As mentioned in the prerequisites, you need access to a Babylon node 
-(either remote or on your machine) because we need the `babylond` binary to 
-import the private key into the Cosmos keyring. The `covenant-signer` itself 
-does not currently support key imports. For help setting up a Babylon node, 
-refer to the 
-[Babylon Node Setup Guide](https://github.com/babylonlabs-io/networks/bbn-test-5/babylon-node/README.md).
-
-Now that we have the derived private key, we'll use the `babylond` binary from 
-your Babylon node installation to import it into the Cosmos keyring. Navigate to
-your Babylon node directory and run:
+One you have the `babylond` binary installed,
+navigate to the directory you want to set up your keyring and run:
 
 ```shell
 babylond keys import-hex cov fe1c56c494c730f13739c0655bf06e615409870200047fc65cdf781837cf7f06 --keyring-backend file
@@ -254,13 +234,12 @@ This command:
 - Uses the secure `file` backend which encrypts the key on disk
 - Will prompt you for a passphrase to encrypt the key
 
-The passphrase you set here will be needed later when unlocking the signer to 
-perform signing operations.
+The passphrase you set here will be needed later on, keep this in mind.
 
 > ⚡ Note: Use the `file` backend to store the private key in encrypted form on 
-disk. When running `import-hex` with the encrypted file backend, you will be 
-prompted for a passphrase. This passphrase will be required to unlock the signer 
-later.
+> disk. When running `import-hex` with the encrypted file backend, you will be 
+> prompted for a passphrase. This passphrase will be required to unlock the signer 
+> later.
 
 To confirm that the import was successful, run:
 
@@ -275,7 +254,6 @@ The output will display the details of the imported key:
     name: cov
     pubkey: '{"@type":"/cosmos.crypto.secp256k1.PubKey","key":"Ajp5tUbHnX98X/IGINkUtc9yUGMdEvbiZCftnT+Yxcyx"}'
     type: local
-
 ```
 
 Congratulations! You have successfully imported your key.
@@ -322,11 +300,11 @@ port = 2113
 
 Below are brief explanations of the configuration entries:
 
-- `keystore-type`: Type of keystore used, which is "cosmos"
+- `keystore-type`: Type of keystore used. Should be set to `"cosmos"`
 - `key-directory`: Path where keys are stored on the filesystem.
 - `keyring-backend`: Backend system for key management, e.g., "file", "os".
 - `key-name`: Name of the key used for signing transactions.
-- `chain-id`: Identifier of the blockchain network.
+- `chain-id`: The Chain ID of the Babylon network you connect to.
 - `host` (server-config): IP address where the server listens, typically "127.0.0.1" for local access.
 - `port` (server-config): TCP port number for the server.
 - `host` (metrics): IP address for the Prometheus metrics server, typically "127.0.0.1".
@@ -334,7 +312,7 @@ Below are brief explanations of the configuration entries:
 
 ### 4.2. Starting the daemon
 
-We then will run the following command to start the daemon from the 
+We will then run the following command to start the daemon from the 
 `covenant-signer` directory:
 
 ```shell
@@ -395,8 +373,3 @@ the covenant key.
 
 Congratulations! You have successfully set up the covenant signer and are now able 
 to sign transactions with the covenant key.
-
-<!-- TODO: Some nice additional sections
-* Testing the setup: e.g. through a healthcheck endpoint
-* Prometheus metrics and logs -->
-<!-- RESPONSE: should i put this in an issue  for now as its not a priority?-->
