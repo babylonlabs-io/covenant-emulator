@@ -99,12 +99,7 @@ func (kc *ChainKeyringController) CreateChainKey(passphrase, hdPath string) (*ty
 	switch v := privKey.(type) {
 	case *sdksecp256k1.PrivKey:
 		sk, pk := btcec.PrivKeyFromBytes(v.Key)
-		return &types.ChainKeyInfo{
-			Name:       kc.keyName,
-			PublicKey:  pk,
-			PrivateKey: sk,
-			Mnemonic:   mnemonic,
-		}, nil
+		return types.NewChainKeyInfo(record, pk, sk)
 	default:
 		return nil, fmt.Errorf("unsupported key type in keyring")
 	}

@@ -15,8 +15,9 @@ import (
 )
 
 type covenantKey struct {
-	Name      string `json:"name"`
-	PublicKey string `json:"public-key"`
+	Name        string `json:"name"`
+	PublicKey   string `json:"public-key-hex"`
+	BabylonAddr string `json:"babylon-address"`
 }
 
 var createKeyCommand = cli.Command{
@@ -88,8 +89,9 @@ func createKey(ctx *cli.Context) error {
 	bip340Key := types.NewBIP340PubKeyFromBTCPK(keyPair.PublicKey)
 	printRespJSON(
 		&covenantKey{
-			Name:      ctx.String(keyNameFlag),
-			PublicKey: bip340Key.MarshalHex(),
+			Name:        ctx.String(keyNameFlag),
+			PublicKey:   bip340Key.MarshalHex(),
+			BabylonAddr: keyPair.Address,
 		},
 	)
 
@@ -157,15 +159,25 @@ func showKey(ctx *cli.Context) error {
 		return err
 	}
 
+	r, err := krController.KeyRecord()
+	if err != nil {
+		return err
+	}
+
+	babylonAddr, err := r.GetAddress()
+	if err != nil {
+		return err
+	}
+
 	_, pk := btcec.PrivKeyFromBytes(privKey.Key)
 	bip340Key := types.NewBIP340PubKeyFromBTCPK(pk)
 	printRespJSON(
 		&covenantKey{
-			Name:      ctx.String(keyNameFlag),
-			PublicKey: bip340Key.MarshalHex(),
+			Name:        ctx.String(keyNameFlag),
+			PublicKey:   bip340Key.MarshalHex(),
+			BabylonAddr: babylonAddr.String(),
 		},
 	)
-
 	return nil
 }
 
