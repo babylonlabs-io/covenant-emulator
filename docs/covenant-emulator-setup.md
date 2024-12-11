@@ -167,16 +167,24 @@ signs signatures and interacts with Babylon. Use the following command to genera
 the key:
 
 ```bash
-covd create-key --key-name <name> --chain-id bbn-test-5 --keyring-backend <backend>
+covd create-key --key-name <name> --chain-id <chain-id> --keyring-backend <backend>
 {
     "name": "covenant-key",
-    "public-key": "9bd5baaba3d3fb5a8bcb8c2995c51793e14a1e32f1665cade168f638e3b15538"
+    "public-key-hex": "6dd4c9415a4091b74f45fdce71f5b8eebe743e5990b547009ff1dce8393d5df2",
+    "babylon-address": "bbn1gw5ns0kmcjj8y0edu5h4nkkw4aq263eyx2ynnp"
 }
 ```
 
+Parameters:
+- `--key-name`: Name for the key in the keyring
+- `--chain-id`: ID of the Babylon chain (e.g., bbn-test-5)
+- `--keyring-backend`: Backend for key storage, we will use `file` as it is the 
+  most secure option.
+
 After executing the above command, the key name will be saved in the config file
 created in the last [step](#42-configure-the-covenant-emulator).
-Note that the `public-key` in the output should be used as one of the inputs of
+
+**Note:** that the `public-key` in the output should be used as one of the inputs of
 the genesis of the Babylon chain.
 
 Also, this key will be used to pay for the fees due to the daemon submitting 
