@@ -169,7 +169,7 @@ the key:
 ```bash
 covd create-key --key-name <name> --chain-id <chain-id> --keyring-backend <backend>
 {
-    "name": "covenant-key",
+    "name": "babylon-tx-key",
     "public-key-hex": "6dd4c9415a4091b74f45fdce71f5b8eebe743e5990b547009ff1dce8393d5df2",
     "babylon-address": "bbn1gw5ns0kmcjj8y0edu5h4nkkw4aq263eyx2ynnp"
 }
@@ -184,8 +184,8 @@ Parameters:
 After executing the above command, the key name will be saved in the config file
 created in the last [step](#42-configure-the-covenant-emulator).
 
-**Note:** that the `public-key` in the output should be used as one of the inputs of
-the genesis of the Babylon chain.
+**⚡ Note:** that the `public-key` in the output should be used as one of the 
+inputs of the genesis of the Babylon chain.
 
 Also, this key will be used to pay for the fees due to the daemon submitting 
 signatures to Babylon.
