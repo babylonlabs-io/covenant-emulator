@@ -167,7 +167,7 @@ signs signatures and interacts with Babylon. Use the following command to genera
 the key:
 
 ```bash
-$ covd create-key --key-name <name> --chain-id bbn-test-5 --keyring-backend <backend>
+covd create-key --key-name <name> --chain-id bbn-test-5 --keyring-backend <backend>
 {
     "name": "covenant-key",
     "public-key": "9bd5baaba3d3fb5a8bcb8c2995c51793e14a1e32f1665cade168f638e3b15538"
@@ -192,7 +192,7 @@ address.
 You can start the covenant emulator daemon using the following command:
 
 ```bash
-$ covd start
+covd start
 2024-01-05T05:59:09.429615Z	info	Starting Covenant Emulator
 2024-01-05T05:59:09.429713Z	info	Covenant Emulator Daemon is fully active!
 ```

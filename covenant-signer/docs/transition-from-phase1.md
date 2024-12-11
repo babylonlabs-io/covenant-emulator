@@ -225,7 +225,9 @@ One you have the `babylond` binary installed,
 navigate to the directory you want to set up your keyring and run:
 
 ```shell
-babylond keys import-hex cov fe1c56c494c730f13739c0655bf06e615409870200047fc65cdf781837cf7f06 --keyring-backend file
+babylond keys import-hex cov fe1c56c494c730f13739c0655bf06e615409870200047fc65cdf781837cf7f06 \
+    --keyring-backend file \
+    --keyring-dir /path/to/your/keyring/directory
 ```
 
 This command:
@@ -236,10 +238,12 @@ This command:
 
 The passphrase you set here will be needed later on, keep this in mind.
 
-> ⚡ Note: Use the `file` backend to store the private key in encrypted form on 
-> disk. When running `import-hex` with the encrypted file backend, you will be 
-> prompted for a passphrase. This passphrase will be required to unlock the signer 
-> later.
+> ⚡ Note: While both `os` and `file` backends are supported, we recommend 
+using the `file` backend as it has been thoroughly tested across different 
+environments. The `file` backend stores the private key in encrypted form 
+on disk. When running `import-hex` with the `file` backend, you will be 
+prompted for a passphrase. This passphrase will be required to unlock the 
+signer later.
 
 To confirm that the import was successful, run:
 
@@ -312,8 +316,7 @@ Below are brief explanations of the configuration entries:
 
 ### 4.2. Starting the daemon
 
-We will then run the following command to start the daemon from the 
-`covenant-signer` directory:
+We will then run the following command to start the daemon:
 
 ```shell
 covenant-signer start --config ./path/to/config.toml
