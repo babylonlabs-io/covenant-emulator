@@ -374,6 +374,8 @@ curl -X POST http://127.0.0.1:9791/v1/sign-transactions \
       }'
 ```
 
+<!-- TODO: add in a real staking tx to test -->
+
 The above command will generate a signature for the provided
 transactions and return it in JSON format.
 
