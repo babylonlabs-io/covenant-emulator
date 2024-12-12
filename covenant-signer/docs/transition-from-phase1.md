@@ -100,7 +100,7 @@ to the machine that holds your `bitcoind` wallet and
 know the Bitcoin address associated with your covenant's public key.
 If you need a refresher on the functionalities supported by your
 `bitcoind` wallet or how you previously set it up, you can refer
-to the relevant phase-1 guide.
+to the relevant [phase-1 guide](https://github.com/babylonlabs-io/covenant-signer/blob/main/docs/deployment.md#2-bitcoind-setup).
 
 In the following, we'll go through all the necessary steps
 to transition your wallet.
@@ -129,8 +129,8 @@ which takes your covenant Bitcoin address as a parameter. As mentioned above,
 you will need access to the Bitcoin key you set up your covenant with.
 
 ```shell
-bitcoin-cli getaddressinfo bcrt1qazasawj3ard0ffwj04zpxlw2pt9cp7kwmnqyvk | jq .hdkeypath
-"m/84h/1h/0h/0/0"
+bitcoin-cli -datadir=./1/ getaddressinfo bcrt1q3pxe327k2h3rzcq77w5y7dz7uwl6wve664n490 | \ 
+jq '.hdkeypath | sub("^m/"; "") | sub("/[^/]+$"; "")'
 ```
 
 In the above command, we use the `jq` utility to extract only the relevant `hdkeypath`
@@ -151,7 +151,7 @@ This will provide you with the descriptor needed to derive the private key.
 
 Since Bitcoin wallets typically contain multiple descriptors 
 (usually 6 by default), we use `jq` to find the specific descriptor that
-matches our previously saved `hdkeypath` in this example `(84h/1h/0h/0/0)` 
+matches our previously saved `hdkeypath` in this example `(84h/1h/0h/0)` 
 and extract the master private key from it.
 
 So, before you run this command you will need to replace the `<hdkeypath>` below 
@@ -266,10 +266,17 @@ Congratulations! You have successfully imported your key.
 ### 4.1. Configuration
 
 Next, we can return to the covenant signer directory 
-and create your own configuration file.
+and create your own configuration file. Use the 
+following command to dump the configuration template:
 
-Use the example configuration [file](../example/config.toml) to create your own 
-configuration file. Then, replace the placeholder values with your own 
+```shell
+covenant-signer dump-cfg --config <path-to-config-file>
+```
+
+This will create a configuration file, from the example configuration, 
+in the specified path.
+
+Replace the placeholder values with your own 
 configuration. This can be placed directly in the `covenant-signer` directory.
 
 ```toml
@@ -305,7 +312,9 @@ port = 2113
 Below are brief explanations of the configuration entries:
 
 - `keystore-type`: Type of keystore used. Should be set to `"cosmos"`
-- `key-directory`: Path where keys are stored on the filesystem.
+- `key-directory`: Path where keys are stored. Do not include the keyring 
+  backend type in the path (e.g., use `/path/to/keys` not 
+  `/path/to/keys/keyring-file`).
 - `keyring-backend`: Backend system for key management, e.g., "file", "os".
 - `key-name`: Name of the key used for signing transactions.
 - `chain-id`: The Chain ID of the Babylon network you connect to.
@@ -340,6 +349,10 @@ the covenant keyring passphrase.
 ```shell
 curl -X POST http://127.0.0.1:9791/v1/unlock -d '{"passphrase": "<passphrase>"}'
 ```
+
+> ⚡ Note: Even if you provide the passphrase in the curl command to unlock the 
+> keyring, the CLI configuration for starting the service will still prompt you 
+> to enter the passphrase interactively.
 
 You can sign transactions by invoking the `v1/sign-transactions` endpoint,
 which expects staking and unbonding transactions in hex format.

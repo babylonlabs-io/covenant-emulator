@@ -17,7 +17,7 @@ This guide outlines the transition from solely using the phase-1 covenant signer
 to the phase-2 covenant emulator full setup.
 
 The [phase-1 covenant signer](https://github.com/babylonlabs-io/covenant-signer), 
-was limited to signing unbonding signatures.  Phase-2 requires additional 
+was limited to signing unbonding signatures. Phase-2 requires additional 
 functionality that is covered by the 
 [covenant emulator](https://github.com/babylonlabs-io/covenant-emulator), which 
 retrieves delegations from Babylon chain and signs them by communicating with the 
@@ -178,8 +178,8 @@ covd create-key --key-name <name> --chain-id <chain-id> --keyring-backend <backe
 Parameters:
 - `--key-name`: Name for the key in the keyring
 - `--chain-id`: ID of the Babylon chain (e.g., bbn-test-5)
-- `--keyring-backend`: Backend for key storage, we will use `file` as it is the 
-  most secure option.
+- `--keyring-backend`: Backend for key storage, we will use `test` 
+  for this guide.
 
 After executing the above command, the key name will be saved in the config file
 created in the last [step](#42-configure-the-covenant-emulator).
