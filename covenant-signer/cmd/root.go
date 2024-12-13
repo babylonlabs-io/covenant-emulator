@@ -5,6 +5,7 @@ import (
 
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/cosmos/cosmos-sdk/client"
+	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/spf13/cobra"
 )
 
@@ -16,8 +17,8 @@ var (
 	//   C:\Users\<username>\AppData\Local\signer on Windows
 	//   ~/.signer on Linux
 	//   ~/Library/Application Support/signer on MacOS
-	dafaultConfigDir  = btcutil.AppDataDir("signer", false)
-	dafaultConfigPath = filepath.Join(dafaultConfigDir, "config.toml")
+	defaultConfigDir  = btcutil.AppDataDir("signer", false)
+	defaultConfigPath = filepath.Join(defaultConfigDir, "config.toml")
 
 	rootCmd = NewRootCmd()
 )
@@ -31,6 +32,7 @@ func NewRootCmd() *cobra.Command {
 		PersistentPreRunE: PersistClientCtx(client.Context{}),
 	}
 
+	cmd.PersistentFlags().String(flags.FlagHome, defaultConfigDir, "The application home directory")
 	return cmd
 }
 
@@ -43,7 +45,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(
 		&configPath,
 		configPathKey,
-		dafaultConfigPath,
+		defaultConfigPath,
 		"path to the configuration file",
 	)
 }
