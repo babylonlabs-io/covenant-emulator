@@ -1,6 +1,6 @@
 # Covenant Signer Setup
 
-> ⚡ Note: This document is intended for covenant committee members that
+> **⚡ Note:** This document is intended for covenant committee members that
 > are setting up a phase-2 stack based on an existing phase-1 stack.
 
 The Covenant Signer is a daemon program in the Covenant Emulator toolset
@@ -12,7 +12,7 @@ It prioritizes security through isolation, ensuring that private key handling
 is confined to an instance with minimal connectivity and simpler application 
 logic.
 
-> ⚡ Note: This program is a separate implementation from the
+> **⚡ Note:** This program is a separate implementation from the
 > [covenant signer](https://github.com/babylonlabs-io/covenant-signer/)
 > program used for phase-1. All covenant committee members
 > are required to transition their keys to this program to participate
@@ -44,7 +44,7 @@ network you intend to operate your covenant signer on.
 2. You have access to the private Bitcoin key you
 set up your covenant with.
 3. A connection to a Babylon node. To run your own node, please refer to the 
-[Babylon Node Setup Guide](https://github.com/babylonlabs-io/networks/blob/main/bbn-test-5/bbn-test-5/babylon-node/README.md).
+[Babylon Node Setup Guide](https://github.com/babylonlabs-io/networks/blob/main/bbn-test-5/babylon-node/README.md).
 
 For a refresher on setting up the Bitcoin node, refer to the 
 [deployment guide of your phase-1 covenant signer setup](https://github.com/babylonlabs-io/covenant-signer/blob/main/docs/deployment.md#2-bitcoind-setup).
@@ -107,7 +107,8 @@ to the machine that holds your `bitcoind` wallet and
 know the Bitcoin address associated with your covenant's public key.
 If you need a refresher on the functionalities supported by your
 `bitcoind` wallet or how you previously set it up, you can refer
-to the relevant [phase-1 guide](https://github.com/babylonlabs-io/covenant-signer/blob/main/docs/deployment.md#2-bitcoind-setup).
+to the relevant
+[phase-1 guide](https://github.com/babylonlabs-io/covenant-signer/blob/main/docs/deployment.md#2-bitcoind-setup).
 
 In the following, we'll go through all the necessary steps
 to transition your wallet.
@@ -136,7 +137,7 @@ which takes your covenant Bitcoin address as a parameter. As mentioned above,
 you will need access to the Bitcoin key you set up your covenant with.
 
 ```shell
-bitcoin-cli -datadir=./1/ getaddressinfo bcrt1q3pxe327k2h3rzcq77w5y7dz7uwl6wve664n490 | \ 
+bitcoin-cli -datadir=./1/ getaddressinfo <address> | \ 
 jq '.hdkeypath | sub("^m/"; "") | sub("/[^/]+$"; "")'
 ```
 
@@ -169,9 +170,11 @@ bitcoin-cli listdescriptors true | jq -r '
   .descriptors[] |
   select(.desc | contains("<hdkeypath>")) |
   .desc
-' descriptors.json
-{
-  wpkh(tprv8ZgxMBicQKsPe9aCeUQgMEMy2YMZ6PHnn2iCuG12y5E8oYhYNEvUqUkNy6sJ7ViBmFUMicikHSK2LBUNPx5do5EDJBjG7puwd6azci2wEdq/84h/1h/0h/0/*)#sachkrde
+'
+The output will be: 
+
+```shell
+wpkh(tprv8ZgxMBicQKsPe9aCeUQgMEMy2YMZ6PHnn2iCuG12y5E8oYhYNEvUqUkNy6sJ7ViBmFUMicikHSK2LBUNPx5do5EDJBjG7puwd6azci2wEdq/84h/1h/0h/0/*)#sachkrde
 }
 ```
 
@@ -198,10 +201,13 @@ Use the following command to derive the covenant private key:
 covenant-signer derive-child-key \
     tprv8ZgxMBicQKsPe9aCeUQgMEMy2YMZ6PHnn2iCuG12y5E8oYhYNEvUqUkNy6sJ7ViBmFUMicikHSK2LBUNPx5do5EDJBjG7puwd6azci2wEdq \
     84h/1h/0h/0/0
-{
-  "derived_private_key": "fe1c56c494c730f13739c0655bf06e615409870200047fc65cdf781837cf7f06",
-  "derived_public_key": "023a79b546c79d7f7c5ff20620d914b5cf7250631d12f6e26427ed9d3f98c5ccb1"
-}
+```
+
+The output will be:
+
+```shell
+derived_private_key: fe1c56c494c730f13739c0655bf06e615409870200047fc65cdf781837cf7f06
+derived_public_key: 023a79b546c79d7f7c5ff20620d914b5cf7250631d12f6e26427ed9d3f98c5ccb1
 ```
 
 Parameters:
@@ -210,29 +216,21 @@ Bitcoin wallet (first parameter)
 - `<derivation-path>`: The HD derivation path that specifies how to derive 
 the child key (second parameter)
 
-To verify, you can execute the following
+To verify, you can execute the following:
 
 ```shell
 bitdoind getaddressinfo <address> | jq .publickey
 ```
 
-If the public key matches the derived_public_key output from the 
+If the public key matches the `derived_public_key`s output from the 
 `derive-child-key` command, the verification is successful.
 
 #### Step 4: Import the private key into a Cosmos Keyring
 
 Next, we are going to import the derived private key into the Cosmos keyring.
-At the moment, the `covenant-signer` has not implemented functionality
-for Cosmos key imports. To overcome this, we are going to utilize
-the Babylon node binary `babylond` which has support for them.
-You can install the binary by following the first section of the
-[Babylon Node Setup Guide](https://github.com/babylonlabs-io/networks/blob/main/bbn-test-5/babylon-node/README.md).
-
-One you have the `babylond` binary installed,
-navigate to the directory you want to set up your keyring and run:
 
 ```shell
-babylond keys import-hex cov fe1c56c494c730f13739c0655bf06e615409870200047fc65cdf781837cf7f06 \
+covenant-signer keys import-hex cov fe1c56c494c730f13739c0655bf06e615409870200047fc65cdf781837cf7f06 \
     --keyring-backend file \
     --keyring-dir /path/to/your/keyring/directory
 ```
@@ -243,25 +241,27 @@ This command:
 - Uses the secure `file` backend which encrypts the key on disk
 - Will prompt you for a passphrase to encrypt the key
 
-The passphrase you set here will be needed later on, keep this in mind.
+Note that the passphrase you set here will be needed later on
+to unlock the keyring.
 
-> ⚡ Note: While both `os` and `file` backends are supported, we recommend 
-using the `file` backend as it has been thoroughly tested across different 
-environments. The `file` backend stores the private key in encrypted form 
-on disk. When running `import-hex` with the `file` backend, you will be 
-prompted for a passphrase. This passphrase will be required to unlock the 
-signer later.
+> **⚡ Note:** While both `os` and `file` backends are supported, the authors
+> of the docs have more thoroughly tested the `file` backend across
+> different environments.
+> The `file` backend stores the private key in encrypted form 
+> on disk. When running `import-hex` with the `file` backend, you will be 
+> prompted for a passphrase. This passphrase will be required to unlock the 
+> signer later.
 
 To confirm that the import was successful, run:
 
 ```shell
-babylond keys show cov
+covenant-signer keys show cov
 ```
 
 The output will display the details of the imported key:
 
 ```shell
-    address: bbn1azasawj3ard0ffwj04zpxlw2pt9cp7kwjcdqmc
+  - address: bbn1azasawj3ard0ffwj04zpxlw2pt9cp7kwjcdqmc
     name: cov
     pubkey: '{"@type":"/cosmos.crypto.secp256k1.PubKey","key":"Ajp5tUbHnX98X/IGINkUtc9yUGMdEvbiZCftnT+Yxcyx"}'
     type: local
@@ -284,24 +284,28 @@ This will create a configuration file, from the example configuration,
 in the specified path.
 
 Replace the placeholder values with your own 
-configuration. This can be placed directly in the `covenant-signer` directory.
+configuration. This configuration can be placed directly in the 
+`covenant-signer` directory.
 
 ```toml
 [keystore]
+# Type of keystore to use for managing private keys. Currently only 
+# "cosmos" is supported, which uses the Cosmos SDK keyring system for 
+# secure key storage.
 keystore-type = "cosmos"
 
 [keystore.cosmos]
 # pointing to the directory where the key is stored, unless specified otherwise
 key-directory = "/path/to/keydir"
 
-# the backend to be used for storing the key, in this case file
+# the backend to be used for storing the key, in this case `file`
 keyring-backend = "file"
 
-# the name of the key you used when importing the key
+# the key name you specified when importing your covenant key
 key-name = "your-key-name"
 
-# the chain id of the chain to be used
-chain-id = "your-chain-id"
+# the chain id of the chain the covenant will connect to
+chain-id = "network-chain-id"
 
 [server-config]
 # The IP address where the covenant-signer server will listen
@@ -312,7 +316,7 @@ port = 9791
 [metrics]
 # The IP address where the Prometheus metrics server will listen
 host = "127.0.0.1"
-# This port is used to expose metrics that can be scraped by Prometheus
+# The TCP port number where the Prometheus metrics server will listen
 port = 2113
 ```
 

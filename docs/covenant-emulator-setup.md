@@ -21,8 +21,10 @@ To successfully complete this guide, you will need:
   with the url that you configured it to. Please follow the 
   [covenant signer setup guide](./covenant-signer-setup.md) to 
   complete the setup of the covenant signer with your keys before proceeding.
+  Note that the phase-2 covenant-signer program is a different one than the one
+  used doing phase-1
 2. A connection to a Babylon node. To run your own node, please refer to the 
-  [Babylon Node Setup Guide](https://github.com/babylonlabs-io/networks/blob/sam/bbn-test-5/bbn-test-5/babylon-node/README.md).
+  [Babylon Node Setup Guide](https://github.com/babylonlabs-io/networks/blob/main/bbn-test-5/bbn-test-5/babylon-node/README.md).
 
 ## 2. Install covenant emulator binary
 
