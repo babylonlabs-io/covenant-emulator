@@ -1,43 +1,30 @@
 # Covenant Emulator Setup
 
+This document outlines the setup of the covenant-emulator
+daemon program.
+
 ## Table of Contents 
 
-1. [Purpose of this guide](#1-purpose-of-this-guide)
-2. [Prerequesites](#2-prerequisites)
-3. [Install Covenant Emulator Binary](#3-install-covenant-emulator-binary)
-4. [Setting up the Covenant Emulator Program](#4-setting-up-the-covenant-emulator-program)
-	1. [Initialize directories](#41-initialize-directories)
-	2. [Configure the covenant emulator](#42-configure-the-covenant-emulator)
-5. [Generate key pairs](#5-generate-key-pairs)
-6. [Start the emulator daemon](#6-start-the-emulator-daemon)
+1. [Prerequesites](#1-prerequisites)
+2. [Install Covenant Emulator Binary](#2-install-covenant-emulator-binary)
+3. [Setting up the Covenant Emulator Program](#3-setting-up-the-covenant-emulator-program)
+	1. [Initialize directories](#31-initialize-directories)
+	2. [Configure the covenant emulator](#32-configure-the-covenant-emulator)
+4. [Generate key pairs](#4-generate-key-pairs)
+5. [Start the emulator daemon](#5-start-the-emulator-daemon)
 
-## 1. Purpose of this guide
-
-This guide outlines the transition from solely using the phase-1 covenant signer
-to the phase-2 covenant emulator full setup.
-
-The [phase-1 covenant signer](https://github.com/babylonlabs-io/covenant-signer), 
-was limited to signing unbonding signatures. Phase-2 requires additional 
-functionality that is covered by the 
-[covenant emulator](https://github.com/babylonlabs-io/covenant-emulator), which 
-retrieves delegations from Babylon chain and signs them by communicating with the 
-a new [covenant signer daemon](https://github.com/babylonlabs-io/covenant-emulator/tree/main/covenant-signer), specifically focused on phase-2 functionality.
-
-In this guide, we will cover exporting the key from the Bitcoin node and importing 
-it into the new integrated keyring in the covenant signer. 
-
-## 2. Prerequisites
+## 1. Prerequisites
 
 To successfully complete this guide, you will need:
 
 1. A running instance of the [covenant signer](../covenant-signer) 
   with the url that you configured it to. Please follow the 
-  [covenant signer setup guide](covenant-signer/README.md) to 
+  [covenant signer setup guide](./covenant-signer-setup.md) to 
   complete the setup of the covenant signer with your keys before proceeding.
 2. A connection to a Babylon node. To run your own node, please refer to the 
   [Babylon Node Setup Guide](https://github.com/babylonlabs-io/networks/blob/sam/bbn-test-5/bbn-test-5/babylon-node/README.md).
 
-## 3. Install covenant emulator binary
+## 2. Install covenant emulator binary
 
 If you haven't already, download [Golang 1.23](https://go.dev/dl).
 
@@ -76,9 +63,9 @@ export PATH=$HOME/go/bin:$PATH
 echo 'export PATH=$HOME/go/bin:$PATH' >> ~/.profile
 ```
 
-## 4. Setting up the covenant emulator program
+## 3. Setting up the covenant emulator program
 
-### 4.1. Initialize directories
+### 3.1. Initialize directories
 
 Next, we initialize the node and home directory. It should generate all of the 
 necessary files such as `covd.config`, these files will live in the `<path>` 
@@ -96,7 +83,7 @@ $ ls <path>
   ├── logs      # Covd logs
 ```
 
-### 4.2. Configure the covenant emulator
+### 3.2. Configure the covenant emulator
 
 As you have already set up the covenant signer, you can now configure the covenant 
 emulator to use it. 
@@ -160,7 +147,7 @@ Below are brief explanations of the configuration entries:
 Ensure that the covenant signer is running and unlocked before proceeding 
 otherwise you will be unable to run the emulator.
 
-## 5. Generate key pairs
+## 4. Generate key pairs
 
 The covenant emulator daemon requires the existence of a Babylon keyring that 
 signs signatures and interacts with Babylon. Use the following command to generate 
@@ -195,7 +182,7 @@ To check your balance, View your account on the
 address.
 
 
-## 6. Start the emulator daemon
+## 5. Start the emulator daemon
 
 You can start the covenant emulator daemon using the following command:
 

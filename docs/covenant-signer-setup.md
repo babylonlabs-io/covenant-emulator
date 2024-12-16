@@ -1,4 +1,7 @@
-# Covenant Signer
+# Covenant Signer Setup
+
+> ⚡ Note: This document is intended for covenant committee members that
+> are setting up a phase-2 stack based on an existing phase-1 stack.
 
 The Covenant Signer is a daemon program in the Covenant Emulator toolset
 that is responsible for securely managing the private key of the
@@ -15,8 +18,12 @@ logic.
 > are required to transition their keys to this program to participate
 > in phase-2.
 
-This document is intended for covenant committee members that
-are transitioning their phase-1 setup to the phase-2 one.
+Previously, private keys were stored in the Bitcoin wallet using PSBT (Partially
+Signed Bitcoin Transactions) for signing operations. The new design uses a
+dedicated Covenant Signer that acts as a remote signing service, storing private
+keys in an encrypted Cosmos SDK keyring. This approach not only improves security
+through isolation but also enables the creation of both Schnorr signatures and
+Schnorr adaptor signatures required for covenant operations.
 
 ## Table of Contents
 

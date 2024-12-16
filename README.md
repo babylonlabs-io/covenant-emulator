@@ -5,7 +5,7 @@
 The covenant emulation toolset is a set of programs operated by every member of 
 the covenant committee of the BTC staking protocol. The role of the covenant 
 committee is to protect PoS systems against attacks from the BTC stakers and 
-validators. It achieves this by representing itself as an M-out-of-N 
+finality providers. It achieves this by representing itself as an M-out-of-N 
 multi-signature that co-signs BTC transactions with the BTC staker.
 
 More specifically, through co-signing, the covenant committee enforces the 
@@ -63,58 +63,34 @@ Changing the covenant committee requires a
 [governance proposal](https://docs.cosmos.network/v0.50/build/modules/gov). 
 Each committee member runs two components:
 
-1. The `covd` daemon (short for `covenant-emulator-daemon`), which constantly 
-monitors staking requests on the Babylon chain, verifies the validity of the 
-Bitcoin transactions that are involved with them, and sends the necessary 
-signatures if verification is passed.
-2. The `covenant-signer` daemon, which securely manages the private key and 
-performs signing operations in an isolated environment.
+1. **Covenant Signer**: The Covenant Signer operates in tandem with the Covenant Emulator and
+   is purpose-built to securely manage private keys for signing operations.
+   It prioritizes security through isolation,
+   ensuring that private key handling is confined to an instance with
+   minimal connectivity and simpler application logic compared to the
+   Covenant Emulator daemon.
+2. **Covenant Emulator**: The covenant emulator constantly monitors staking
+   requests on the Babylon chain, verifies the validity of the
+   Bitcoin transactions that are involved with them,
+   and if verification is passed,
+   generates the necessary signatures through a connection to the
+   covenant-signer and sends them to the Babylon blockchain. Specifically,
+   it deals with the following signatures:
+   1. **Slashing signature**. This signature is an [adaptor signature](https://bitcoinops.org/en/topics/adaptor-signatures/),
+      which signs over the slashing path of the staking transaction. Due to the
+      [recoverability](https://github.com/LLFourn/one-time-VES/blob/master/main.pdf)
+      of the adaptor signature, it also prevents a malicious finality provider from
+      irrationally slashing delegations.
+   2. **Unbonding signature**. This signature is a [Schnorr signature](https://en.wikipedia.org/wiki/Schnorr_signature),
+      which is needed for the staker to unlock their funds before the original
+      staking time lock expires (on-demand unbonding).
+   3. **Unbonding slashing signature**. This signature is also an adaptor
+      signature, which has similar usage to the **slashing signature** but signs over
+      the slashing path of the unbonding transaction.
 
 The staking requests can only become active and receive voting power if a 
 sufficient quorum of covenant committee members have verified the validity 
 of the transactions and sent corresponding signatures.
-
-
-## Covenant Emulator Daemon
-
-Upon a pending staking request being found, the covenant emulation daemon 
-(`covd`), validates it against the spending rules defined in
-[Staking Script specification](https://github.com/babylonlabs-io/babylon/blob/dev/docs/staking-script.md),
-and sends three types of signatures to the Babylon chain:
-
-1. **Slashing signature**. This signature is an [adaptor signature](https://bitcoinops.org/en/topics/adaptor-signatures/),
-which signs over the slashing path of the staking transaction. Due to the
-[recoverability](https://github.com/LLFourn/one-time-VES/blob/master/main.pdf)
-of the adaptor signature, it also prevents a malicious finality provider from
-irrationally slashing delegations.
-2. **Unbonding signature**. This signature is a [Schnorr signature](https://en.wikipedia.org/wiki/Schnorr_signature),
-which is needed for the staker to unlock their funds before the original 
-staking time lock expires (on-demand unbonding).
-3. **Unbonding slashing signature**. This signature is also an adaptor
-signature, which has similar usage to the **slashing signature** but signs over
-the slashing path of the unbonding transaction.
-
-For instructions on how to run the Covenant Emulator, please refer to the 
-[Covenant Emulator](./docs/configure-emulator.md).
-
-## Covenant Signer
-
-The Covenant Signer operates in tandem with the Covenant Emulator and
-is purpose-built to securely manage private keys for signing operations.
-It prioritizes security through isolation,
-ensuring that private key handling is confined to an instance with
-minimal connectivity and simpler application logic compared to the
-Covenant Emulator daemon.
-
-Previously, private keys were stored in the Bitcoin wallet using PSBT (Partially 
-Signed Bitcoin Transactions) for signing operations. The new design uses a 
-dedicated Covenant Signer that acts as a remote signing service, storing private 
-keys in an encrypted Cosmos SDK keyring. This approach not only improves security 
-through isolation but also enables the creation of both Schnorr signatures and 
-Schnorr adaptor signatures required for covenant operations.
-
-For instructions on how to run the Covenant Signer, please refer to the 
-[Covenant Signer](./covenant-signer/README.md).
 
 ## Interaction Between Emulator and Signer
 
