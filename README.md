@@ -111,3 +111,10 @@ secure Covenant Signer while the emulator handles the blockchain interaction
 and validation logic.
 
 ![Covenant Architecture](./static/covenant.png)
+
+## Covenant Emulator Stack Setup
+To set up your covenant emulator stack,
+please follow the instructions in the following documents
+(in sequence):
+1. [Covenant Signer Setup](./docs/covenant-signer-setup.md)
+2. [Covenant Emulator Setup](./docs/covenant-emulator-setup.md)

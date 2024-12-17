@@ -40,11 +40,11 @@ Schnorr adaptor signatures required for covenant operations.
 This guide requires that:
 
 1. You have a Bitcoin node setup for the Bitcoin
-network you intend to operate your covenant signer on.
+  network you intend to operate your covenant signer on.
 2. You have access to the private Bitcoin key you
-set up your covenant with.
+  set up your covenant with.
 3. A connection to a Babylon node. To run your own node, please refer to the 
-[Babylon Node Setup Guide](https://github.com/babylonlabs-io/networks/blob/main/bbn-test-5/babylon-node/README.md).
+  [Babylon Node Setup Guide](https://github.com/babylonlabs-io/networks/blob/main/bbn-test-5/babylon-node/README.md).
 
 For a refresher on setting up the Bitcoin node, refer to the 
 [deployment guide of your phase-1 covenant signer setup](https://github.com/babylonlabs-io/covenant-signer/blob/main/docs/deployment.md#2-bitcoind-setup).
@@ -141,8 +141,9 @@ bitcoin-cli -datadir=./1/ getaddressinfo <address> | \
 jq '.hdkeypath | sub("^m/"; "") | sub("/[^/]+$"; "")'
 ```
 
-In the above command, we use the `jq` utility to extract only the relevant `hdkeypath`
-information, which in this example is `84h/1h/0h/0/0` (the initial `m/` can be ignored).
+In the above command, we use the `jq` utility to extract only the relevant 
+`hdkeypath` information, which in this example is `84h/1h/0h/0/0` 
+(the initial `m/` can be ignored).
 
 Make note of the `hdkeypath` information - you'll need it later when
 deriving the covenant private key from the master key for verification purposes.
@@ -150,9 +151,9 @@ deriving the covenant private key from the master key for verification purposes.
 #### Step 3: Retrieve the master private key
 
 In this step,
-we are going to retrieve the **base58-encoded master private key** from the Bitcoin wallet. 
-This key will be used to derive the covenant private key, which can then be 
-imported directly into the Cosmos keyring.
+we are going to retrieve the **base58-encoded master private key** from the 
+Bitcoin wallet. This key will be used to derive the covenant private key, 
+which can then be imported directly into the Cosmos keyring.
 
 The command below will list all descriptors in the wallet with private keys. 
 This will provide you with the descriptor needed to derive the private key. 
@@ -219,7 +220,7 @@ the child key (second parameter)
 To verify, you can execute the following:
 
 ```shell
-bitdoind getaddressinfo <address> | jq .publickey
+bitcoin-cli getaddressinfo <address> | jq .publickey
 ```
 
 If the public key matches the `derived_public_key`s output from the 
