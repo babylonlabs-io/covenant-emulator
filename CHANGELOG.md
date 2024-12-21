@@ -39,6 +39,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Improvements
 
+* [#68](https://github.com/babylonlabs-io/covenant-emulator/pull/68) Bump babylon to v1.0.0-rc.1
 * [#63](https://github.com/babylonlabs-io/covenant-emulator/pull/63) Add babylon
 address to keys command output and fix casing in dockerfile
 * [#67](https://github.com/babylonlabs-io/covenant-emulator/pull/67) Add keys cmd to covenant-signer
