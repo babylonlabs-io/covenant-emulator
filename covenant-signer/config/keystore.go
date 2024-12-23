@@ -1,6 +1,8 @@
 package config
 
-import "fmt"
+import (
+	"errors"
+)
 
 type KeyStoreType int
 
@@ -13,7 +15,7 @@ func KeyStoreToString(c KeyStoreType) (string, error) {
 	case CosmosKeyStore:
 		return "cosmos", nil
 	default:
-		return "", fmt.Errorf("unknown key store type")
+		return "", errors.New("unknown key store type")
 	}
 }
 
@@ -22,7 +24,7 @@ func KeyStoreFromString(s string) (KeyStoreType, error) {
 	case "cosmos":
 		return CosmosKeyStore, nil
 	default:
-		return -1, fmt.Errorf("unknown key store type")
+		return -1, errors.New("unknown key store type")
 	}
 }
 

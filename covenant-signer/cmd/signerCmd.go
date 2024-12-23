@@ -43,7 +43,7 @@ var runSignerCmd = &cobra.Command{
 			}
 			prk = kr
 		} else {
-			return fmt.Errorf("unknown key store type")
+			return errors.New("unknown key store type")
 		}
 
 		app := signerapp.NewSignerApp(
