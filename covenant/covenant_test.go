@@ -91,6 +91,7 @@ func FuzzAddCovenantSig(f *testing.F) {
 			startHeight := uint32(datagen.RandomInt(r, 1000) + 100)
 			stakingOutputIdx, err := bbntypes.GetOutputIdxInBTCTx(testInfo.StakingTx, testInfo.StakingInfo.StakingOutput)
 			require.NoError(t, err)
+			randParamsVersion := datagen.RandomInRange(r, 1, 10)
 			btcDel := &types.Delegation{
 				BtcPk:            delPK,
 				FpBtcPks:         fpPks,
@@ -102,6 +103,7 @@ func FuzzAddCovenantSig(f *testing.F) {
 				StakingTxHex:     hex.EncodeToString(stakingTxBytes),
 				StakingOutputIdx: stakingOutputIdx,
 				SlashingTxHex:    testInfo.SlashingTx.ToHexStr(),
+				ParamsVersion:    uint32(randParamsVersion),
 			}
 			btcDels = append(btcDels, btcDel)
 			// generate covenant staking sigs
