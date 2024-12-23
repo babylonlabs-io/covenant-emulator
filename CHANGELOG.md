@@ -37,6 +37,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## Unreleased
 
+### Bug fixes
+
+* [#71](https://github.com/babylonlabs-io/covenant-emulator/pull/71) Fix delegation
+response to delegation conversion
+
 ## v0.11.0
 
 ### Improvements
