@@ -12,14 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestBabylonController(t *testing.T) {
-
-	// datagen.GenRandomBTCDelegation()
-
-	require.Equal(t, 1, 1)
-}
-
-func FuzzAddCovenantSig(f *testing.F) {
+func FuzzDelegationRespToDelegation(f *testing.F) {
 	testutil.AddRandomSeedsToFuzzer(f, 10)
 	f.Fuzz(func(t *testing.T, seed int64) {
 		r := rand.New(rand.NewSource(seed))
