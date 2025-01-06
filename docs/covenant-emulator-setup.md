@@ -100,7 +100,7 @@ QueryInterval = 15s
 DelegationLimit = 100
 
 # Bitcoin network to run on
-BitcoinNetwork = simnet
+BitcoinNetwork = signet
 
 # Babylon specific parameters
 
@@ -136,7 +136,7 @@ Below are brief explanations of the configuration entries:
 
 - `QueryInterval` - How often to check for new BTC delegations that need processing
 - `DelegationLimit` - Maximum number of delegations to process in a single batch
-- `BitcoinNetwork` - Which Bitcoin network to connect to (mainnet, testnet, simnet, etc.)
+- `BitcoinNetwork` - Which Bitcoin network to connect to (mainnet, testnet, signet, etc.)
 - `ChainID` - Unique identifier of the Babylon blockchain network
 - `RPCAddr` - HTTP endpoint for connecting to a Babylon node
 - `GRPCAddr` - gRPC endpoint for connecting to a Babylon node
