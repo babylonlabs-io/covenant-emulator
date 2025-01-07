@@ -40,10 +40,9 @@ Schnorr adaptor signatures required for covenant operations.
 
 This guide requires that:
 
-1. You have a Bitcoin node setup for the Bitcoin
-  network you intend to operate your covenant signer on.
-2. You have access to the private Bitcoin key you
-  set up your covenant with.
+1. You have a Bitcoin node setup to load your wallet and retrieve 
+  your master private key.
+2. You have access to the private Bitcoin key you set up your covenant with.
 3. A connection to a Babylon node. To run your own node, please refer to the 
   [Babylon Node Setup Guide](https://github.com/babylonlabs-io/networks/blob/main/bbn-test-5/babylon-node/README.md).
 
