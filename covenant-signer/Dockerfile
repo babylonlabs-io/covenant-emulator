@@ -10,7 +10,7 @@ RUN apk add --no-cache --update openssh git make build-base linux-headers libc-d
 # Build
 WORKDIR /go/src/github.com/babylonlabs-io/covenant-emulator/covenant-signer
 # Cache dependencies
-COPY go.mod go.sum /go/src/github.com/babylonlabs-io/covenant-emulator/covenant-signer/
+COPY ../go.mod ../go.sum /go/src/github.com/babylonlabs-io/covenant-emulator/covenant-signer/
 # Copy the rest of the files
 COPY ./ /go/src/github.com/babylonlabs-io/covenant-emulator/covenant-signer/
 
