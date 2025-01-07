@@ -28,21 +28,21 @@ Schnorr adaptor signatures required for covenant operations.
 ## Table of Contents
 
 1. [Prerequisites](#1-prerequisites)
-2. [Installation](#2-installation)
-3. [Transitioning your covenant key from phase-1 setup](#3-transitioning-your-covenant-key-from-phase-1-setup)
-4. [Operation](#4-operation)
-    1. [Configuration](#41-configuration)
-    2. [Starting the daemon](#42-starting-the-daemon)
-    3. [Unlocking the key](#43-unlocking-the-key)
+2. [Shell Configuration](#2-shell-configuration)
+3. [Installation](#3-installation)
+4. [Transitioning your covenant key from phase-1 setup](#4-transitioning-your-covenant-key-from-phase-1-setup)
+5. [Operation](#5-operation)
+    1. [Configuration](#51-configuration)
+    2. [Starting the daemon](#52-starting-the-daemon)
+    3. [Unlocking the key](#53-unlocking-the-key)
 
 ## 1. Prerequisites
 
 This guide requires that:
 
-1. You have a Bitcoin node setup for the Bitcoin
-  network you intend to operate your covenant signer on.
-2. You have access to the private Bitcoin key you
-  set up your covenant with.
+1. You have a Bitcoin node setup to load your wallet and retrieve 
+  your master private key.
+2. You have access to the private Bitcoin key you set up your covenant with.
 3. A connection to a Babylon node. To run your own node, please refer to the 
   [Babylon Node Setup Guide](https://github.com/babylonlabs-io/networks/blob/main/bbn-test-5/babylon-node/README.md).
 
@@ -51,7 +51,24 @@ For a refresher on setting up the Bitcoin node, refer to the
 
 <!-- TODO: Add a link to the deployment guide instructions when above link is archived -->
 
-## 2. Installation
+## 2. Shell Configuration
+
+For security when entering sensitive commands, configure your shell to ignore 
+commands that start with a space:
+
+For Bash users, please update if you are using a different shell.
+
+```shell
+# Add to your ~/.bashrc:
+export HISTCONTROL=ignorespace
+
+# Then either restart your shell or run:
+source ~/.bashrc
+```
+Please ensure that any commands that you wish to be hidden from your shell 
+history start with a space.
+
+## 3. Installation
 
 If you haven't already, download [Golang 1.23](https://go.dev/dl).
 
@@ -94,7 +111,7 @@ export PATH=$HOME/go/bin:$PATH
 echo 'export PATH=$HOME/go/bin:$PATH' >> ~/.profile
 ```
 
-## 3. Transitioning your covenant key from phase-1 setup
+## 4. Transitioning your covenant key from phase-1 setup
 
 After installing the necessary binaries, we are ready
 to transition our covenant private key from the `bitcoind` wallet
@@ -121,7 +138,7 @@ the wallet directory or `.dat` file. In the below example,
 we are loading the wallet named `covenant-wallet`.
 
 ```shell
-bitcoin-cli loadwallet "covenant-wallet"
+ bitcoin-cli loadwallet "covenant-wallet"
 {
   "name": "covenant-wallet"
 }
@@ -137,7 +154,7 @@ which takes your covenant Bitcoin address as a parameter. As mentioned above,
 you will need access to the Bitcoin key you set up your covenant with.
 
 ```shell
-bitcoin-cli -datadir=./1/ getaddressinfo <address> | \ 
+ bitcoin-cli -datadir=./1/ getaddressinfo <address> | \ 
 jq '.hdkeypath | sub("^m/"; "") | sub("/[^/]+$"; "")'
 ```
 
@@ -167,11 +184,13 @@ So, before you run this command you will need to replace the `<hdkeypath>` below
 with the one you retrieved in step 2.
 
 ```shell
-bitcoin-cli listdescriptors true | jq -r '
+ bitcoin-cli listdescriptors true | jq -r '
   .descriptors[] |
   select(.desc | contains("<hdkeypath>")) |
   .desc
 '
+```
+
 The output will be: 
 
 ```shell
@@ -199,7 +218,7 @@ derive the covenant private key from the master key using **BIP32 derivation**.
 Use the following command to derive the covenant private key:
 
 ```shell
-covenant-signer derive-child-key \
+ covenant-signer derive-child-key \
     tprv8ZgxMBicQKsPe9aCeUQgMEMy2YMZ6PHnn2iCuG12y5E8oYhYNEvUqUkNy6sJ7ViBmFUMicikHSK2LBUNPx5do5EDJBjG7puwd6azci2wEdq \
     84h/1h/0h/0/0
 ```
@@ -220,7 +239,7 @@ the child key (second parameter)
 To verify, you can execute the following:
 
 ```shell
-bitcoin-cli getaddressinfo <address> | jq .publickey
+ bitcoin-cli getaddressinfo <address> | jq .publickey
 ```
 
 If the public key matches the `derived_public_key`s output from the 
@@ -231,7 +250,7 @@ If the public key matches the `derived_public_key`s output from the
 Next, we are going to import the derived private key into the Cosmos keyring.
 
 ```shell
-covenant-signer keys import-hex cov fe1c56c494c730f13739c0655bf06e615409870200047fc65cdf781837cf7f06 \
+ covenant-signer keys import-hex cov fe1c56c494c730f13739c0655bf06e615409870200047fc65cdf781837cf7f06 \
     --keyring-backend file \
     --keyring-dir /path/to/your/keyring/directory
 ```
@@ -256,7 +275,7 @@ to unlock the keyring.
 To confirm that the import was successful, run:
 
 ```shell
-covenant-signer keys show cov
+ covenant-signer keys show cov
 ```
 
 The output will display the details of the imported key:
@@ -270,15 +289,15 @@ The output will display the details of the imported key:
 
 Congratulations! You have successfully imported your key.
 
-## 4. Operation
-### 4.1. Configuration
+## 5. Operation
+### 5.1. Configuration
 
 Next, we can return to the covenant signer directory 
 and create your own configuration file. Use the 
 following command to dump the configuration template:
 
 ```shell
-covenant-signer dump-cfg --config <path-to-config-file>
+ covenant-signer dump-cfg --config <path-to-config-file>
 ```
 
 This will create a configuration file, from the example configuration, 
@@ -335,12 +354,12 @@ Below are brief explanations of the configuration entries:
 - `host` (metrics): IP address for the Prometheus metrics server, typically "127.0.0.1".
 - `port` (metrics): TCP port number for the Prometheus metrics server.
 
-### 4.2. Starting the daemon
+### 5.2. Starting the daemon
 
 We will then run the following command to start the daemon:
 
 ```shell
-covenant-signer start --config ./path/to/config.toml
+ covenant-signer start --config ./path/to/config.toml
 ```
 
 The covenant signer must be run in a secure network and only accessible by the 
@@ -351,7 +370,7 @@ emulator to use it. The URL of the covenant signer is configurable (`remotesigne
 but in this example we use the default value of 
 `http://127.0.0.1:9791`.
 
-### 4.3. Unlocking the key
+### 5.3. Unlocking the key
 
 Before you can sign transactions with the covenant key, you must unlock the 
 keyring that stores it. This happens through a `POST` request
@@ -359,7 +378,7 @@ on the `v1/unlock` endpoint with a payload containing
 the covenant keyring passphrase.
 
 ```shell
-curl -X POST http://127.0.0.1:9791/v1/unlock -d '{"passphrase": "<passphrase>"}'
+ curl -X POST http://127.0.0.1:9791/v1/unlock -d '{"passphrase": "<passphrase>"}'
 ```
 
 > ⚡ Note: Even if you provide the passphrase in the curl command to unlock the 
