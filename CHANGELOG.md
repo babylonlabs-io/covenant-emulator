@@ -37,6 +37,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## Unreleased
 
+* [#84](https://github.com/babylonlabs-io/covenant-emulator/pull/84) Fix bug with
+deduplication of already signed delegations
+
 ## v0.11.1
 
 ### Bug fixes
