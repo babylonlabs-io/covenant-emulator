@@ -1,6 +1,7 @@
 package covenant
 
 import (
+	"bytes"
 	"encoding/hex"
 	"fmt"
 	"sync"
@@ -435,15 +436,16 @@ func (ce *CovenantEmulator) delegationsToBatches(dels []*types.Delegation) [][]*
 	return batches
 }
 
-// removeAlreadySigned removes any delegations that have already been signed by the covenant
-func (ce *CovenantEmulator) removeAlreadySigned(dels []*types.Delegation) []*types.Delegation {
+func RemoveAlreadySigned(localKey *btcec.PublicKey, dels []*types.Delegation) []*types.Delegation {
 	sanitized := make([]*types.Delegation, 0, len(dels))
+	localKeyBytes := schnorr.SerializePubKey(localKey)
 
 	for _, del := range dels {
 		delCopy := del
 		alreadySigned := false
 		for _, covSig := range delCopy.CovenantSigs {
-			if covSig.Pk.IsEqual(ce.pk) {
+			remoteKey := schnorr.SerializePubKey(covSig.Pk)
+			if bytes.Equal(remoteKey, localKeyBytes) {
 				alreadySigned = true
 				break
 			}
@@ -453,6 +455,11 @@ func (ce *CovenantEmulator) removeAlreadySigned(dels []*types.Delegation) []*typ
 		}
 	}
 	return sanitized
+}
+
+// removeAlreadySigned removes any delegations that have already been signed by the covenant
+func (ce *CovenantEmulator) removeAlreadySigned(dels []*types.Delegation) []*types.Delegation {
+	return RemoveAlreadySigned(ce.pk, dels)
 }
 
 // covenantSigSubmissionLoop is the reactor to submit Covenant signature for BTC delegations
