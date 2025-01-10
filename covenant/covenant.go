@@ -61,6 +61,7 @@ func NewCovenantEmulator(
 		return nil, fmt.Errorf("failed to get signer pub key: %w", err)
 	}
 
+	paramGetter := paramsByVersion(cc, logger)
 	return &CovenantEmulator{
 		cc:         cc,
 		signer:     signer,
@@ -68,7 +69,7 @@ func NewCovenantEmulator(
 		logger:     logger,
 		pk:         pk,
 		quit:       make(chan struct{}),
-		paramCache: NewCacheVersionedParams(cc, logger.With(zap.String("cache", "VersionedParams"))),
+		paramCache: NewCacheVersionedParams(paramGetter),
 	}, nil
 }
 
@@ -103,8 +104,7 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 		}
 
 		// 1. get the params matched to the delegation version
-		// TODO: add cache for get params
-		params, err := ce.getParamsByVersion(btcDel.ParamsVersion)
+		params, err := ce.paramCache.Get(btcDel.ParamsVersion)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get staking params with version %d: %w", btcDel.ParamsVersion, err)
 		}
@@ -440,11 +440,11 @@ func (ce *CovenantEmulator) delegationsToBatches(dels []*types.Delegation) [][]*
 	return batches
 }
 
-func RemoveNotInCommittee(paramCache ParamsGetter, localKey *btcec.PublicKey, dels []*types.Delegation) []*types.Delegation {
+func RemoveNotInCommittee(paramCache ParamsGetter, covenantSerializedPk []byte, dels []*types.Delegation) []*types.Delegation {
 	sanitized := make([]*types.Delegation, 0, len(dels))
-	localKeyBytes := schnorr.SerializePubKey(localKey)
+
 	for _, del := range dels {
-		if !IsKeyInCommittee(paramCache, localKeyBytes, del) {
+		if !IsKeyInCommittee(paramCache, covenantSerializedPk, del) {
 			continue
 		}
 		sanitized = append(sanitized, del)
@@ -452,7 +452,8 @@ func RemoveNotInCommittee(paramCache ParamsGetter, localKey *btcec.PublicKey, de
 	return sanitized
 }
 
-func IsKeyInCommittee(paramCache ParamsGetter, localKeyBytes []byte, del *types.Delegation) bool {
+// IsKeyInCommittee verifies
+func IsKeyInCommittee(paramCache ParamsGetter, covenantSerializedPk []byte, del *types.Delegation) bool {
 	stkParams, err := paramCache.Get(del.ParamsVersion)
 	if err != nil {
 		return false
@@ -460,7 +461,7 @@ func IsKeyInCommittee(paramCache ParamsGetter, localKeyBytes []byte, del *types.
 
 	for _, pk := range stkParams.CovenantPks {
 		remoteKey := schnorr.SerializePubKey(pk)
-		if !bytes.Equal(remoteKey, localKeyBytes) {
+		if !bytes.Equal(remoteKey, covenantSerializedPk) {
 			continue
 		}
 		return true
@@ -469,35 +470,40 @@ func IsKeyInCommittee(paramCache ParamsGetter, localKeyBytes []byte, del *types.
 	return false
 }
 
-func RemoveAlreadySigned(localKey *btcec.PublicKey, dels []*types.Delegation) []*types.Delegation {
+func RemoveAlreadySigned(covenantSerializedPk []byte, dels []*types.Delegation) []*types.Delegation {
 	sanitized := make([]*types.Delegation, 0, len(dels))
-	localKeyBytes := schnorr.SerializePubKey(localKey)
 
 	for _, del := range dels {
-		delCopy := del
-		alreadySigned := false
-		for _, covSig := range delCopy.CovenantSigs {
-			remoteKey := schnorr.SerializePubKey(covSig.Pk)
-			if bytes.Equal(remoteKey, localKeyBytes) {
-				alreadySigned = true
-				break
-			}
+		if CovenantAlreadySigned(covenantSerializedPk, del) {
+			continue
 		}
-		if !alreadySigned {
-			sanitized = append(sanitized, delCopy)
-		}
+		sanitized = append(sanitized, del)
 	}
+
 	return sanitized
 }
 
-// removeAlreadySigned removes any delegations that have already been signed by the covenant
-func (ce *CovenantEmulator) removeAlreadySigned(dels []*types.Delegation) []*types.Delegation {
-	return RemoveAlreadySigned(ce.pk, dels)
+// CovenantAlreadySigned returns true if the covenant already signed the BTC Delegation
+func CovenantAlreadySigned(covenantSerializedPk []byte, del *types.Delegation) bool {
+	for _, covSig := range del.CovenantSigs {
+		remoteKey := schnorr.SerializePubKey(covSig.Pk)
+		if !bytes.Equal(remoteKey, covenantSerializedPk) {
+			continue
+		}
+		return true
+	}
+
+	return false
 }
 
-// removeNotInCommittee removes any delegations that have already been signed by the covenant
-func (ce *CovenantEmulator) removeNotInCommittee(dels []*types.Delegation) []*types.Delegation {
-	return RemoveNotInCommittee(ce.paramCache, ce.pk, dels)
+// sanitizeDelegations removes any delegations that have already been signed by the covenant and
+// remove delegations that were not constructed with this covenant public key
+func (ce *CovenantEmulator) sanitizeDelegations(dels []*types.Delegation) []*types.Delegation {
+	covenantSerializedPk := schnorr.SerializePubKey(ce.pk)
+	// 1. Remove delegations that do not need the covenant's signature
+	delsNotSigned := RemoveAlreadySigned(covenantSerializedPk, dels)
+	// 2. Remove delegations that were not constructed with this covenant public key
+	return RemoveNotInCommittee(ce.paramCache, covenantSerializedPk, delsNotSigned)
 }
 
 // covenantSigSubmissionLoop is the reactor to submit Covenant signature for BTC delegations
@@ -528,12 +534,10 @@ func (ce *CovenantEmulator) covenantSigSubmissionLoop() {
 				ce.logger.Debug("no pending delegations are found")
 			}
 			// 2. Remove delegations that do not need the covenant's signature
-			delsNotSigned := ce.removeAlreadySigned(dels)
-			// 3. Remove delegations that were not constructed with this covenant public key
-			delsToSign := ce.removeNotInCommittee(delsNotSigned)
+			sanitized := ce.sanitizeDelegations(dels)
 
 			// 3. Split delegations into batches for submission
-			batches := ce.delegationsToBatches(delsToSign)
+			batches := ce.delegationsToBatches(sanitized)
 			for _, delBatch := range batches {
 				_, err := ce.AddCovenantSignatures(delBatch)
 				if err != nil {
@@ -570,10 +574,6 @@ func (ce *CovenantEmulator) metricsUpdateLoop() {
 			return
 		}
 	}
-}
-
-func (ce *CovenantEmulator) getParamsByVersion(version uint32) (*types.StakingParams, error) {
-	return ce.paramCache.Get(version)
 }
 
 func (ce *CovenantEmulator) recordMetricsFailedSignDelegations(n int) {

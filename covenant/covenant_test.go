@@ -246,16 +246,12 @@ func TestDeduplicationWithOddKey(t *testing.T) {
 	}
 
 	// 4. After removing the already signed delegation, the list should have only one element
-	sanitized := covenant.RemoveAlreadySigned(oddKeyPub, delegations)
+	sanitized := covenant.RemoveAlreadySigned(schnorr.SerializePubKey(oddKeyPub), delegations)
 	require.Equal(t, 1, len(sanitized))
 }
 
 func TestIsKeyInCommittee(t *testing.T) {
 	r := rand.New(rand.NewSource(time.Now().Unix()))
-	delSK, delPK, err := datagen.GenRandomBTCKeyPair(r)
-	require.NoError(t, err)
-
-	params := testutil.GenRandomParams(r, t)
 
 	// create a Covenant key pair in the keyring
 	covenantConfig := covcfg.DefaultConfig()
@@ -270,62 +266,45 @@ func TestIsKeyInCommittee(t *testing.T) {
 		hdPath,
 	)
 	require.NoError(t, err)
+	covenantSerializedPk := schnorr.SerializePubKey(covKeyPair.PublicKey)
 
-	// creates one delegation to check
-	stakingTimeBlocks := uint32(testutil.RandRange(r, int(params.MinStakingTime), int(params.MaxStakingTime)))
-	stakingValue := int64(testutil.RandRange(r, int(params.MinStakingValue), int(params.MaxStakingValue)))
-	unbondingTime := uint16(params.UnbondingTimeBlocks)
-	fpNum := datagen.RandomInt(r, 5) + 1
-	fpPks := testutil.GenBtcPublicKeys(r, t, int(fpNum))
-	testInfo := datagen.GenBTCStakingSlashingInfo(
-		r,
-		t,
-		net,
-		delSK,
-		fpPks,
-		params.CovenantPks,
-		params.CovenantQuorum,
-		uint16(stakingTimeBlocks),
-		stakingValue,
-		params.SlashingPkScript,
-		params.SlashingRate,
-		unbondingTime,
-	)
-	stakingTxBytes, err := bbntypes.SerializeBTCTx(testInfo.StakingTx)
-	require.NoError(t, err)
-	startHeight := uint32(datagen.RandomInt(r, 1000) + 100)
-	stakingOutputIdx, err := bbntypes.GetOutputIdxInBTCTx(testInfo.StakingTx, testInfo.StakingInfo.StakingOutput)
-	require.NoError(t, err)
-	randParamsVersion := uint32(datagen.RandomInRange(r, 1, 10))
-	btcDel := &types.Delegation{
-		BtcPk:            delPK,
-		FpBtcPks:         fpPks,
-		StakingTime:      stakingTimeBlocks,
-		StartHeight:      startHeight, // not relevant here
-		EndHeight:        startHeight + stakingTimeBlocks,
-		TotalSat:         btcutil.Amount(stakingValue),
-		UnbondingTime:    unbondingTime,
-		StakingTxHex:     hex.EncodeToString(stakingTxBytes),
-		StakingOutputIdx: stakingOutputIdx,
-		SlashingTxHex:    testInfo.SlashingTx.ToHexStr(),
-		ParamsVersion:    randParamsVersion,
+	// create params and version
+	pVersionWithoutCovenant := uint32(datagen.RandomInRange(r, 1, 10))
+	pVersionWithCovenant := pVersionWithoutCovenant + 1
+
+	paramsWithoutCovenant := testutil.GenRandomParams(r, t)
+	paramsWithCovenant := testutil.GenRandomParams(r, t)
+	paramsWithCovenant.CovenantPks = append(paramsWithCovenant.CovenantPks, covKeyPair.PublicKey)
+
+	// creates delegations to check
+	delNoCovenant := &types.Delegation{
+		ParamsVersion: pVersionWithoutCovenant,
+	}
+	delWithCovenant := &types.Delegation{
+		ParamsVersion: pVersionWithCovenant,
 	}
 
-	paramsWithoutCovenant := NewMockParam(map[uint32]*types.StakingParams{
-		randParamsVersion: params,
+	// simple mock with the parameter versions
+	paramsGet := NewMockParam(map[uint32]*types.StakingParams{
+		pVersionWithoutCovenant: paramsWithoutCovenant,
+		pVersionWithCovenant:    paramsWithCovenant,
 	})
 
-	localKeyBytes := schnorr.SerializePubKey(covKeyPair.PublicKey)
-	actual := covenant.IsKeyInCommittee(paramsWithoutCovenant, localKeyBytes, btcDel)
+	// checks the case where the covenant is NOT in the committee
+	actual := covenant.IsKeyInCommittee(paramsGet, covenantSerializedPk, delNoCovenant)
 	require.False(t, actual)
+	emptyDels := covenant.RemoveNotInCommittee(paramsGet, covenantSerializedPk, []*types.Delegation{delNoCovenant, delNoCovenant})
+	require.Len(t, emptyDels, 0)
 
-	// adds the covenant to the list in the params
-	params.CovenantPks = append(params.CovenantPks, covKeyPair.PublicKey)
-	paramsWithCovenant := NewMockParam(map[uint32]*types.StakingParams{
-		randParamsVersion: params,
-	})
-	actual = covenant.IsKeyInCommittee(paramsWithCovenant, localKeyBytes, btcDel)
+	// checks the case where the covenant is in the committee
+	actual = covenant.IsKeyInCommittee(paramsGet, covenantSerializedPk, delWithCovenant)
 	require.True(t, actual)
+	dels := covenant.RemoveNotInCommittee(paramsGet, covenantSerializedPk, []*types.Delegation{delWithCovenant, delNoCovenant})
+	require.Len(t, dels, 1)
+	dels = covenant.RemoveNotInCommittee(paramsGet, covenantSerializedPk, []*types.Delegation{delWithCovenant})
+	require.Len(t, dels, 1)
+	dels = covenant.RemoveNotInCommittee(paramsGet, covenantSerializedPk, []*types.Delegation{delWithCovenant, delWithCovenant, delNoCovenant})
+	require.Len(t, dels, 2)
 }
 
 type MockParamGetter struct {
