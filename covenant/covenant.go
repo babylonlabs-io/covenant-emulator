@@ -452,7 +452,8 @@ func RemoveNotInCommittee(paramCache ParamsGetter, covenantSerializedPk []byte, 
 	return sanitized
 }
 
-// IsKeyInCommittee verifies
+// IsKeyInCommittee returns true if the covenant serialized public key is in the covenant committee of the
+// parameter in which the BTC delegation was included.
 func IsKeyInCommittee(paramCache ParamsGetter, covenantSerializedPk []byte, del *types.Delegation) bool {
 	stkParams, err := paramCache.Get(del.ParamsVersion)
 	if err != nil {
@@ -470,6 +471,8 @@ func IsKeyInCommittee(paramCache ParamsGetter, covenantSerializedPk []byte, del 
 	return false
 }
 
+// RemoveAlreadySigned remove the delegations in which the serialized covenant public key
+// alredy signed.
 func RemoveAlreadySigned(covenantSerializedPk []byte, dels []*types.Delegation) []*types.Delegation {
 	sanitized := make([]*types.Delegation, 0, len(dels))
 
@@ -534,10 +537,10 @@ func (ce *CovenantEmulator) covenantSigSubmissionLoop() {
 				ce.logger.Debug("no pending delegations are found")
 			}
 			// 2. Remove delegations that do not need the covenant's signature
-			sanitized := ce.sanitizeDelegations(dels)
+			sanitizedDels := ce.sanitizeDelegations(dels)
 
 			// 3. Split delegations into batches for submission
-			batches := ce.delegationsToBatches(sanitized)
+			batches := ce.delegationsToBatches(sanitizedDels)
 			for _, delBatch := range batches {
 				_, err := ce.AddCovenantSignatures(delBatch)
 				if err != nil {
