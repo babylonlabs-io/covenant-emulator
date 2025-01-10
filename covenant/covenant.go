@@ -46,6 +46,8 @@ type CovenantEmulator struct {
 
 	config *covcfg.Config
 	logger *zap.Logger
+
+	paramCache ParamsGetter
 }
 
 func NewCovenantEmulator(
@@ -60,12 +62,13 @@ func NewCovenantEmulator(
 	}
 
 	return &CovenantEmulator{
-		cc:     cc,
-		signer: signer,
-		config: config,
-		logger: logger,
-		pk:     pk,
-		quit:   make(chan struct{}),
+		cc:         cc,
+		signer:     signer,
+		config:     config,
+		logger:     logger,
+		pk:         pk,
+		quit:       make(chan struct{}),
+		paramCache: NewCacheVersionedParams(cc, logger.With(zap.String("cache", "VersionedParams"))),
 	}, nil
 }
 
@@ -100,7 +103,8 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 		}
 
 		// 1. get the params matched to the delegation version
-		params, err := ce.getParamsByVersionWithRetry(btcDel.ParamsVersion)
+		// TODO: add cache for get params
+		params, err := ce.getParamsByVersion(btcDel.ParamsVersion)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get staking params with version %d: %w", btcDel.ParamsVersion, err)
 		}
@@ -436,6 +440,35 @@ func (ce *CovenantEmulator) delegationsToBatches(dels []*types.Delegation) [][]*
 	return batches
 }
 
+func RemoveNotInCommittee(paramCache ParamsGetter, localKey *btcec.PublicKey, dels []*types.Delegation) []*types.Delegation {
+	sanitized := make([]*types.Delegation, 0, len(dels))
+	localKeyBytes := schnorr.SerializePubKey(localKey)
+	for _, del := range dels {
+		if !IsKeyInCommittee(paramCache, localKeyBytes, del) {
+			continue
+		}
+		sanitized = append(sanitized, del)
+	}
+	return sanitized
+}
+
+func IsKeyInCommittee(paramCache ParamsGetter, localKeyBytes []byte, del *types.Delegation) bool {
+	stkParams, err := paramCache.Get(del.ParamsVersion)
+	if err != nil {
+		return false
+	}
+
+	for _, pk := range stkParams.CovenantPks {
+		remoteKey := schnorr.SerializePubKey(pk)
+		if !bytes.Equal(remoteKey, localKeyBytes) {
+			continue
+		}
+		return true
+	}
+
+	return false
+}
+
 func RemoveAlreadySigned(localKey *btcec.PublicKey, dels []*types.Delegation) []*types.Delegation {
 	sanitized := make([]*types.Delegation, 0, len(dels))
 	localKeyBytes := schnorr.SerializePubKey(localKey)
@@ -460,6 +493,11 @@ func RemoveAlreadySigned(localKey *btcec.PublicKey, dels []*types.Delegation) []
 // removeAlreadySigned removes any delegations that have already been signed by the covenant
 func (ce *CovenantEmulator) removeAlreadySigned(dels []*types.Delegation) []*types.Delegation {
 	return RemoveAlreadySigned(ce.pk, dels)
+}
+
+// removeNotInCommittee removes any delegations that have already been signed by the covenant
+func (ce *CovenantEmulator) removeNotInCommittee(dels []*types.Delegation) []*types.Delegation {
+	return RemoveNotInCommittee(ce.paramCache, ce.pk, dels)
 }
 
 // covenantSigSubmissionLoop is the reactor to submit Covenant signature for BTC delegations
@@ -490,10 +528,12 @@ func (ce *CovenantEmulator) covenantSigSubmissionLoop() {
 				ce.logger.Debug("no pending delegations are found")
 			}
 			// 2. Remove delegations that do not need the covenant's signature
-			sanitizedDels := ce.removeAlreadySigned(dels)
+			delsNotSigned := ce.removeAlreadySigned(dels)
+			// 3. Remove delegations that were not constructed with this covenant public key
+			delsToSign := ce.removeNotInCommittee(delsNotSigned)
 
 			// 3. Split delegations into batches for submission
-			batches := ce.delegationsToBatches(sanitizedDels)
+			batches := ce.delegationsToBatches(delsToSign)
 			for _, delBatch := range batches {
 				_, err := ce.AddCovenantSignatures(delBatch)
 				if err != nil {
@@ -532,30 +572,8 @@ func (ce *CovenantEmulator) metricsUpdateLoop() {
 	}
 }
 
-func (ce *CovenantEmulator) getParamsByVersionWithRetry(version uint32) (*types.StakingParams, error) {
-	var (
-		params *types.StakingParams
-		err    error
-	)
-
-	if err := retry.Do(func() error {
-		params, err = ce.cc.QueryStakingParamsByVersion(version)
-		if err != nil {
-			return err
-		}
-		return nil
-	}, RtyAtt, RtyDel, RtyErr, retry.OnRetry(func(n uint, err error) {
-		ce.logger.Debug(
-			"failed to query the consumer chain for the staking params",
-			zap.Uint("attempt", n+1),
-			zap.Uint("max_attempts", RtyAttNum),
-			zap.Error(err),
-		)
-	})); err != nil {
-		return nil, err
-	}
-
-	return params, nil
+func (ce *CovenantEmulator) getParamsByVersion(version uint32) (*types.StakingParams, error) {
+	return ce.paramCache.Get(version)
 }
 
 func (ce *CovenantEmulator) recordMetricsFailedSignDelegations(n int) {

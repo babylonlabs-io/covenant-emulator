@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"math/rand"
 	"testing"
+	"time"
 
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
@@ -247,4 +248,97 @@ func TestDeduplicationWithOddKey(t *testing.T) {
 	// 4. After removing the already signed delegation, the list should have only one element
 	sanitized := covenant.RemoveAlreadySigned(oddKeyPub, delegations)
 	require.Equal(t, 1, len(sanitized))
+}
+
+func TestIsKeyInCommittee(t *testing.T) {
+	r := rand.New(rand.NewSource(time.Now().Unix()))
+	delSK, delPK, err := datagen.GenRandomBTCKeyPair(r)
+	require.NoError(t, err)
+
+	params := testutil.GenRandomParams(r, t)
+
+	// create a Covenant key pair in the keyring
+	covenantConfig := covcfg.DefaultConfig()
+	covenantConfig.BabylonConfig.KeyDirectory = t.TempDir()
+
+	covKeyPair, err := keyring.CreateCovenantKey(
+		covenantConfig.BabylonConfig.KeyDirectory,
+		covenantConfig.BabylonConfig.ChainID,
+		covenantConfig.BabylonConfig.Key,
+		covenantConfig.BabylonConfig.KeyringBackend,
+		passphrase,
+		hdPath,
+	)
+	require.NoError(t, err)
+
+	// creates one delegation to check
+	stakingTimeBlocks := uint32(testutil.RandRange(r, int(params.MinStakingTime), int(params.MaxStakingTime)))
+	stakingValue := int64(testutil.RandRange(r, int(params.MinStakingValue), int(params.MaxStakingValue)))
+	unbondingTime := uint16(params.UnbondingTimeBlocks)
+	fpNum := datagen.RandomInt(r, 5) + 1
+	fpPks := testutil.GenBtcPublicKeys(r, t, int(fpNum))
+	testInfo := datagen.GenBTCStakingSlashingInfo(
+		r,
+		t,
+		net,
+		delSK,
+		fpPks,
+		params.CovenantPks,
+		params.CovenantQuorum,
+		uint16(stakingTimeBlocks),
+		stakingValue,
+		params.SlashingPkScript,
+		params.SlashingRate,
+		unbondingTime,
+	)
+	stakingTxBytes, err := bbntypes.SerializeBTCTx(testInfo.StakingTx)
+	require.NoError(t, err)
+	startHeight := uint32(datagen.RandomInt(r, 1000) + 100)
+	stakingOutputIdx, err := bbntypes.GetOutputIdxInBTCTx(testInfo.StakingTx, testInfo.StakingInfo.StakingOutput)
+	require.NoError(t, err)
+	randParamsVersion := uint32(datagen.RandomInRange(r, 1, 10))
+	btcDel := &types.Delegation{
+		BtcPk:            delPK,
+		FpBtcPks:         fpPks,
+		StakingTime:      stakingTimeBlocks,
+		StartHeight:      startHeight, // not relevant here
+		EndHeight:        startHeight + stakingTimeBlocks,
+		TotalSat:         btcutil.Amount(stakingValue),
+		UnbondingTime:    unbondingTime,
+		StakingTxHex:     hex.EncodeToString(stakingTxBytes),
+		StakingOutputIdx: stakingOutputIdx,
+		SlashingTxHex:    testInfo.SlashingTx.ToHexStr(),
+		ParamsVersion:    randParamsVersion,
+	}
+
+	paramsWithoutCovenant := NewMockParam(map[uint32]*types.StakingParams{
+		randParamsVersion: params,
+	})
+
+	localKeyBytes := schnorr.SerializePubKey(covKeyPair.PublicKey)
+	actual := covenant.IsKeyInCommittee(paramsWithoutCovenant, localKeyBytes, btcDel)
+	require.False(t, actual)
+
+	// adds the covenant to the list in the params
+	params.CovenantPks = append(params.CovenantPks, covKeyPair.PublicKey)
+	paramsWithCovenant := NewMockParam(map[uint32]*types.StakingParams{
+		randParamsVersion: params,
+	})
+	actual = covenant.IsKeyInCommittee(paramsWithCovenant, localKeyBytes, btcDel)
+	require.True(t, actual)
+}
+
+type MockParamGetter struct {
+	paramsByVersion map[uint32]*types.StakingParams
+}
+
+func NewMockParam(p map[uint32]*types.StakingParams) *MockParamGetter {
+	return &MockParamGetter{
+		paramsByVersion: p,
+	}
+}
+
+func (m *MockParamGetter) Get(version uint32) (*types.StakingParams, error) {
+	p := m.paramsByVersion[version]
+	return p, nil
 }
