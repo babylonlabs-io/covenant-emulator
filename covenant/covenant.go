@@ -486,11 +486,11 @@ func (ce *CovenantEmulator) covenantSigSubmissionLoop() {
 			// record delegation metrics
 			ce.recordMetricsCurrentPendingDelegations(len(dels))
 
-			if len(dels) == 0 {
-				ce.logger.Debug("no pending delegations are found")
-			}
+			ce.logger.Debug(fmt.Sprintf("Queried %d pending delegations", len(dels)))
 			// 2. Remove delegations that do not need the covenant's signature
 			sanitizedDels := ce.removeAlreadySigned(dels)
+
+			ce.logger.Debug(fmt.Sprintf("After sanitization, will proceed with signing %d pending delegations", len(sanitizedDels)))
 
 			// 3. Split delegations into batches for submission
 			batches := ce.delegationsToBatches(sanitizedDels)
