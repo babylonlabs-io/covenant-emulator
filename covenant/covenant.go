@@ -115,7 +115,15 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 			continue
 		}
 
-		// 3. check unbonding time (staking time from unbonding tx) is larger or equal
+		// 3. if the covenant is not part of the delegation committee, skip this delegation
+		if !ce.committeeContainsKey(params.CovenantPks) {
+			ce.logger.Debug("not part of the covenant committee",
+				zap.String("staking_tx_hex", btcDel.StakingTxHex),
+			)
+			continue
+		}
+
+		// 4. check unbonding time (staking time from unbonding tx) is larger or equal
 		// to the minimum unbonding time in Babylon node parameters
 		unbondingTime := btcDel.UnbondingTime
 		unbondingTimeBlocks := params.UnbondingTimeBlocks
@@ -127,7 +135,7 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 			continue
 		}
 
-		// 4. check whether the:
+		// 5. check whether the:
 		// - staking time is within the min and max staking time
 		// - staking value is within the min and max staking value
 		stakingTime := btcDel.GetStakingTime()
@@ -150,7 +158,7 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 			continue
 		}
 
-		// 5. decode staking tx and slashing tx from the delegation
+		// 6. decode staking tx and slashing tx from the delegation
 		stakingTx, slashingTx, err := decodeDelegationTransactions(btcDel, params, &ce.config.BTCNetParams)
 		if err != nil {
 			ce.logger.Error("invalid delegation",
@@ -162,7 +170,7 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 			continue
 		}
 
-		// 6. decode unbonding tx and slash unbonding tx from the undelegation
+		// 7. decode unbonding tx and slash unbonding tx from the undelegation
 		unbondingTx, slashUnbondingTx, err := decodeUndelegationTransactions(btcDel, params, &ce.config.BTCNetParams)
 		if err != nil {
 			ce.logger.Error("invalid undelegation",
@@ -174,7 +182,7 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 			continue
 		}
 
-		// 7. Check unbonding fee
+		// 8. Check unbonding fee
 		unbondingFee := stakingTx.TxOut[btcDel.StakingOutputIdx].Value - unbondingTx.TxOut[0].Value
 		if unbondingFee != int64(params.UnbondingFee) {
 			ce.logger.Error("invalid unbonding fee",
@@ -184,7 +192,7 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 			continue
 		}
 
-		// 8. Generate Signing Request
+		// 9. Generate Signing Request
 		// Finality providers encryption keys
 		// pk script paths for Slash, unbond and unbonding slashing
 		fpsEncKeys, err := fpEncKeysFromDel(btcDel)
@@ -199,7 +207,7 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 			continue
 		}
 
-		// 9. sign covenant transactions
+		// 10. sign covenant transactions
 		resp, err := ce.SignTransactions(SigningRequest{
 			StakingTx:                       stakingTx,
 			SlashingTx:                      slashingTx,
@@ -225,7 +233,7 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 		})
 	}
 
-	// 10. submit covenant sigs
+	// 11. submit covenant sigs
 	res, err := ce.cc.SubmitCovenantSigs(covenantSigs)
 	if err != nil {
 		ce.recordMetricsFailedSignDelegations(len(covenantSigs))
@@ -460,6 +468,17 @@ func RemoveAlreadySigned(localKey *btcec.PublicKey, dels []*types.Delegation) []
 // removeAlreadySigned removes any delegations that have already been signed by the covenant
 func (ce *CovenantEmulator) removeAlreadySigned(dels []*types.Delegation) []*types.Delegation {
 	return RemoveAlreadySigned(ce.pk, dels)
+}
+
+func (ce *CovenantEmulator) committeeContainsKey(covenantPks []*btcec.PublicKey) bool {
+	localKeyBytes := schnorr.SerializePubKey(ce.pk)
+	for _, covenantPk := range covenantPks {
+		remoteKey := schnorr.SerializePubKey(covenantPk)
+		if bytes.Equal(remoteKey, localKeyBytes) {
+			return true
+		}
+	}
+	return false
 }
 
 // covenantSigSubmissionLoop is the reactor to submit Covenant signature for BTC delegations
