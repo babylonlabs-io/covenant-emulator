@@ -61,7 +61,6 @@ func NewCovenantEmulator(
 		return nil, fmt.Errorf("failed to get signer pub key: %w", err)
 	}
 
-	paramGetter := paramsByVersion(cc, logger)
 	return &CovenantEmulator{
 		cc:         cc,
 		signer:     signer,
@@ -69,7 +68,7 @@ func NewCovenantEmulator(
 		logger:     logger,
 		pk:         pk,
 		quit:       make(chan struct{}),
-		paramCache: NewCacheVersionedParams(paramGetter),
+		paramCache: NewCacheVersionedParams(cc, logger),
 	}, nil
 }
 
