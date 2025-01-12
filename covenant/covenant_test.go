@@ -323,7 +323,7 @@ func TestIsKeyInCommittee(t *testing.T) {
 	endHeightSet := uint32(1000)
 	delWithCovenant.EndHeight = endHeightSet
 	require.Equal(t, lastUnsanitizedDels[0].EndHeight, endHeightSet)
-	require.Zero(t, sanitizedDels[0].EndHeight)
+	require.Equal(t, sanitizedDels[0].EndHeight, endHeightSet)
 }
 
 type MockParamGetter struct {
