@@ -484,17 +484,16 @@ func SanitizeDelegations(pk *btcec.PublicKey, paramCache ParamsGetter, dels []*t
 
 	sanitized := make([]*types.Delegation, 0, len(dels))
 	for _, del := range dels {
-		delCopy := del
 		// 1. Remove delegations that do not need the covenant's signature because
 		// this covenant already signed
-		if CovenantAlreadySigned(covenantSerializedPk, delCopy) {
+		if CovenantAlreadySigned(covenantSerializedPk, del) {
 			continue
 		}
 		// 2. Remove delegations that were not constructed with this covenant public key
-		if !IsKeyInCommittee(paramCache, covenantSerializedPk, delCopy) {
+		if !IsKeyInCommittee(paramCache, covenantSerializedPk, del) {
 			continue
 		}
-		sanitized = append(sanitized, delCopy)
+		sanitized = append(sanitized, del)
 	}
 
 	return sanitized
