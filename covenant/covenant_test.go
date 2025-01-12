@@ -9,6 +9,7 @@ import (
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/btcsuite/btcd/btcutil"
+	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 
 	"github.com/babylonlabs-io/babylon/btcstaking"
 	asig "github.com/babylonlabs-io/babylon/crypto/schnorr-adaptor-signature"
@@ -227,6 +228,7 @@ func TestDeduplicationWithOddKey(t *testing.T) {
 	require.NoError(t, err)
 	pubKey := randomKey.PubKey()
 
+	paramVersion := uint32(2)
 	delegations := []*types.Delegation{
 		&types.Delegation{
 			CovenantSigs: []*types.CovenantAdaptorSigInfo{
@@ -235,6 +237,7 @@ func TestDeduplicationWithOddKey(t *testing.T) {
 					Pk: pubKeyFromSchnorr,
 				},
 			},
+			ParamsVersion: paramVersion,
 		},
 		&types.Delegation{
 			CovenantSigs: []*types.CovenantAdaptorSigInfo{
@@ -242,11 +245,18 @@ func TestDeduplicationWithOddKey(t *testing.T) {
 					Pk: pubKey,
 				},
 			},
+			ParamsVersion: paramVersion,
 		},
 	}
 
+	paramsGet := NewMockParam(map[uint32]*types.StakingParams{
+		paramVersion: &types.StakingParams{
+			CovenantPks: []*secp256k1.PublicKey{oddKeyPub, pubKeyFromSchnorr},
+		},
+	})
+
 	// 4. After removing the already signed delegation, the list should have only one element
-	sanitized := covenant.RemoveAlreadySigned(schnorr.SerializePubKey(oddKeyPub), delegations)
+	sanitized := covenant.SanitizeDelegations(oddKeyPub, paramsGet, delegations)
 	require.Equal(t, 1, len(sanitized))
 }
 
@@ -293,17 +303,17 @@ func TestIsKeyInCommittee(t *testing.T) {
 	// checks the case where the covenant is NOT in the committee
 	actual := covenant.IsKeyInCommittee(paramsGet, covenantSerializedPk, delNoCovenant)
 	require.False(t, actual)
-	emptyDels := covenant.RemoveNotInCommittee(paramsGet, covenantSerializedPk, []*types.Delegation{delNoCovenant, delNoCovenant})
+	emptyDels := covenant.SanitizeDelegations(covKeyPair.PublicKey, paramsGet, []*types.Delegation{delNoCovenant, delNoCovenant})
 	require.Len(t, emptyDels, 0)
 
 	// checks the case where the covenant is in the committee
 	actual = covenant.IsKeyInCommittee(paramsGet, covenantSerializedPk, delWithCovenant)
 	require.True(t, actual)
-	dels := covenant.RemoveNotInCommittee(paramsGet, covenantSerializedPk, []*types.Delegation{delWithCovenant, delNoCovenant})
+	dels := covenant.SanitizeDelegations(covKeyPair.PublicKey, paramsGet, []*types.Delegation{delWithCovenant, delNoCovenant})
 	require.Len(t, dels, 1)
-	dels = covenant.RemoveNotInCommittee(paramsGet, covenantSerializedPk, []*types.Delegation{delWithCovenant})
+	dels = covenant.SanitizeDelegations(covKeyPair.PublicKey, paramsGet, []*types.Delegation{delWithCovenant})
 	require.Len(t, dels, 1)
-	dels = covenant.RemoveNotInCommittee(paramsGet, covenantSerializedPk, []*types.Delegation{delWithCovenant, delWithCovenant, delNoCovenant})
+	dels = covenant.SanitizeDelegations(covKeyPair.PublicKey, paramsGet, []*types.Delegation{delWithCovenant, delWithCovenant, delNoCovenant})
 	require.Len(t, dels, 2)
 }
 

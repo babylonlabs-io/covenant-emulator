@@ -439,18 +439,6 @@ func (ce *CovenantEmulator) delegationsToBatches(dels []*types.Delegation) [][]*
 	return batches
 }
 
-func RemoveNotInCommittee(paramCache ParamsGetter, covenantSerializedPk []byte, dels []*types.Delegation) []*types.Delegation {
-	sanitized := make([]*types.Delegation, 0, len(dels))
-
-	for _, del := range dels {
-		if !IsKeyInCommittee(paramCache, covenantSerializedPk, del) {
-			continue
-		}
-		sanitized = append(sanitized, del)
-	}
-	return sanitized
-}
-
 // IsKeyInCommittee returns true if the covenant serialized public key is in the covenant committee of the
 // parameter in which the BTC delegation was included.
 func IsKeyInCommittee(paramCache ParamsGetter, covenantSerializedPk []byte, del *types.Delegation) bool {
@@ -470,21 +458,6 @@ func IsKeyInCommittee(paramCache ParamsGetter, covenantSerializedPk []byte, del 
 	return false
 }
 
-// RemoveAlreadySigned remove the delegations in which the serialized covenant public key
-// alredy signed.
-func RemoveAlreadySigned(covenantSerializedPk []byte, dels []*types.Delegation) []*types.Delegation {
-	sanitized := make([]*types.Delegation, 0, len(dels))
-
-	for _, del := range dels {
-		if CovenantAlreadySigned(covenantSerializedPk, del) {
-			continue
-		}
-		sanitized = append(sanitized, del)
-	}
-
-	return sanitized
-}
-
 // CovenantAlreadySigned returns true if the covenant already signed the BTC Delegation
 func CovenantAlreadySigned(covenantSerializedPk []byte, del *types.Delegation) bool {
 	for _, covSig := range del.CovenantSigs {
@@ -501,11 +474,29 @@ func CovenantAlreadySigned(covenantSerializedPk []byte, del *types.Delegation) b
 // sanitizeDelegations removes any delegations that have already been signed by the covenant and
 // remove delegations that were not constructed with this covenant public key
 func (ce *CovenantEmulator) sanitizeDelegations(dels []*types.Delegation) []*types.Delegation {
-	covenantSerializedPk := schnorr.SerializePubKey(ce.pk)
-	// 1. Remove delegations that do not need the covenant's signature
-	delsNotSigned := RemoveAlreadySigned(covenantSerializedPk, dels)
-	// 2. Remove delegations that were not constructed with this covenant public key
-	return RemoveNotInCommittee(ce.paramCache, covenantSerializedPk, delsNotSigned)
+	return SanitizeDelegations(ce.pk, ce.paramCache, dels)
+}
+
+// SanitizeDelegations remove the delegations in which the covenant public key already signed
+// or the delegation was not constructed with that covenant public key
+func SanitizeDelegations(pk *btcec.PublicKey, paramCache ParamsGetter, dels []*types.Delegation) []*types.Delegation {
+	covenantSerializedPk := schnorr.SerializePubKey(pk)
+
+	sanitized := make([]*types.Delegation, 0, len(dels))
+	for _, del := range dels {
+		// 1. Remove delegations that do not need the covenant's signature because
+		// this covenant already signed
+		if CovenantAlreadySigned(covenantSerializedPk, del) {
+			continue
+		}
+		// 2. Remove delegations that were not constructed with this covenant public key
+		if !IsKeyInCommittee(paramCache, covenantSerializedPk, del) {
+			continue
+		}
+		sanitized = append(sanitized, del)
+	}
+
+	return sanitized
 }
 
 // covenantSigSubmissionLoop is the reactor to submit Covenant signature for BTC delegations
