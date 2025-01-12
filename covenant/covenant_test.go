@@ -313,8 +313,17 @@ func TestIsKeyInCommittee(t *testing.T) {
 	require.Len(t, dels, 1)
 	dels = covenant.SanitizeDelegations(covKeyPair.PublicKey, paramsGet, []*types.Delegation{delWithCovenant})
 	require.Len(t, dels, 1)
-	dels = covenant.SanitizeDelegations(covKeyPair.PublicKey, paramsGet, []*types.Delegation{delWithCovenant, delWithCovenant, delNoCovenant})
-	require.Len(t, dels, 2)
+
+	lastUnsanitizedDels := []*types.Delegation{delWithCovenant, delWithCovenant, delNoCovenant}
+	sanitizedDels := covenant.SanitizeDelegations(covKeyPair.PublicKey, paramsGet, lastUnsanitizedDels)
+	require.Len(t, sanitizedDels, 2)
+
+	// change something in the lastUnsanitezedDels pointer to see if it modifies in the delegations
+	// it shouldn't modify the sanitized
+	endHeightSet := uint32(1000)
+	delWithCovenant.EndHeight = endHeightSet
+	require.Equal(t, lastUnsanitizedDels[0].EndHeight, endHeightSet)
+	require.Zero(t, sanitizedDels[0].EndHeight)
 }
 
 type MockParamGetter struct {
