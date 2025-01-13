@@ -7,13 +7,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/btcsuite/btcd/btcec/v2/schnorr"
+	"github.com/btcsuite/btcd/btcutil"
+
 	"github.com/babylonlabs-io/babylon/btcstaking"
 	asig "github.com/babylonlabs-io/babylon/crypto/schnorr-adaptor-signature"
 	"github.com/babylonlabs-io/babylon/testutil/datagen"
 	bbntypes "github.com/babylonlabs-io/babylon/types"
-	"github.com/btcsuite/btcd/btcec/v2"
-	"github.com/btcsuite/btcd/btcec/v2/schnorr"
-	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
@@ -95,6 +96,7 @@ func FuzzAddCovenantSig(f *testing.F) {
 			startHeight := uint32(datagen.RandomInt(r, 1000) + 100)
 			stakingOutputIdx, err := bbntypes.GetOutputIdxInBTCTx(testInfo.StakingTx, testInfo.StakingInfo.StakingOutput)
 			require.NoError(t, err)
+			randParamsVersion := datagen.RandomInRange(r, 1, 10)
 			btcDel := &types.Delegation{
 				BtcPk:            delPK,
 				FpBtcPks:         fpPks,
@@ -106,6 +108,7 @@ func FuzzAddCovenantSig(f *testing.F) {
 				StakingTxHex:     hex.EncodeToString(stakingTxBytes),
 				StakingOutputIdx: stakingOutputIdx,
 				SlashingTxHex:    testInfo.SlashingTx.ToHexStr(),
+				ParamsVersion:    uint32(randParamsVersion),
 			}
 			btcDels = append(btcDels, btcDel)
 			// generate covenant staking sigs

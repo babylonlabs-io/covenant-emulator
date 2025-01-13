@@ -290,6 +290,7 @@ func DelegationRespToDelegation(del *btcstakingtypes.BTCDelegationResponse) (*ty
 		CovenantSigs:     covenantSigs,
 		UnbondingTime:    uint16(del.UnbondingTime),
 		BtcUndelegation:  undelegation,
+		ParamsVersion:    del.ParamsVersion,
 	}, nil
 }
 
