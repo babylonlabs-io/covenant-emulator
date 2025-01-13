@@ -37,6 +37,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## Unreleased
 
+## v0.11.2
+
+### Bug fixes
+
+* [#91](https://github.com/babylonlabs-io/covenant-emulator/pull/91) Add verification
+if the covenant public key was present in the params of the versioned BTC delegation
+* [#84](https://github.com/babylonlabs-io/covenant-emulator/pull/84) Fix bug with
+deduplication of already signed delegations
+
+## v0.11.1
+
+### Bug fixes
+
+* [#71](https://github.com/babylonlabs-io/covenant-emulator/pull/71) Fix delegation
+response to delegation conversion
+
 ## v0.11.0
 
 ### Improvements
