@@ -37,6 +37,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## Unreleased
 
+### Improvements
+
+* [#83](https://github.com/babylonlabs-io/covenant-emulator/pull/83) covenant-signer: remove go.mod
+
+
 ## v0.11.2
 
 ### Bug fixes
