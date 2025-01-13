@@ -2,12 +2,15 @@ package covenant_test
 
 import (
 	"encoding/hex"
+	"fmt"
 	"math/rand"
 	"testing"
+	"time"
 
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/btcsuite/btcd/btcutil"
+	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 
 	"github.com/babylonlabs-io/babylon/btcstaking"
 	asig "github.com/babylonlabs-io/babylon/crypto/schnorr-adaptor-signature"
@@ -226,6 +229,7 @@ func TestDeduplicationWithOddKey(t *testing.T) {
 	require.NoError(t, err)
 	pubKey := randomKey.PubKey()
 
+	paramVersion := uint32(2)
 	delegations := []*types.Delegation{
 		&types.Delegation{
 			CovenantSigs: []*types.CovenantAdaptorSigInfo{
@@ -234,6 +238,7 @@ func TestDeduplicationWithOddKey(t *testing.T) {
 					Pk: pubKeyFromSchnorr,
 				},
 			},
+			ParamsVersion: paramVersion,
 		},
 		&types.Delegation{
 			CovenantSigs: []*types.CovenantAdaptorSigInfo{
@@ -241,10 +246,142 @@ func TestDeduplicationWithOddKey(t *testing.T) {
 					Pk: pubKey,
 				},
 			},
+			ParamsVersion: paramVersion,
 		},
 	}
 
+	paramsGet := NewMockParam(map[uint32]*types.StakingParams{
+		paramVersion: &types.StakingParams{
+			CovenantPks: []*secp256k1.PublicKey{oddKeyPub, pubKeyFromSchnorr},
+		},
+	})
+
 	// 4. After removing the already signed delegation, the list should have only one element
-	sanitized := covenant.RemoveAlreadySigned(oddKeyPub, delegations)
+	sanitized, err := covenant.SanitizeDelegations(oddKeyPub, paramsGet, delegations)
 	require.Equal(t, 1, len(sanitized))
+	require.NoError(t, err)
+}
+
+func TestIsKeyInCommittee(t *testing.T) {
+	r := rand.New(rand.NewSource(time.Now().Unix()))
+
+	// create a Covenant key pair in the keyring
+	covenantConfig := covcfg.DefaultConfig()
+	covenantConfig.BabylonConfig.KeyDirectory = t.TempDir()
+
+	covKeyPair, err := keyring.CreateCovenantKey(
+		covenantConfig.BabylonConfig.KeyDirectory,
+		covenantConfig.BabylonConfig.ChainID,
+		covenantConfig.BabylonConfig.Key,
+		covenantConfig.BabylonConfig.KeyringBackend,
+		passphrase,
+		hdPath,
+	)
+	require.NoError(t, err)
+	covenantSerializedPk := schnorr.SerializePubKey(covKeyPair.PublicKey)
+
+	// create params and version
+	pVersionWithoutCovenant := uint32(datagen.RandomInRange(r, 1, 10))
+	pVersionWithCovenant := pVersionWithoutCovenant + 1
+
+	paramsWithoutCovenant := testutil.GenRandomParams(r, t)
+	paramsWithCovenant := testutil.GenRandomParams(r, t)
+	paramsWithCovenant.CovenantPks = append(paramsWithCovenant.CovenantPks, covKeyPair.PublicKey)
+
+	// creates delegations to check
+	delNoCovenant := &types.Delegation{
+		ParamsVersion: pVersionWithoutCovenant,
+	}
+	delWithCovenant := &types.Delegation{
+		ParamsVersion: pVersionWithCovenant,
+	}
+
+	// simple mock with the parameter versions
+	paramsGet := NewMockParam(map[uint32]*types.StakingParams{
+		pVersionWithoutCovenant: paramsWithoutCovenant,
+		pVersionWithCovenant:    paramsWithCovenant,
+	})
+
+	// checks the case where the covenant is NOT in the committee
+	actual, err := covenant.IsKeyInCommittee(paramsGet, covenantSerializedPk, delNoCovenant)
+	require.False(t, actual)
+	require.NoError(t, err)
+	emptyDels, err := covenant.SanitizeDelegations(covKeyPair.PublicKey, paramsGet, []*types.Delegation{delNoCovenant, delNoCovenant})
+	require.NoError(t, err)
+	require.Len(t, emptyDels, 0)
+
+	// checks the case where the covenant is in the committee
+	actual, err = covenant.IsKeyInCommittee(paramsGet, covenantSerializedPk, delWithCovenant)
+	require.True(t, actual)
+	require.NoError(t, err)
+	dels, err := covenant.SanitizeDelegations(covKeyPair.PublicKey, paramsGet, []*types.Delegation{delWithCovenant, delNoCovenant})
+	require.NoError(t, err)
+	require.Len(t, dels, 1)
+	dels, err = covenant.SanitizeDelegations(covKeyPair.PublicKey, paramsGet, []*types.Delegation{delWithCovenant})
+	require.NoError(t, err)
+	require.Len(t, dels, 1)
+
+	amtSatFirst := btcutil.Amount(100)
+	amtSatSecond := btcutil.Amount(150)
+	amtSatThird := btcutil.Amount(200)
+	lastUnsanitizedDels := []*types.Delegation{
+		&types.Delegation{
+			ParamsVersion: pVersionWithCovenant,
+			TotalSat:      amtSatFirst,
+		},
+		delNoCovenant,
+		&types.Delegation{
+			ParamsVersion: pVersionWithCovenant,
+			TotalSat:      amtSatSecond,
+		},
+		delNoCovenant,
+		&types.Delegation{
+			ParamsVersion: pVersionWithCovenant,
+			TotalSat:      amtSatThird,
+		},
+	}
+
+	sanitizedDels, err := covenant.SanitizeDelegations(covKeyPair.PublicKey, paramsGet, lastUnsanitizedDels)
+	require.NoError(t, err)
+	require.Len(t, sanitizedDels, 3)
+	require.Equal(t, amtSatFirst, sanitizedDels[0].TotalSat)
+	require.Equal(t, amtSatSecond, sanitizedDels[1].TotalSat)
+	require.Equal(t, amtSatThird, sanitizedDels[2].TotalSat)
+
+	errParamGet := fmt.Errorf("dumbErr")
+	sanitizedDels, err = covenant.SanitizeDelegations(covKeyPair.PublicKey, NewMockParamError(errParamGet), lastUnsanitizedDels)
+	require.Nil(t, sanitizedDels)
+
+	errKeyIsInCommittee := fmt.Errorf("unable to get the param version: %d, reason: %s", pVersionWithCovenant, errParamGet.Error())
+	expErr := fmt.Errorf("unable to verify if covenant key is in committee: %s", errKeyIsInCommittee.Error())
+	require.EqualError(t, err, expErr.Error())
+}
+
+type MockParamGetter struct {
+	paramsByVersion map[uint32]*types.StakingParams
+}
+
+func NewMockParam(p map[uint32]*types.StakingParams) *MockParamGetter {
+	return &MockParamGetter{
+		paramsByVersion: p,
+	}
+}
+
+func (m *MockParamGetter) Get(version uint32) (*types.StakingParams, error) {
+	p := m.paramsByVersion[version]
+	return p, nil
+}
+
+type MockParamError struct {
+	err error
+}
+
+func NewMockParamError(err error) *MockParamError {
+	return &MockParamError{
+		err: err,
+	}
+}
+
+func (m *MockParamError) Get(version uint32) (*types.StakingParams, error) {
+	return nil, m.err
 }

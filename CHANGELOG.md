@@ -39,8 +39,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Improvements
 
+* [#91](https://github.com/babylonlabs-io/covenant-emulator/pull/91) Add verification
+if the covenant public key was present in the params of the versioned BTC delegation
 * [#83](https://github.com/babylonlabs-io/covenant-emulator/pull/83) covenant-signer: remove go.mod
-
 
 ## v0.11.2
 
