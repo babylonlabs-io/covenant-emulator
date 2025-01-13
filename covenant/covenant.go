@@ -444,7 +444,7 @@ func (ce *CovenantEmulator) delegationsToBatches(dels []*types.Delegation) [][]*
 func IsKeyInCommittee(paramCache ParamsGetter, covenantSerializedPk []byte, del *types.Delegation) (bool, error) {
 	stkParams, err := paramCache.Get(del.ParamsVersion)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("unable to get the param version: %d, reason: %s", del.ParamsVersion, err.Error())
 	}
 
 	for _, pk := range stkParams.CovenantPks {
@@ -455,7 +455,7 @@ func IsKeyInCommittee(paramCache ParamsGetter, covenantSerializedPk []byte, del 
 		return true, nil
 	}
 
-	return false, fmt.Errorf("serialized pub key is not in the list of covenants for the param version: %d", del.ParamsVersion)
+	return false, nil
 }
 
 // CovenantAlreadySigned returns true if the covenant already signed the BTC Delegation
@@ -473,18 +473,17 @@ func CovenantAlreadySigned(covenantSerializedPk []byte, del *types.Delegation) b
 
 // sanitizeDelegations removes any delegations that have already been signed by the covenant and
 // remove delegations that were not constructed with this covenant public key
-func (ce *CovenantEmulator) sanitizeDelegations(dels []*types.Delegation) []*types.Delegation {
-	return SanitizeDelegations(ce.logger, ce.pk, ce.paramCache, dels)
+func (ce *CovenantEmulator) sanitizeDelegations(dels []*types.Delegation) ([]*types.Delegation, error) {
+	return SanitizeDelegations(ce.pk, ce.paramCache, dels)
 }
 
 // SanitizeDelegations remove the delegations in which the covenant public key already signed
 // or the delegation was not constructed with that covenant public key
 func SanitizeDelegations(
-	logger *zap.Logger,
 	pk *btcec.PublicKey,
 	paramCache ParamsGetter,
 	dels []*types.Delegation,
-) []*types.Delegation {
+) ([]*types.Delegation, error) {
 	covenantSerializedPk := schnorr.SerializePubKey(pk)
 
 	sanitized := make([]*types.Delegation, 0, len(dels))
@@ -497,13 +496,7 @@ func SanitizeDelegations(
 		// 2. Remove delegations that were not constructed with this covenant public key
 		isInCommittee, err := IsKeyInCommittee(paramCache, covenantSerializedPk, del)
 		if err != nil {
-			logger.Error(
-				"invalid delegation",
-				zap.String("staker_pk", hex.EncodeToString(covenantSerializedPk)),
-				zap.String("staking_tx_hex", del.StakingTxHex),
-				zap.String("reason", "covenant key is not in committee"),
-				zap.Error(err),
-			)
+			return nil, fmt.Errorf("unable to verify if covenant key is in committee: %s", err.Error())
 		}
 		if !isInCommittee {
 			continue
@@ -511,7 +504,7 @@ func SanitizeDelegations(
 		sanitized = append(sanitized, del)
 	}
 
-	return sanitized
+	return sanitized, nil
 }
 
 // covenantSigSubmissionLoop is the reactor to submit Covenant signature for BTC delegations
@@ -540,10 +533,18 @@ func (ce *CovenantEmulator) covenantSigSubmissionLoop() {
 
 			if len(dels) == 0 {
 				ce.logger.Debug("no pending delegations are found")
+				continue
 			}
-			// 2. Remove delegations that do not need the covenant's signature
-			sanitizedDels := ce.sanitizeDelegations(dels)
 
+			// 2. Remove delegations that do not need the covenant's signature
+			sanitizedDels, err := ce.sanitizeDelegations(dels)
+			if err != nil {
+				ce.logger.Error(
+					"error sanitizing delegations",
+					zap.Error(err),
+				)
+				continue
+			}
 			// 3. Split delegations into batches for submission
 			batches := ce.delegationsToBatches(sanitizedDels)
 			for _, delBatch := range batches {
