@@ -5,6 +5,8 @@ import (
 	"math/rand"
 	"testing"
 
+	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/btcsuite/btcd/btcutil"
 
 	"github.com/babylonlabs-io/babylon/btcstaking"
@@ -205,4 +207,44 @@ func FuzzAddCovenantSig(f *testing.F) {
 		require.NoError(t, err)
 		require.Equal(t, expectedTxHash, res.TxHash)
 	})
+}
+
+func TestDeduplicationWithOddKey(t *testing.T) {
+	// 1. Public key with odd y coordinate
+	oddKey := "0379a71ffd71c503ef2e2f91bccfc8fcda7946f4653cef0d9f3dde20795ef3b9f0"
+	oddKeyBytes, err := hex.DecodeString(oddKey)
+	require.NoError(t, err)
+	oddKeyPub, err := btcec.ParsePubKey(oddKeyBytes)
+	require.NoError(t, err)
+
+	// 2. Serialize in BTC schnorr format
+	serializedOddKey := schnorr.SerializePubKey(oddKeyPub)
+	pubKeyFromSchnorr, err := schnorr.ParsePubKey(serializedOddKey)
+	require.NoError(t, err)
+
+	randomKey, err := btcec.NewPrivateKey()
+	require.NoError(t, err)
+	pubKey := randomKey.PubKey()
+
+	delegations := []*types.Delegation{
+		&types.Delegation{
+			CovenantSigs: []*types.CovenantAdaptorSigInfo{
+				&types.CovenantAdaptorSigInfo{
+					// 3. Delegation is already signed by the public key with odd y coordinate
+					Pk: pubKeyFromSchnorr,
+				},
+			},
+		},
+		&types.Delegation{
+			CovenantSigs: []*types.CovenantAdaptorSigInfo{
+				&types.CovenantAdaptorSigInfo{
+					Pk: pubKey,
+				},
+			},
+		},
+	}
+
+	// 4. After removing the already signed delegation, the list should have only one element
+	sanitized := covenant.RemoveAlreadySigned(oddKeyPub, delegations)
+	require.Equal(t, 1, len(sanitized))
 }
