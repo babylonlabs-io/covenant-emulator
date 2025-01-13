@@ -314,16 +314,31 @@ func TestIsKeyInCommittee(t *testing.T) {
 	dels = covenant.SanitizeDelegations(covKeyPair.PublicKey, paramsGet, []*types.Delegation{delWithCovenant})
 	require.Len(t, dels, 1)
 
-	lastUnsanitizedDels := []*types.Delegation{delWithCovenant, delWithCovenant, delNoCovenant}
-	sanitizedDels := covenant.SanitizeDelegations(covKeyPair.PublicKey, paramsGet, lastUnsanitizedDels)
-	require.Len(t, sanitizedDels, 2)
+	amtSatFirst := btcutil.Amount(100)
+	amtSatSecond := btcutil.Amount(150)
+	amtSatThird := btcutil.Amount(200)
+	lastUnsanitizedDels := []*types.Delegation{
+		&types.Delegation{
+			ParamsVersion: pVersionWithCovenant,
+			TotalSat:      amtSatFirst,
+		},
+		delNoCovenant,
+		&types.Delegation{
+			ParamsVersion: pVersionWithCovenant,
+			TotalSat:      amtSatSecond,
+		},
+		delNoCovenant,
+		&types.Delegation{
+			ParamsVersion: pVersionWithCovenant,
+			TotalSat:      amtSatThird,
+		},
+	}
 
-	// change something in the lastUnsanitezedDels pointer to see if it modifies in the delegations
-	// it shouldn't modify the sanitized
-	endHeightSet := uint32(1000)
-	delWithCovenant.EndHeight = endHeightSet
-	require.Equal(t, lastUnsanitizedDels[0].EndHeight, endHeightSet)
-	require.Equal(t, sanitizedDels[0].EndHeight, endHeightSet)
+	sanitizedDels := covenant.SanitizeDelegations(covKeyPair.PublicKey, paramsGet, lastUnsanitizedDels)
+	require.Len(t, sanitizedDels, 3)
+	require.Equal(t, amtSatFirst, sanitizedDels[0].TotalSat)
+	require.Equal(t, amtSatSecond, sanitizedDels[1].TotalSat)
+	require.Equal(t, amtSatThird, sanitizedDels[2].TotalSat)
 }
 
 type MockParamGetter struct {
