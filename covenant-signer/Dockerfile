@@ -10,13 +10,21 @@ RUN apk add --no-cache --update openssh git make build-base linux-headers libc-d
 # Build
 WORKDIR /go/src/github.com/babylonlabs-io/covenant-emulator/covenant-signer
 # Cache dependencies
-COPY go.mod go.sum /go/src/github.com/babylonlabs-io/covenant-emulator/covenant-signer/
+COPY ../go.mod ../go.sum /go/src/github.com/babylonlabs-io/covenant-emulator/covenant-signer/
 # Copy the rest of the files
 COPY ./ /go/src/github.com/babylonlabs-io/covenant-emulator/covenant-signer/
 
-RUN CGO_LDFLAGS="$CGO_LDFLAGS -lstdc++ -lm -lsodium" \
-    CGO_ENABLED=1 \
-    BUILD_TAGS=$BUILD_TAGS \
+# Cosmwasm - Download correct libwasmvm version
+SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
+RUN WASMVM_VERSION=$(go list -m github.com/CosmWasm/wasmvm/v2 | cut -d ' ' -f 2) && \
+    wget -q https://github.com/CosmWasm/wasmvm/releases/download/$WASMVM_VERSION/libwasmvm_muslc."$(uname -m)".a \
+    -O /lib/libwasmvm_muslc."$(uname -m)".a && \
+    # verify checksum
+    wget -q https://github.com/CosmWasm/wasmvm/releases/download/"$WASMVM_VERSION"/checksums.txt -O /tmp/checksums.txt && \
+    sha256sum /lib/libwasmvm_muslc."$(uname -m)".a | grep $(cat /tmp/checksums.txt | grep libwasmvm_muslc."$(uname -m)" | cut -d ' ' -f 1)
+
+
+RUN BUILD_TAGS=$BUILD_TAGS \
     LINK_STATICALLY=true \
     make build
 

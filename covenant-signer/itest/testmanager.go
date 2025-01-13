@@ -1,3 +1,6 @@
+//go:build e2e
+// +build e2e
+
 package e2etest
 
 import (
@@ -22,9 +25,7 @@ import (
 )
 
 var (
-	netParams              = &chaincfg.RegressionNetParams
-	eventuallyPollInterval = 100 * time.Millisecond
-	eventuallyTimeout      = 10 * time.Second
+	netParams = &chaincfg.RegressionNetParams
 )
 
 type TestManager struct {
