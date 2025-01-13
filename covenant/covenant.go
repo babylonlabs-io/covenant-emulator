@@ -444,7 +444,7 @@ func (ce *CovenantEmulator) delegationsToBatches(dels []*types.Delegation) [][]*
 func IsKeyInCommittee(paramCache ParamsGetter, covenantSerializedPk []byte, del *types.Delegation) (bool, error) {
 	stkParams, err := paramCache.Get(del.ParamsVersion)
 	if err != nil {
-		return false, fmt.Errorf("unable to get the param version: %d, reason: %s", del.ParamsVersion, err.Error())
+		return false, fmt.Errorf("unable to get the param version: %d, reason: %w", del.ParamsVersion, err)
 	}
 
 	for _, pk := range stkParams.CovenantPks {
@@ -496,7 +496,7 @@ func SanitizeDelegations(
 		// 2. Remove delegations that were not constructed with this covenant public key
 		isInCommittee, err := IsKeyInCommittee(paramCache, covenantSerializedPk, del)
 		if err != nil {
-			return nil, fmt.Errorf("unable to verify if covenant key is in committee: %s", err.Error())
+			return nil, fmt.Errorf("unable to verify if covenant key is in committee: %w", err)
 		}
 		if !isInCommittee {
 			continue
@@ -528,8 +528,9 @@ func (ce *CovenantEmulator) covenantSigSubmissionLoop() {
 				continue
 			}
 
+			pendingDels := len(dels)
 			// record delegation metrics
-			ce.recordMetricsCurrentPendingDelegations(len(dels))
+			ce.recordMetricsCurrentPendingDelegations(pendingDels)
 
 			if len(dels) == 0 {
 				ce.logger.Debug("no pending delegations are found")
@@ -545,6 +546,15 @@ func (ce *CovenantEmulator) covenantSigSubmissionLoop() {
 				)
 				continue
 			}
+
+			if len(sanitizedDels) == 0 {
+				ce.logger.Debug(
+					"no new delegations to sign",
+					zap.Int("pending_dels_len", pendingDels),
+				)
+				continue
+			}
+
 			// 3. Split delegations into batches for submission
 			batches := ce.delegationsToBatches(sanitizedDels)
 			for _, delBatch := range batches {
