@@ -2,6 +2,7 @@ package covenant_test
 
 import (
 	"encoding/hex"
+	"fmt"
 	"math/rand"
 	"testing"
 	"time"
@@ -256,7 +257,7 @@ func TestDeduplicationWithOddKey(t *testing.T) {
 	})
 
 	// 4. After removing the already signed delegation, the list should have only one element
-	sanitized := covenant.SanitizeDelegations(oddKeyPub, paramsGet, delegations)
+	sanitized := covenant.SanitizeDelegations(zap.NewNop(), oddKeyPub, paramsGet, delegations)
 	require.Equal(t, 1, len(sanitized))
 }
 
@@ -300,18 +301,21 @@ func TestIsKeyInCommittee(t *testing.T) {
 		pVersionWithCovenant:    paramsWithCovenant,
 	})
 
+	logger := zap.NewNop()
 	// checks the case where the covenant is NOT in the committee
-	actual := covenant.IsKeyInCommittee(paramsGet, covenantSerializedPk, delNoCovenant)
+	actual, err := covenant.IsKeyInCommittee(paramsGet, covenantSerializedPk, delNoCovenant)
 	require.False(t, actual)
-	emptyDels := covenant.SanitizeDelegations(covKeyPair.PublicKey, paramsGet, []*types.Delegation{delNoCovenant, delNoCovenant})
+	require.EqualError(t, err, fmt.Errorf("serialized pub key is not in the list of covenants for the param version: %d", pVersionWithoutCovenant).Error())
+	emptyDels := covenant.SanitizeDelegations(logger, covKeyPair.PublicKey, paramsGet, []*types.Delegation{delNoCovenant, delNoCovenant})
 	require.Len(t, emptyDels, 0)
 
 	// checks the case where the covenant is in the committee
-	actual = covenant.IsKeyInCommittee(paramsGet, covenantSerializedPk, delWithCovenant)
+	actual, err = covenant.IsKeyInCommittee(paramsGet, covenantSerializedPk, delWithCovenant)
 	require.True(t, actual)
-	dels := covenant.SanitizeDelegations(covKeyPair.PublicKey, paramsGet, []*types.Delegation{delWithCovenant, delNoCovenant})
+	require.NoError(t, err)
+	dels := covenant.SanitizeDelegations(logger, covKeyPair.PublicKey, paramsGet, []*types.Delegation{delWithCovenant, delNoCovenant})
 	require.Len(t, dels, 1)
-	dels = covenant.SanitizeDelegations(covKeyPair.PublicKey, paramsGet, []*types.Delegation{delWithCovenant})
+	dels = covenant.SanitizeDelegations(logger, covKeyPair.PublicKey, paramsGet, []*types.Delegation{delWithCovenant})
 	require.Len(t, dels, 1)
 
 	amtSatFirst := btcutil.Amount(100)
@@ -334,7 +338,7 @@ func TestIsKeyInCommittee(t *testing.T) {
 		},
 	}
 
-	sanitizedDels := covenant.SanitizeDelegations(covKeyPair.PublicKey, paramsGet, lastUnsanitizedDels)
+	sanitizedDels := covenant.SanitizeDelegations(logger, covKeyPair.PublicKey, paramsGet, lastUnsanitizedDels)
 	require.Len(t, sanitizedDels, 3)
 	require.Equal(t, amtSatFirst, sanitizedDels[0].TotalSat)
 	require.Equal(t, amtSatSecond, sanitizedDels[1].TotalSat)

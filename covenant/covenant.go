@@ -441,10 +441,10 @@ func (ce *CovenantEmulator) delegationsToBatches(dels []*types.Delegation) [][]*
 
 // IsKeyInCommittee returns true if the covenant serialized public key is in the covenant committee of the
 // parameter in which the BTC delegation was included.
-func IsKeyInCommittee(paramCache ParamsGetter, covenantSerializedPk []byte, del *types.Delegation) bool {
+func IsKeyInCommittee(paramCache ParamsGetter, covenantSerializedPk []byte, del *types.Delegation) (bool, error) {
 	stkParams, err := paramCache.Get(del.ParamsVersion)
 	if err != nil {
-		return false
+		return false, err
 	}
 
 	for _, pk := range stkParams.CovenantPks {
@@ -452,10 +452,10 @@ func IsKeyInCommittee(paramCache ParamsGetter, covenantSerializedPk []byte, del 
 		if !bytes.Equal(remoteKey, covenantSerializedPk) {
 			continue
 		}
-		return true
+		return true, nil
 	}
 
-	return false
+	return false, fmt.Errorf("serialized pub key is not in the list of covenants for the param version: %d", del.ParamsVersion)
 }
 
 // CovenantAlreadySigned returns true if the covenant already signed the BTC Delegation
@@ -474,12 +474,17 @@ func CovenantAlreadySigned(covenantSerializedPk []byte, del *types.Delegation) b
 // sanitizeDelegations removes any delegations that have already been signed by the covenant and
 // remove delegations that were not constructed with this covenant public key
 func (ce *CovenantEmulator) sanitizeDelegations(dels []*types.Delegation) []*types.Delegation {
-	return SanitizeDelegations(ce.pk, ce.paramCache, dels)
+	return SanitizeDelegations(ce.logger, ce.pk, ce.paramCache, dels)
 }
 
 // SanitizeDelegations remove the delegations in which the covenant public key already signed
 // or the delegation was not constructed with that covenant public key
-func SanitizeDelegations(pk *btcec.PublicKey, paramCache ParamsGetter, dels []*types.Delegation) []*types.Delegation {
+func SanitizeDelegations(
+	logger *zap.Logger,
+	pk *btcec.PublicKey,
+	paramCache ParamsGetter,
+	dels []*types.Delegation,
+) []*types.Delegation {
 	covenantSerializedPk := schnorr.SerializePubKey(pk)
 
 	sanitized := make([]*types.Delegation, 0, len(dels))
@@ -490,7 +495,17 @@ func SanitizeDelegations(pk *btcec.PublicKey, paramCache ParamsGetter, dels []*t
 			continue
 		}
 		// 2. Remove delegations that were not constructed with this covenant public key
-		if !IsKeyInCommittee(paramCache, covenantSerializedPk, del) {
+		isInCommittee, err := IsKeyInCommittee(paramCache, covenantSerializedPk, del)
+		if err != nil {
+			logger.Error(
+				"invalid delegation",
+				zap.String("staker_pk", hex.EncodeToString(covenantSerializedPk)),
+				zap.String("staking_tx_hex", del.StakingTxHex),
+				zap.String("reason", "covenant key is not in committee"),
+				zap.Error(err),
+			)
+		}
+		if !isInCommittee {
 			continue
 		}
 		sanitized = append(sanitized, del)
