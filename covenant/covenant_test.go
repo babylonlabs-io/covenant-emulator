@@ -1,6 +1,7 @@
 package covenant_test
 
 import (
+	"context"
 	"encoding/hex"
 	"fmt"
 	"math/rand"
@@ -23,6 +24,11 @@ import (
 
 	covcfg "github.com/babylonlabs-io/covenant-emulator/config"
 	"github.com/babylonlabs-io/covenant-emulator/covenant"
+	signerCfg "github.com/babylonlabs-io/covenant-emulator/covenant-signer/config"
+	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/keystore/cosmos"
+	signerMetrics "github.com/babylonlabs-io/covenant-emulator/covenant-signer/observability/metrics"
+	signerApp "github.com/babylonlabs-io/covenant-emulator/covenant-signer/signerapp"
+	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/signerservice"
 	"github.com/babylonlabs-io/covenant-emulator/keyring"
 	"github.com/babylonlabs-io/covenant-emulator/remotesigner"
 	"github.com/babylonlabs-io/covenant-emulator/testutil"
@@ -42,26 +48,67 @@ func FuzzAddCovenantSig(f *testing.F) {
 	// create a Covenant key pair in the keyring
 	covenantConfig := covcfg.DefaultConfig()
 
+	covenantConfig.BabylonConfig.KeyDirectory = f.TempDir()
+
+	signerConfig := signerCfg.DefaultConfig()
+	signerConfig.KeyStore.CosmosKeyStore.ChainID = covenantConfig.BabylonConfig.ChainID
+	signerConfig.KeyStore.CosmosKeyStore.KeyName = covenantConfig.BabylonConfig.Key
+	signerConfig.KeyStore.CosmosKeyStore.KeyringBackend = covenantConfig.BabylonConfig.KeyringBackend
+	signerConfig.KeyStore.CosmosKeyStore.KeyDirectory = covenantConfig.BabylonConfig.KeyDirectory
+	keyRetriever, err := cosmos.NewCosmosKeyringRetriever(signerConfig.KeyStore.CosmosKeyStore)
+	require.NoError(f, err)
+
+	covKeyPair, err := keyRetriever.Kr.CreateChainKey(
+		passphrase,
+		hdPath,
+	)
+	require.NoError(f, err)
+	require.NotNil(f, covKeyPair)
+
+	app := signerApp.NewSignerApp(
+		keyRetriever,
+	)
+
+	met := signerMetrics.NewCovenantSignerMetrics()
+	parsedConfig, err := signerConfig.Parse()
+	require.NoError(f, err)
+
+	server, err := signerservice.New(
+		context.Background(),
+		parsedConfig,
+		app,
+		met,
+	)
+	require.NoError(f, err)
+
+	signer := remotesigner.NewRemoteSigner(covenantConfig.RemoteSigner)
+
+	go func() {
+		_ = server.Start()
+	}()
+
+	// Give some time to launch server
+	time.Sleep(time.Second)
+
+	// unlock the signer before usage
+	err = signerservice.Unlock(
+		context.Background(),
+		covenantConfig.RemoteSigner.URL,
+		covenantConfig.RemoteSigner.Timeout,
+		passphrase,
+	)
+	require.NoError(f, err)
+
+	f.Cleanup(func() {
+		_ = server.Stop(context.TODO())
+	})
+
 	f.Fuzz(func(t *testing.T, seed int64) {
 		t.Log("Seed", seed)
 		r := rand.New(rand.NewSource(seed))
 
 		params := testutil.GenRandomParams(r, t)
 		mockClientController := testutil.PrepareMockedClientController(t, params)
-
-		covenantConfig.BabylonConfig.KeyDirectory = t.TempDir()
-
-		covKeyPair, err := keyring.CreateCovenantKey(
-			covenantConfig.BabylonConfig.KeyDirectory,
-			covenantConfig.BabylonConfig.ChainID,
-			covenantConfig.BabylonConfig.Key,
-			covenantConfig.BabylonConfig.KeyringBackend,
-			passphrase,
-			hdPath,
-		)
-		require.NoError(t, err)
-
-		signer := remotesigner.NewRemoteSigner(covenantConfig.RemoteSigner)
 
 		// create and start covenant emulator
 		ce, err := covenant.NewCovenantEmulator(&covenantConfig, mockClientController, zap.NewNop(), signer)

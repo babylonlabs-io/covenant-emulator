@@ -3,7 +3,7 @@
 This document outlines the setup of the covenant-emulator
 daemon program.
 
-## Table of Contents 
+## Table of Contents
 
 1. [Prerequesites](#1-prerequisites)
 2. [Install Covenant Emulator Binary](#2-install-covenant-emulator-binary)
@@ -17,20 +17,20 @@ daemon program.
 
 To successfully complete this guide, you will need:
 
-1. A running instance of the [covenant signer](../covenant-signer) 
-  with the url that you configured it to. Please follow the 
-  [covenant signer setup guide](./covenant-signer-setup.md) to 
+1. A running instance of the [covenant signer](../covenant-signer)
+  with the url that you configured it to. Please follow the
+  [covenant signer setup guide](./covenant-signer-setup.md) to
   complete the setup of the covenant signer with your keys before proceeding.
   Note that the phase-2 covenant-signer program is a different one than the one
   used doing phase-1
-2. A connection to a Babylon node. To run your own node, please refer to the 
+2. A connection to a Babylon node. To run your own node, please refer to the
   [Babylon Node Setup Guide](https://github.com/babylonlabs-io/networks/blob/main/bbn-test-5/bbn-test-5/babylon-node/README.md).
 
 ## 2. Install covenant emulator binary
 
 If you haven't already, download [Golang 1.23](https://go.dev/dl).
 
-Once installed run: 
+Once installed run:
 
 ```shell
 go version
@@ -69,8 +69,8 @@ echo 'export PATH=$HOME/go/bin:$PATH' >> ~/.profile
 
 ### 3.1. Initialize directories
 
-Next, we initialize the node and home directory. It should generate all of the 
-necessary files such as `covd.config`, these files will live in the `<path>` 
+Next, we initialize the node and home directory. It should generate all of the
+necessary files such as `covd.config`, these files will live in the `<path>`
 that you set for the `--home` with the below command.
 
 ```shell
@@ -87,8 +87,8 @@ $ ls <path>
 
 ### 3.2. Configure the covenant emulator
 
-As you have already set up the covenant signer, you can now configure the covenant 
-emulator to use it. 
+As you have already set up the covenant signer, you can now configure the covenant
+emulator to use it.
 
 Use the following parameters to configure the `covd.conf` file.
 
@@ -127,9 +127,6 @@ URL = http://127.0.0.1:9792
 
 ; client when making requests to the remote signer
 Timeout = 2s
-
-; if true, covenant will use the remote signer to sign transactions
-RemoteSignerEnabled = true
 ```
 
 Below are brief explanations of the configuration entries:
@@ -144,15 +141,14 @@ Below are brief explanations of the configuration entries:
 - `KeyringBackend` - Storage backend for the keyring (os, file, kwallet, pass, test, memory)
 - `URL` - Endpoint where the remote signing service is running
 - `Timeout` - Maximum time to wait for remote signer responses
-- `RemoteSignerEnabled` - Whether to use the remote signing service
 
-Ensure that the covenant signer is running and unlocked before proceeding 
+Ensure that the covenant signer is running and unlocked before proceeding
 otherwise you will be unable to run the emulator.
 
 ## 4. Generate key pairs
 
-The covenant emulator daemon requires the existence of a Babylon keyring that 
-signs signatures and interacts with Babylon. Use the following command to generate 
+The covenant emulator daemon requires the existence of a Babylon keyring that
+signs signatures and interacts with Babylon. Use the following command to generate
 the key:
 
 ```bash
@@ -167,20 +163,20 @@ covd create-key --key-name <name> --chain-id <chain-id> --keyring-backend <backe
 Parameters:
 - `--key-name`: Name for the key in the keyring
 - `--chain-id`: ID of the Babylon chain (e.g., bbn-test-5)
-- `--keyring-backend`: Backend for key storage, we will use `test` 
+- `--keyring-backend`: Backend for key storage, we will use `test`
   for this guide.
 
 After executing the above command, the key name will be saved in the config file
 created in the last [step](#42-configure-the-covenant-emulator).
 
-**⚡ Note:** that the `public-key` in the output should be used as one of the 
+**⚡ Note:** that the `public-key` in the output should be used as one of the
 inputs of the genesis of the Babylon chain.
 
-Also, this key will be used to pay for the fees due to the daemon submitting 
+Also, this key will be used to pay for the fees due to the daemon submitting
 signatures to Babylon.
 
-To check your balance, View your account on the 
-[Babylon Explorer](https://babylon-testnet.l2scan.co) by searching for your 
+To check your balance, View your account on the
+[Babylon Explorer](https://babylon-testnet.l2scan.co) by searching for your
 address.
 
 
