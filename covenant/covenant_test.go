@@ -24,6 +24,7 @@ import (
 	covcfg "github.com/babylonlabs-io/covenant-emulator/config"
 	"github.com/babylonlabs-io/covenant-emulator/covenant"
 	"github.com/babylonlabs-io/covenant-emulator/keyring"
+	"github.com/babylonlabs-io/covenant-emulator/remotesigner"
 	"github.com/babylonlabs-io/covenant-emulator/testutil"
 	"github.com/babylonlabs-io/covenant-emulator/types"
 )
@@ -37,6 +38,10 @@ var net = &chaincfg.SimNetParams
 
 func FuzzAddCovenantSig(f *testing.F) {
 	testutil.AddRandomSeedsToFuzzer(f, 10)
+
+	// create a Covenant key pair in the keyring
+	covenantConfig := covcfg.DefaultConfig()
+
 	f.Fuzz(func(t *testing.T, seed int64) {
 		t.Log("Seed", seed)
 		r := rand.New(rand.NewSource(seed))
@@ -44,8 +49,6 @@ func FuzzAddCovenantSig(f *testing.F) {
 		params := testutil.GenRandomParams(r, t)
 		mockClientController := testutil.PrepareMockedClientController(t, params)
 
-		// create a Covenant key pair in the keyring
-		covenantConfig := covcfg.DefaultConfig()
 		covenantConfig.BabylonConfig.KeyDirectory = t.TempDir()
 
 		covKeyPair, err := keyring.CreateCovenantKey(
@@ -58,8 +61,7 @@ func FuzzAddCovenantSig(f *testing.F) {
 		)
 		require.NoError(t, err)
 
-		signer, err := keyring.NewKeyringSigner(covenantConfig.BabylonConfig.ChainID, covenantConfig.BabylonConfig.Key, covenantConfig.BabylonConfig.KeyDirectory, covenantConfig.BabylonConfig.KeyringBackend, passphrase)
-		require.NoError(t, err)
+		signer := remotesigner.NewRemoteSigner(covenantConfig.RemoteSigner)
 
 		// create and start covenant emulator
 		ce, err := covenant.NewCovenantEmulator(&covenantConfig, mockClientController, zap.NewNop(), signer)

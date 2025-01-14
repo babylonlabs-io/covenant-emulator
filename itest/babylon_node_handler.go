@@ -19,6 +19,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var chainID = "chain-test"
+
 type babylonNode struct {
 	cmd          *exec.Cmd
 	pidFile      string
