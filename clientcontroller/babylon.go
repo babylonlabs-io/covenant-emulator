@@ -27,6 +27,8 @@ import (
 	"github.com/babylonlabs-io/covenant-emulator/types"
 )
 
+const maxPaginationLimit = uint64(1000)
+
 var _ ClientController = &BabylonController{}
 
 type BabylonController struct {
@@ -198,24 +200,39 @@ func (bc *BabylonController) QueryVerifiedDelegations(limit uint64) ([]*types.De
 // queryDelegationsWithStatus queries BTC delegations that need a Covenant signature
 // with the given status (either pending or unbonding)
 // it is only used when the program is running in Covenant mode
-func (bc *BabylonController) queryDelegationsWithStatus(status btcstakingtypes.BTCDelegationStatus, limit uint64) ([]*types.Delegation, error) {
+func (bc *BabylonController) queryDelegationsWithStatus(status btcstakingtypes.BTCDelegationStatus, delsLimit uint64) ([]*types.Delegation, error) {
+	pgLimit := min(maxPaginationLimit, delsLimit)
 	pagination := &sdkquery.PageRequest{
-		Limit: limit,
+		Limit: pgLimit,
 	}
 
-	res, err := bc.bbnClient.QueryClient.BTCDelegations(status, pagination)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query BTC delegations: %v", err)
-	}
+	dels := make([]*types.Delegation, delsLimit)
+	indexDels := uint64(0)
 
-	dels := make([]*types.Delegation, 0, len(res.BtcDelegations))
-	for _, delResp := range res.BtcDelegations {
-		del, err := DelegationRespToDelegation(delResp)
+	for indexDels <= delsLimit {
+		res, err := bc.bbnClient.QueryClient.BTCDelegations(status, pagination)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to query BTC delegations: %v", err)
 		}
 
-		dels = append(dels, del)
+		for _, delResp := range res.BtcDelegations {
+			del, err := DelegationRespToDelegation(delResp)
+			if err != nil {
+				return nil, err
+			}
+
+			dels[indexDels] = del
+			indexDels++
+
+			if indexDels == delsLimit {
+				return dels, nil
+			}
+		}
+
+		if len(res.BtcDelegations) != int(pgLimit) {
+			return dels, nil
+		}
+		pagination.Key = res.Pagination.NextKey
 	}
 
 	return dels, nil
