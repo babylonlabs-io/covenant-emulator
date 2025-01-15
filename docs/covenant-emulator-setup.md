@@ -30,7 +30,7 @@ To successfully complete this guide, you will need:
 
 If you haven't already, download [Golang 1.23](https://go.dev/dl).
 
-Once installed run:
+Once installed, run:
 
 ```shell
 go version
@@ -69,8 +69,8 @@ echo 'export PATH=$HOME/go/bin:$PATH' >> ~/.profile
 
 ### 3.1. Initialize directories
 
-Next, we initialize the node and home directory. It should generate all of the
-necessary files such as `covd.config`, these files will live in the `<path>`
+Next, initialize the node and home directory by generating all of the
+necessary files such as `covd.conf`. These files will live in the `<path>`
 that you set for the `--home` with the below command.
 
 ```shell
@@ -86,9 +86,6 @@ $ ls <path>
 ```
 
 ### 3.2. Configure the covenant emulator
-
-As you have already set up the covenant signer, you can now configure the covenant
-emulator to use it.
 
 Use the following parameters to configure the `covd.conf` file.
 
@@ -142,8 +139,8 @@ Below are brief explanations of the configuration entries:
 - `URL` - Endpoint where the remote signing service is running
 - `Timeout` - Maximum time to wait for remote signer responses
 
-Ensure that the covenant signer is running and unlocked before proceeding
-otherwise you will be unable to run the emulator.
+Ensure that the covenant signer is running and unlocked before proceeding.
+Otherwise, you will be unable to run the emulator.
 
 ## 4. Generate key pairs
 
