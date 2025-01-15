@@ -39,10 +39,9 @@ var (
 	eventuallyPollTime    = 500 * time.Millisecond
 	btcNetworkParams      = &chaincfg.SimNetParams
 
-	covenantKeyName = "covenant-key"
-	chainID         = "chain-test"
-	passphrase      = "testpass"
-	hdPath          = ""
+	chainID    = "chain-test"
+	passphrase = "testpass"
+	hdPath     = ""
 )
 
 type TestManager struct {
