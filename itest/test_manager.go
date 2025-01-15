@@ -2,6 +2,7 @@ package e2etest
 
 import (
 	"context"
+	"fmt"
 	"math/rand"
 	"os"
 	"sync"
@@ -107,13 +108,16 @@ func StartManager(t *testing.T) *TestManager {
 	parsedConfig, err := signerConfig.Parse()
 	require.NoError(t, err)
 
+	remoteSignerPort, url := AllocateUniquePort(t)
+	parsedConfig.ServerConfig.Port = remoteSignerPort
+	covenantConfig.RemoteSigner.URL = fmt.Sprintf("http://%s", url)
+
 	server, err := signerService.New(
 		context.Background(),
 		parsedConfig,
 		app,
 		met,
 	)
-
 	require.NoError(t, err)
 
 	signer := remotesigner.NewRemoteSigner(covenantConfig.RemoteSigner)
