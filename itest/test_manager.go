@@ -412,14 +412,6 @@ func (tm *TestManager) InsertBTCDelegation(
 	serializedUnbondingTx, err := bbntypes.SerializeBTCTx(testUnbondingInfo.UnbondingTx)
 	require.NoError(t, err)
 
-	err = signerservice.Unlock(
-		context.Background(),
-		tm.CovenanConfig.RemoteSigner.URL,
-		tm.CovenanConfig.RemoteSigner.Timeout,
-		passphrase,
-	)
-	require.NoError(t, err)
-
 	// submit the BTC delegation to Babylon
 	_, err = tm.CovBBNClient.CreateBTCDelegation(
 		bbntypes.NewBIP340PubKeyFromBTCPK(delBtcPubKey),
