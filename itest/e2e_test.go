@@ -18,7 +18,7 @@ var (
 // TestCovenantEmulatorLifeCycle tests the whole life cycle of a covenant emulator
 // in two flows depending on whether the delegation is following pre-approval flow
 func TestCovenantEmulatorLifeCycle(t *testing.T) {
-	tm, btcPks := StartManagerWithFinalityProvider(t, 1, false)
+	tm, btcPks := StartManagerWithFinalityProvider(t, 1)
 	defer tm.Stop(t)
 
 	// send a BTC delegation that is not following pre-approval flow
@@ -52,7 +52,7 @@ func TestCovenantEmulatorLifeCycle(t *testing.T) {
 }
 
 func TestCovenantEmulatorLifeCycleWithRemoteSigner(t *testing.T) {
-	tm, btcPks := StartManagerWithFinalityProvider(t, 1, true)
+	tm, btcPks := StartManagerWithFinalityProvider(t, 1)
 	defer tm.Stop(t)
 
 	// send a BTC delegation that is not following pre-approval flow

@@ -75,7 +75,7 @@ type testFinalityProviderData struct {
 	PoP            *bstypes.ProofOfPossessionBTC
 }
 
-func StartManager(t *testing.T, useRemoteSigner bool) *TestManager {
+func StartManager(t *testing.T) *TestManager {
 	testDir, err := baseDir("cee2etest")
 	require.NoError(t, err)
 
@@ -183,8 +183,8 @@ func (tm *TestManager) WaitForServicesStart(t *testing.T) {
 	t.Logf("Babylon node is started")
 }
 
-func StartManagerWithFinalityProvider(t *testing.T, n int, useRemoteSigner bool) (*TestManager, []*btcec.PublicKey) {
-	tm := StartManager(t, useRemoteSigner)
+func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*btcec.PublicKey) {
+	tm := StartManager(t)
 
 	var btcPks []*btcec.PublicKey
 	for i := 0; i < n; i++ {
