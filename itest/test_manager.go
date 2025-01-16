@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"os/exec"
 	"sync"
 	"testing"
 	"time"
@@ -169,6 +170,7 @@ func StartManager(t *testing.T) *TestManager {
 	}
 
 	tm.WaitForServicesStart(t)
+	tm.SendToAddr(t, keyInfo.Address.String(), "100000ubbn")
 
 	return tm
 }
@@ -185,6 +187,23 @@ func (tm *TestManager) WaitForServicesStart(t *testing.T) {
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
 	t.Logf("Babylon node is started")
+}
+
+func (tm *TestManager) SendToAddr(t *testing.T, toAddr, amount string) {
+	sendTx := exec.Command(
+		"babylond",
+		"tx",
+		"bank",
+		"send",
+		"node0",
+		toAddr,
+		amount,
+		"--keyring-backend=test",
+		"--chain-id=chain-test",
+		fmt.Sprintf("--home=%s", tm.BabylonHandler.babylonNode.nodeHome),
+	)
+	err := sendTx.Start()
+	require.NoError(t, err)
 }
 
 func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*btcec.PublicKey) {
