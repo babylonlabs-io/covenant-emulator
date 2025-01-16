@@ -206,7 +206,7 @@ func (bc *BabylonController) queryDelegationsWithStatus(status btcstakingtypes.B
 		Limit: pgLimit,
 	}
 
-	dels := make([]*types.Delegation, delsLimit)
+	dels := make([]*types.Delegation, 0, delsLimit)
 	indexDels := uint64(0)
 
 	for indexDels <= delsLimit {
