@@ -230,7 +230,7 @@ func (bc *BabylonController) queryDelegationsWithStatus(status btcstakingtypes.B
 			}
 		}
 
-		if len(res.BtcDelegations) != int(pgLimit) {
+		if uint64(len(res.BtcDelegations)) != pgLimit {
 			return dels, nil
 		}
 		pagination.Key = res.Pagination.NextKey
