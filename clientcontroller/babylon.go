@@ -186,22 +186,22 @@ func (bc *BabylonController) SubmitCovenantSigs(covSigs []*types.CovenantSigs) (
 	return &types.TxResponse{TxHash: res.TxHash, Events: res.Events}, nil
 }
 
-func (bc *BabylonController) QueryPendingDelegations(limit uint64) ([]*types.Delegation, error) {
-	return bc.queryDelegationsWithStatus(btcstakingtypes.BTCDelegationStatus_PENDING, limit)
+func (bc *BabylonController) QueryPendingDelegations(limit uint64, filter FilterFn) ([]*types.Delegation, error) {
+	return bc.queryDelegationsWithStatus(btcstakingtypes.BTCDelegationStatus_PENDING, limit, filter)
 }
 
 func (bc *BabylonController) QueryActiveDelegations(limit uint64) ([]*types.Delegation, error) {
-	return bc.queryDelegationsWithStatus(btcstakingtypes.BTCDelegationStatus_ACTIVE, limit)
+	return bc.queryDelegationsWithStatus(btcstakingtypes.BTCDelegationStatus_ACTIVE, limit, nil)
 }
 
 func (bc *BabylonController) QueryVerifiedDelegations(limit uint64) ([]*types.Delegation, error) {
-	return bc.queryDelegationsWithStatus(btcstakingtypes.BTCDelegationStatus_VERIFIED, limit)
+	return bc.queryDelegationsWithStatus(btcstakingtypes.BTCDelegationStatus_VERIFIED, limit, nil)
 }
 
 // queryDelegationsWithStatus queries BTC delegations that need a Covenant signature
 // with the given status (either pending or unbonding)
 // it is only used when the program is running in Covenant mode
-func (bc *BabylonController) queryDelegationsWithStatus(status btcstakingtypes.BTCDelegationStatus, delsLimit uint64) ([]*types.Delegation, error) {
+func (bc *BabylonController) queryDelegationsWithStatus(status btcstakingtypes.BTCDelegationStatus, delsLimit uint64, filter FilterFn) ([]*types.Delegation, error) {
 	pgLimit := min(MaxPaginationLimit, delsLimit)
 	pagination := &sdkquery.PageRequest{
 		Limit: pgLimit,
@@ -222,6 +222,17 @@ func (bc *BabylonController) queryDelegationsWithStatus(status btcstakingtypes.B
 				return nil, err
 			}
 
+			if filter != nil {
+				accept, err := filter(del)
+				if err != nil {
+					return nil, err
+				}
+
+				if !accept {
+					continue
+				}
+			}
+
 			dels = append(dels, del)
 			indexDels++
 
@@ -230,6 +241,8 @@ func (bc *BabylonController) queryDelegationsWithStatus(status btcstakingtypes.B
 			}
 		}
 
+		// if returned a different number of btc delegations than the pagination limit
+		// it means that there is no more delegations at the store
 		if uint64(len(res.BtcDelegations)) != pgLimit {
 			return dels, nil
 		}

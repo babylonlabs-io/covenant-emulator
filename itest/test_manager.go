@@ -273,6 +273,7 @@ func (tm *TestManager) WaitForNPendingDels(t *testing.T, n int) []*types.Delegat
 	require.Eventually(t, func() bool {
 		dels, err = tm.CovBBNClient.QueryPendingDelegations(
 			tm.CovenanConfig.DelegationLimit,
+			nil,
 		)
 		if err != nil {
 			return false
