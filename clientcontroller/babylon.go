@@ -156,6 +156,22 @@ func (bc *BabylonController) reliablySendMsgs(msgs []sdk.Msg) (*provider.Relayer
 	)
 }
 
+func (bc *BabylonController) reliablySendMsgsAsMultipleTxs(msgs []sdk.Msg) (*provider.RelayerTxResponse, error) {
+	// ctx := context.Background()
+
+	// c := bc.bbnClient.GetConfig()
+	// c.acc
+
+	return nil, nil
+	// bc.bbnClient.SendMsgToMempool()
+	// return bc.bbnClient.ReliablySendMsgs(
+	// 	context.Background(),
+	// 	msgs,
+	// 	expectedErrors,
+	// 	unrecoverableErrors,
+	// )
+}
+
 // SubmitCovenantSigs submits the Covenant signature via a MsgAddCovenantSig to Babylon if the daemon runs in Covenant mode
 // it returns tx hash and error
 func (bc *BabylonController) SubmitCovenantSigs(covSigs []*types.CovenantSigs) (*types.TxResponse, error) {
