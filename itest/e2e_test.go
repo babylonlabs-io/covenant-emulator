@@ -62,7 +62,7 @@ func TestQueryPendingDelegations(t *testing.T) {
 		_ = tm.InsertBTCDelegation(t, btcPks, stakingTime, stakingAmount, false)
 	}
 
-	dels, err := tm.CovBBNClient.QueryPendingDelegations(uint64(numDels))
+	dels, err := tm.CovBBNClient.QueryPendingDelegations(uint64(numDels), nil)
 	require.NoError(t, err)
 	require.Len(t, dels, numDels)
 }
