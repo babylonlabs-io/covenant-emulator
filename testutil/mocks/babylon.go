@@ -7,6 +7,7 @@ package mocks
 import (
 	reflect "reflect"
 
+	clientcontroller "github.com/babylonlabs-io/covenant-emulator/clientcontroller"
 	types "github.com/babylonlabs-io/covenant-emulator/types"
 	gomock "github.com/golang/mock/gomock"
 )
@@ -49,18 +50,18 @@ func (mr *MockClientControllerMockRecorder) Close() *gomock.Call {
 }
 
 // QueryPendingDelegations mocks base method.
-func (m *MockClientController) QueryPendingDelegations(limit uint64) ([]*types.Delegation, error) {
+func (m *MockClientController) QueryPendingDelegations(limit uint64, filter clientcontroller.FilterFn) ([]*types.Delegation, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "QueryPendingDelegations", limit)
+	ret := m.ctrl.Call(m, "QueryPendingDelegations", limit, filter)
 	ret0, _ := ret[0].([]*types.Delegation)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // QueryPendingDelegations indicates an expected call of QueryPendingDelegations.
-func (mr *MockClientControllerMockRecorder) QueryPendingDelegations(limit interface{}) *gomock.Call {
+func (mr *MockClientControllerMockRecorder) QueryPendingDelegations(limit, filter interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryPendingDelegations", reflect.TypeOf((*MockClientController)(nil).QueryPendingDelegations), limit)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryPendingDelegations", reflect.TypeOf((*MockClientController)(nil).QueryPendingDelegations), limit, filter)
 }
 
 // QueryStakingParamsByVersion mocks base method.
