@@ -8,6 +8,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	sdksecp256k1 "github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/go-bip39"
 )
 
@@ -18,6 +19,7 @@ const (
 
 type ChainKeyInfo struct {
 	Name       string
+	Address    sdk.AccAddress
 	Mnemonic   string
 	PublicKey  *btcec.PublicKey
 	PrivateKey *btcec.PrivateKey
@@ -98,6 +100,10 @@ func (kc *ChainKeyringController) CreateChainKey(passphrase, hdPath string) (*Ch
 		return nil, err
 	}
 
+	addr, err := record.GetAddress()
+	if err != nil {
+		return nil, err
+	}
 	privKey := record.GetLocal().PrivKey.GetCachedValue()
 
 	switch v := privKey.(type) {
@@ -105,6 +111,7 @@ func (kc *ChainKeyringController) CreateChainKey(passphrase, hdPath string) (*Ch
 		sk, pk := btcec.PrivKeyFromBytes(v.Key)
 		return &ChainKeyInfo{
 			Name:       kc.keyName,
+			Address:    addr,
 			PublicKey:  pk,
 			PrivateKey: sk,
 			Mnemonic:   mnemonic,
