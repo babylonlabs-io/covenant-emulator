@@ -150,7 +150,7 @@ func FuzzAddCovenantSig(f *testing.F) {
 				BtcPk:            delPK,
 				FpBtcPks:         fpPks,
 				StakingTime:      stakingTimeBlocks,
-				StartHeight:      startHeight, // not relevant here
+				StartHeight:      startHeight,
 				EndHeight:        startHeight + stakingTimeBlocks,
 				TotalSat:         btcutil.Amount(stakingValue),
 				UnbondingTime:    unbondingTime,
@@ -371,33 +371,6 @@ func TestIsKeyInCommittee(t *testing.T) {
 	accept, err = covenant.AcceptDelegationToSign(covKeyPair.PublicKey, paramsGet, delWithCovenant)
 	require.NoError(t, err)
 	require.True(t, accept)
-
-	// amtSatFirst := btcutil.Amount(100)
-	// amtSatSecond := btcutil.Amount(150)
-	// amtSatThird := btcutil.Amount(200)
-	// lastUnsanitizedDels := []*types.Delegation{
-	// 	&types.Delegation{
-	// 		ParamsVersion: pVersionWithCovenant,
-	// 		TotalSat:      amtSatFirst,
-	// 	},
-	// 	delNoCovenant,
-	// 	&types.Delegation{
-	// 		ParamsVersion: pVersionWithCovenant,
-	// 		TotalSat:      amtSatSecond,
-	// 	},
-	// 	delNoCovenant,
-	// 	&types.Delegation{
-	// 		ParamsVersion: pVersionWithCovenant,
-	// 		TotalSat:      amtSatThird,
-	// 	},
-	// }
-
-	// sanitizedDels, err := covenant.SanitizeDelegations(covKeyPair.PublicKey, paramsGet, lastUnsanitizedDels)
-	// require.NoError(t, err)
-	// require.Len(t, sanitizedDels, 3)
-	// require.Equal(t, amtSatFirst, sanitizedDels[0].TotalSat)
-	// require.Equal(t, amtSatSecond, sanitizedDels[1].TotalSat)
-	// require.Equal(t, amtSatThird, sanitizedDels[2].TotalSat)
 
 	errParamGet := fmt.Errorf("dumbErr")
 	accept, err = covenant.AcceptDelegationToSign(covKeyPair.PublicKey, NewMockParamError(errParamGet), delWithCovenant)
