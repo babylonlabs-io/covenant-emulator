@@ -42,6 +42,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 * [#83](https://github.com/babylonlabs-io/covenant-emulator/pull/83) covenant-signer: remove go.mod
 * [#95](https://github.com/babylonlabs-io/covenant-emulator/pull/95) removed local signer option
 as the covenant emulator should only connect to a remote signer
+* [#96](https://github.com/babylonlabs-io/covenant-emulator/pull/96) add pagination to `queryDelegationsWithStatus`
 
 ## v0.11.3
 

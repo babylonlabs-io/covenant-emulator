@@ -471,40 +471,36 @@ func CovenantAlreadySigned(covenantSerializedPk []byte, del *types.Delegation) b
 	return false
 }
 
-// sanitizeDelegations removes any delegations that have already been signed by the covenant and
-// remove delegations that were not constructed with this covenant public key
-func (ce *CovenantEmulator) sanitizeDelegations(dels []*types.Delegation) ([]*types.Delegation, error) {
-	return SanitizeDelegations(ce.pk, ce.paramCache, dels)
+// acceptDelegationToSign verifies if the delegation should be accepted to sign.
+func (ce *CovenantEmulator) acceptDelegationToSign(del *types.Delegation) (accept bool, err error) {
+	return AcceptDelegationToSign(ce.pk, ce.paramCache, del)
 }
 
-// SanitizeDelegations remove the delegations in which the covenant public key already signed
-// or the delegation was not constructed with that covenant public key
-func SanitizeDelegations(
+// AcceptDelegationToSign returns true if the delegation should be accepted to be signed.
+// Returns false if the covenant public key already signed
+// or if the delegation was not constructed with that covenant public key.
+func AcceptDelegationToSign(
 	pk *btcec.PublicKey,
 	paramCache ParamsGetter,
-	dels []*types.Delegation,
-) ([]*types.Delegation, error) {
+	del *types.Delegation,
+) (accept bool, err error) {
 	covenantSerializedPk := schnorr.SerializePubKey(pk)
-
-	sanitized := make([]*types.Delegation, 0, len(dels))
-	for _, del := range dels {
-		// 1. Remove delegations that do not need the covenant's signature because
-		// this covenant already signed
-		if CovenantAlreadySigned(covenantSerializedPk, del) {
-			continue
-		}
-		// 2. Remove delegations that were not constructed with this covenant public key
-		isInCommittee, err := IsKeyInCommittee(paramCache, covenantSerializedPk, del)
-		if err != nil {
-			return nil, fmt.Errorf("unable to verify if covenant key is in committee: %w", err)
-		}
-		if !isInCommittee {
-			continue
-		}
-		sanitized = append(sanitized, del)
+	// 1. Check if the delegation does not need the covenant's signature because
+	// this covenant already signed
+	if CovenantAlreadySigned(covenantSerializedPk, del) {
+		return false, nil
 	}
 
-	return sanitized, nil
+	// 2. Check if the delegation was not constructed with this covenant public key
+	isInCommittee, err := IsKeyInCommittee(paramCache, covenantSerializedPk, del)
+	if err != nil {
+		return false, fmt.Errorf("unable to verify if covenant key is in committee: %w", err)
+	}
+	if !isInCommittee {
+		return false, nil
+	}
+
+	return true, nil
 }
 
 // covenantSigSubmissionLoop is the reactor to submit Covenant signature for BTC delegations
@@ -522,7 +518,7 @@ func (ce *CovenantEmulator) covenantSigSubmissionLoop() {
 		select {
 		case <-covenantSigTicker.C:
 			// 1. Get all pending delegations
-			dels, err := ce.cc.QueryPendingDelegations(limit)
+			dels, err := ce.cc.QueryPendingDelegations(limit, ce.acceptDelegationToSign)
 			if err != nil {
 				ce.logger.Debug("failed to get pending delegations", zap.Error(err))
 				continue
@@ -532,31 +528,13 @@ func (ce *CovenantEmulator) covenantSigSubmissionLoop() {
 			// record delegation metrics
 			ce.recordMetricsCurrentPendingDelegations(pendingDels)
 
-			if len(dels) == 0 {
+			if pendingDels == 0 {
 				ce.logger.Debug("no pending delegations are found")
 				continue
 			}
 
-			// 2. Remove delegations that do not need the covenant's signature
-			sanitizedDels, err := ce.sanitizeDelegations(dels)
-			if err != nil {
-				ce.logger.Error(
-					"error sanitizing delegations",
-					zap.Error(err),
-				)
-				continue
-			}
-
-			if len(sanitizedDels) == 0 {
-				ce.logger.Debug(
-					"no new delegations to sign",
-					zap.Int("pending_dels_len", pendingDels),
-				)
-				continue
-			}
-
-			// 3. Split delegations into batches for submission
-			batches := ce.delegationsToBatches(sanitizedDels)
+			// 2. Split delegations into batches for submission
+			batches := ce.delegationsToBatches(dels)
 			for _, delBatch := range batches {
 				_, err := ce.AddCovenantSignatures(delBatch)
 				if err != nil {

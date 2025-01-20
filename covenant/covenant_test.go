@@ -150,7 +150,7 @@ func FuzzAddCovenantSig(f *testing.F) {
 				BtcPk:            delPK,
 				FpBtcPks:         fpPks,
 				StakingTime:      stakingTimeBlocks,
-				StartHeight:      startHeight, // not relevant here
+				StartHeight:      startHeight,
 				EndHeight:        startHeight + stakingTimeBlocks,
 				TotalSat:         btcutil.Amount(stakingValue),
 				UnbondingTime:    unbondingTime,
@@ -276,27 +276,26 @@ func TestDeduplicationWithOddKey(t *testing.T) {
 
 	randomKey, err := btcec.NewPrivateKey()
 	require.NoError(t, err)
-	pubKey := randomKey.PubKey()
+	randPubKey := randomKey.PubKey()
 
 	paramVersion := uint32(2)
-	delegations := []*types.Delegation{
-		&types.Delegation{
-			CovenantSigs: []*types.CovenantAdaptorSigInfo{
-				&types.CovenantAdaptorSigInfo{
-					// 3. Delegation is already signed by the public key with odd y coordinate
-					Pk: pubKeyFromSchnorr,
-				},
+	delAlreadySigned := &types.Delegation{
+		CovenantSigs: []*types.CovenantAdaptorSigInfo{
+			&types.CovenantAdaptorSigInfo{
+				// 3. Delegation is already signed by the public key with odd y coordinate
+				Pk: pubKeyFromSchnorr,
 			},
-			ParamsVersion: paramVersion,
 		},
-		&types.Delegation{
-			CovenantSigs: []*types.CovenantAdaptorSigInfo{
-				&types.CovenantAdaptorSigInfo{
-					Pk: pubKey,
-				},
+		ParamsVersion: paramVersion,
+	}
+
+	delNotSigned := &types.Delegation{
+		CovenantSigs: []*types.CovenantAdaptorSigInfo{
+			&types.CovenantAdaptorSigInfo{
+				Pk: randPubKey,
 			},
-			ParamsVersion: paramVersion,
 		},
+		ParamsVersion: paramVersion,
 	}
 
 	paramsGet := NewMockParam(map[uint32]*types.StakingParams{
@@ -306,9 +305,13 @@ func TestDeduplicationWithOddKey(t *testing.T) {
 	})
 
 	// 4. After removing the already signed delegation, the list should have only one element
-	sanitized, err := covenant.SanitizeDelegations(oddKeyPub, paramsGet, delegations)
-	require.Equal(t, 1, len(sanitized))
+	accept, err := covenant.AcceptDelegationToSign(oddKeyPub, paramsGet, delAlreadySigned)
 	require.NoError(t, err)
+	require.False(t, accept)
+
+	accept, err = covenant.AcceptDelegationToSign(oddKeyPub, paramsGet, delNotSigned)
+	require.NoError(t, err)
+	require.True(t, accept)
 }
 
 func TestIsKeyInCommittee(t *testing.T) {
@@ -355,51 +358,23 @@ func TestIsKeyInCommittee(t *testing.T) {
 	actual, err := covenant.IsKeyInCommittee(paramsGet, covenantSerializedPk, delNoCovenant)
 	require.False(t, actual)
 	require.NoError(t, err)
-	emptyDels, err := covenant.SanitizeDelegations(covKeyPair.PublicKey, paramsGet, []*types.Delegation{delNoCovenant, delNoCovenant})
+
+	accept, err := covenant.AcceptDelegationToSign(covKeyPair.PublicKey, paramsGet, delNoCovenant)
 	require.NoError(t, err)
-	require.Len(t, emptyDels, 0)
+	require.False(t, accept)
 
 	// checks the case where the covenant is in the committee
 	actual, err = covenant.IsKeyInCommittee(paramsGet, covenantSerializedPk, delWithCovenant)
 	require.True(t, actual)
 	require.NoError(t, err)
-	dels, err := covenant.SanitizeDelegations(covKeyPair.PublicKey, paramsGet, []*types.Delegation{delWithCovenant, delNoCovenant})
-	require.NoError(t, err)
-	require.Len(t, dels, 1)
-	dels, err = covenant.SanitizeDelegations(covKeyPair.PublicKey, paramsGet, []*types.Delegation{delWithCovenant})
-	require.NoError(t, err)
-	require.Len(t, dels, 1)
 
-	amtSatFirst := btcutil.Amount(100)
-	amtSatSecond := btcutil.Amount(150)
-	amtSatThird := btcutil.Amount(200)
-	lastUnsanitizedDels := []*types.Delegation{
-		&types.Delegation{
-			ParamsVersion: pVersionWithCovenant,
-			TotalSat:      amtSatFirst,
-		},
-		delNoCovenant,
-		&types.Delegation{
-			ParamsVersion: pVersionWithCovenant,
-			TotalSat:      amtSatSecond,
-		},
-		delNoCovenant,
-		&types.Delegation{
-			ParamsVersion: pVersionWithCovenant,
-			TotalSat:      amtSatThird,
-		},
-	}
-
-	sanitizedDels, err := covenant.SanitizeDelegations(covKeyPair.PublicKey, paramsGet, lastUnsanitizedDels)
+	accept, err = covenant.AcceptDelegationToSign(covKeyPair.PublicKey, paramsGet, delWithCovenant)
 	require.NoError(t, err)
-	require.Len(t, sanitizedDels, 3)
-	require.Equal(t, amtSatFirst, sanitizedDels[0].TotalSat)
-	require.Equal(t, amtSatSecond, sanitizedDels[1].TotalSat)
-	require.Equal(t, amtSatThird, sanitizedDels[2].TotalSat)
+	require.True(t, accept)
 
 	errParamGet := fmt.Errorf("dumbErr")
-	sanitizedDels, err = covenant.SanitizeDelegations(covKeyPair.PublicKey, NewMockParamError(errParamGet), lastUnsanitizedDels)
-	require.Nil(t, sanitizedDels)
+	accept, err = covenant.AcceptDelegationToSign(covKeyPair.PublicKey, NewMockParamError(errParamGet), delWithCovenant)
+	require.False(t, accept)
 
 	errKeyIsInCommittee := fmt.Errorf("unable to get the param version: %d, reason: %s", pVersionWithCovenant, errParamGet.Error())
 	expErr := fmt.Errorf("unable to verify if covenant key is in committee: %s", errKeyIsInCommittee.Error())
