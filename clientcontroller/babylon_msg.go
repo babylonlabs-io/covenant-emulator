@@ -15,7 +15,6 @@ import (
 	sdkerrors "cosmossdk.io/errors"
 	"cosmossdk.io/store/rootmulti"
 	"github.com/avast/retry-go/v4"
-	bbn "github.com/babylonlabs-io/babylon/app"
 	appparams "github.com/babylonlabs-io/babylon/app/params"
 	"github.com/babylonlabs-io/babylon/client/config"
 	abci "github.com/cometbft/cometbft/abci/types"
@@ -34,7 +33,7 @@ import (
 	legacyerrors "github.com/cosmos/cosmos-sdk/types/errors"
 	txtypes "github.com/cosmos/cosmos-sdk/types/tx"
 	"github.com/cosmos/cosmos-sdk/types/tx/signing"
-	rlycosmos "github.com/cosmos/relayer/v2/chains/cosmos"
+	"github.com/cosmos/relayer/v2/relayer/chains/cosmos"
 	"github.com/cosmos/relayer/v2/relayer/provider"
 	"github.com/juju/fslock"
 	abcistrange "github.com/strangelove-ventures/cometbft-client/abci/types"
@@ -57,32 +56,82 @@ var (
 	dstChanTag                  = "packet_dst_channel"
 )
 
-func reliablySendMsgsAsMultipleTxs(
+func reliablySendEachMsgAsTx(
 	cfg *config.BabylonConfig,
 	msgs []sdk.Msg,
-) error {
-
-	encCfg := bbn.GetEncodingConfig()
-
+	logger *zap.Logger,
+	cometClient client.CometRPC,
+	encCfg *appparams.EncodingConfig,
+	getAcc func(addr string) (sdk.AccountI, error),
+	expectedErrors, unrecoverableErrors []*sdkerrors.Error,
+) (txResponses []*sdk.TxResponse, failedMsgs []sdk.Msg, err error) {
 	c, err := strangeloveclient.NewClient(cfg.RPCAddr, cfg.Timeout)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 
 	ctx := context.Background()
-	return ReliablySendMsgs(ctx, cfg)
+	txResponses = make([]*sdk.TxResponse, 0)
+	failedMsgs = make([]sdk.Msg, 0)
+
+	errAccKey := AccessKeyWithLock(cfg.KeyDirectory, func() error {
+		keybase, err := KeybaseFromCfg(cfg, encCfg.Codec)
+		if err != nil {
+			return err
+		}
+
+		covAddr, err := GetKeyAddressForKey(keybase, cfg.Key)
+		if err != nil {
+			return err
+		}
+
+		covAcc, err := getAcc(covAddr.String())
+		if err != nil {
+			return err
+		}
+
+		accSequence := covAcc.GetSequence()
+
+		for _, msg := range msgs {
+			txResp, err := ReliablySendMsgsWithSequence(
+				ctx,
+				cfg,
+				logger,
+				cometClient,
+				c,
+				encCfg,
+				accSequence,
+				[]sdk.Msg{msg},
+				expectedErrors, unrecoverableErrors,
+			)
+			if err != nil {
+				// log msg fail
+				failedMsgs = append(failedMsgs, msg)
+			}
+
+			accSequence++
+			logger.Debug("resp", zap.String("txHash", txResp.TxHash))
+			txResponses = append(txResponses, txResp)
+		}
+
+		return nil
+	})
+	if errAccKey != nil {
+		return nil, nil, err
+	}
+
+	return txResponses, failedMsgs, nil
 }
 
-// ReliablySendMsgs reliably sends a list of messages to the chain.
+// ReliablySendMsgsWithSequence reliably sends a list of messages to the chain.
 // It utilizes a file lock as well as a keyring lock to ensure atomic access.
-func ReliablySendMsgs(
+func ReliablySendMsgsWithSequence(
 	ctx context.Context,
 	cfg *config.BabylonConfig,
 	logger *zap.Logger,
 	cometClient client.CometRPC,
 	rpcClient *strangeloveclient.Client,
 	encCfg *appparams.EncodingConfig,
-	ar client.AccountRetriever,
 
 	accSequence uint64,
 	msgs []sdk.Msg,
@@ -103,14 +152,7 @@ func ReliablySendMsgs(
 	wg.Add(1)
 
 	if err := retry.Do(func() error {
-		var sendMsgErr error
-		krErr := AccessKeyWithLock(cfg.KeyDirectory, func() {
-			sendMsgErr = SendMessagesToMempool(ctx, cfg, logger, cometClient, rpcClient, encCfg, ar, msgs, "", accSequence, []func(*sdk.TxResponse, error){callback})
-		})
-		if krErr != nil {
-			logger.Error("unrecoverable err when submitting the tx, skip retrying", zap.Error(krErr))
-			return retry.Unrecoverable(krErr)
-		}
+		sendMsgErr := SendMessagesToMempool(ctx, cfg, logger, cometClient, rpcClient, encCfg, msgs, "", accSequence, []func(*sdk.TxResponse, error){callback})
 		if sendMsgErr != nil {
 			if ErrorContained(sendMsgErr, unrecoverableErrors) {
 				logger.Error("unrecoverable err when submitting the tx, skip retrying", zap.Error(sendMsgErr))
@@ -165,7 +207,6 @@ func SendMessagesToMempool(
 	cometClient client.CometRPC,
 	rpcClient *strangeloveclient.Client,
 	encCfg *appparams.EncodingConfig,
-	ar client.AccountRetriever,
 
 	msgs []sdk.Msg,
 	memo string,
@@ -177,7 +218,7 @@ func SendMessagesToMempool(
 	txSignerKey := cfg.Key
 
 	txBytes, fees, err := BuildMessages(
-		ctx, cfg, cometClient, rpcClient, encCfg, ar, msgs, memo, 0, txSignerKey, sequence,
+		ctx, cfg, cometClient, rpcClient, encCfg, msgs, memo, 0, txSignerKey, sequence,
 	)
 	if err != nil {
 		return err
@@ -197,7 +238,6 @@ func BuildMessages(
 	cometClient client.CometRPC,
 	rpcClient *strangeloveclient.Client,
 	encCfg *appparams.EncodingConfig,
-	ar client.AccountRetriever,
 	msgs []sdk.Msg,
 	memo string,
 	gas uint64,
@@ -208,14 +248,7 @@ func BuildMessages(
 	fees sdk.Coins,
 	err error,
 ) {
-
-	keybase, err := keyring.New(
-		cfg.ChainID,
-		cfg.KeyringBackend,
-		cfg.KeyDirectory,
-		os.Stdin,
-		encCfg.Codec,
-	)
+	keybase, err := KeybaseFromCfg(cfg, encCfg.Codec)
 	if err != nil {
 		return nil, sdk.Coins{}, err
 	}
@@ -225,7 +258,7 @@ func BuildMessages(
 		WithChainID(cfg.ChainID).
 		WithCodec(encCfg.Codec)
 
-	txf := TxFactory(cfg, ar, encCfg.TxConfig, keybase)
+	txf := TxFactory(cfg, encCfg.TxConfig, keybase)
 	txf, err = PrepareFactory(cliCtx, txf, keybase, txSignerKey)
 	if err != nil {
 		return nil, sdk.Coins{}, err
@@ -452,7 +485,7 @@ func waitForBlockInclusion(
 	for {
 		select {
 		case <-exitAfter:
-			return nil, fmt.Errorf("timed out after: %d; %w", waitTimeout, rlycosmos.ErrTimeoutAfterWaitingForTxBroadcast)
+			return nil, fmt.Errorf("timed out after: %d; %w", waitTimeout, cosmos.ErrTimeoutAfterWaitingForTxBroadcast)
 		// This fixed poll is fine because it's only for logging and updating prometheus metrics currently.
 		case <-time.After(time.Millisecond * 100):
 			res, err := rpcClient.Tx(ctx, txHash, false)
@@ -538,23 +571,24 @@ func mkTxResult(
 	return sdk.NewResponseResultTx(resTx, any, ""), nil
 }
 
-func AccessKeyWithLock(keyDir string, accessFunc func()) error {
+func AccessKeyWithLock(keyDir string, accessFunc func() error) error {
 	// use lock file to guard concurrent access to the keyring
 	lockFilePath := path.Join(keyDir, "keys.lock")
 	lock := fslock.New(lockFilePath)
-	if err := lock.Lock(); err != nil {
+	err := lock.Lock()
+	if err != nil {
 		return fmt.Errorf("failed to acquire file system lock (%s): %w", lockFilePath, err)
 	}
 
 	// trigger function that access keyring
-	accessFunc()
+	err = accessFunc()
 
 	// unlock and release access
-	if err := lock.Unlock(); err != nil {
+	if errUnlock := lock.Unlock(); errUnlock != nil {
 		return fmt.Errorf("error unlocking file system lock (%s), please manually delete", lockFilePath)
 	}
 
-	return nil
+	return err
 }
 
 // QueryABCI performs an ABCI query and returns the appropriate response and error sdk error code.
@@ -610,6 +644,19 @@ func ErrorContained(err error, errList []*sdkerrors.Error) bool {
 	}
 
 	return false
+}
+
+func KeybaseFromCfg(
+	cfg *config.BabylonConfig,
+	cdc codec.Codec,
+) (keyring.Keyring, error) {
+	return keyring.New(
+		cfg.ChainID,
+		cfg.KeyringBackend,
+		cfg.KeyDirectory,
+		os.Stdin,
+		cdc,
+	)
 }
 
 // PrepareFactory mutates the tx factory with the appropriate account number, sequence number, and min gas settings.
@@ -684,12 +731,10 @@ func GetKeyAddressForKey(keybase keyring.Keyring, key string) (sdk.AccAddress, e
 // TxFactory instantiates a new tx factory with the appropriate configuration settings for this chain.
 func TxFactory(
 	cfg *config.BabylonConfig,
-	ar client.AccountRetriever,
 	txConf client.TxConfig,
 	keybase keyring.Keyring,
 ) tx.Factory {
 	return tx.Factory{}.
-		WithAccountRetriever(ar).
 		WithChainID(cfg.ChainID).
 		WithTxConfig(txConf).
 		WithGasAdjustment(cfg.GasAdjustment).

@@ -8,8 +8,11 @@ import (
 
 	sdkmath "cosmossdk.io/math"
 	"github.com/btcsuite/btcd/btcec/v2"
+	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 
+	bbn "github.com/babylonlabs-io/babylon/app"
+	appparams "github.com/babylonlabs-io/babylon/app/params"
 	bbnclient "github.com/babylonlabs-io/babylon/client/client"
 	bbntypes "github.com/babylonlabs-io/babylon/types"
 	btcctypes "github.com/babylonlabs-io/babylon/x/btccheckpoint/types"
@@ -36,6 +39,7 @@ type BabylonController struct {
 	bbnClient *bbnclient.Client
 	cfg       *config.BBNConfig
 	btcParams *chaincfg.Params
+	encCfg    *appparams.EncodingConfig
 	logger    *zap.Logger
 }
 
@@ -63,6 +67,7 @@ func NewBabylonController(
 		bc,
 		cfg,
 		btcParams,
+		bbn.GetEncodingConfig(),
 		logger,
 	}, nil
 }
@@ -165,7 +170,9 @@ func (bc *BabylonController) reliablySendMsgsAsMultipleTxs(msgs []sdk.Msg) (*pro
 	// c := bc.bbnClient.GetConfig()
 	// c.acc
 
-	return nil, nil
+	_, _, err := reliablySendEachMsgAsTx(bc.bbnClient.GetConfig(), msgs, bc.logger, bc.bbnClient.RPCClient, bc.encCfg, bc.QueryAccount, expectedErrors, unrecoverableErrors)
+
+	return nil, err
 	// bc.bbnClient.SendMsgToMempool()
 	// return bc.bbnClient.ReliablySendMsgs(
 	// 	context.Background(),
@@ -190,7 +197,11 @@ func (bc *BabylonController) SubmitCovenantSigs(covSigs []*types.CovenantSigs) (
 			SlashingUnbondingTxSigs: covSig.SlashingUnbondingSigs,
 		})
 	}
-	res, err := bc.reliablySendMsgs(msgs)
+	// res, err := bc.reliablySendMsgs(msgs)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	res, err := bc.reliablySendMsgsAsMultipleTxs(msgs)
 	if err != nil {
 		return nil, err
 	}
@@ -524,4 +535,29 @@ func (bc *BabylonController) QueryBtcLightClientTip() (*btclctypes.BTCHeaderInfo
 	}
 
 	return res.Header, nil
+}
+
+// QueryAccount returns the account interface based on the address
+func (bc *BabylonController) QueryAccount(addr string) (sdk.AccountI, error) {
+	ctx, cancel := getContextWithCancel(bc.cfg.Timeout)
+	defer cancel()
+
+	clientCtx := sdkclient.Context{Client: bc.bbnClient.RPCClient}
+
+	queryClient := authtypes.NewQueryClient(clientCtx)
+
+	req := &authtypes.QueryAccountRequest{
+		Address: addr,
+	}
+	resp, err := queryClient.Account(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query account: %v", err)
+	}
+
+	var account sdk.AccountI
+	if err := bc.encCfg.InterfaceRegistry.UnpackAny(resp.Account, &account); err != nil {
+		return nil, err
+	}
+
+	return account, nil
 }
