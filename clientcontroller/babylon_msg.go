@@ -38,9 +38,12 @@ import (
 	strangeloveclient "github.com/strangelove-ventures/cometbft-client/client"
 	rpcclient "github.com/strangelove-ventures/cometbft-client/rpc/client"
 	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
+
+const MaxParallelMsgs = 20
 
 var (
 	rtyAttNum                   = uint(5)
@@ -51,6 +54,8 @@ var (
 	srcChanTag                  = "packet_src_channel"
 	dstChanTag                  = "packet_dst_channel"
 )
+
+type callbackTx func(*sdk.TxResponse, error)
 
 func reliablySendEachMsgAsTx(
 	cfg *config.BabylonConfig,
@@ -67,8 +72,14 @@ func reliablySendEachMsgAsTx(
 	}
 
 	ctx := context.Background()
-	txResponses = make([]*sdk.TxResponse, 0)
-	failedMsgs = make([]sdk.Msg, 0)
+
+	// create outputs at msg len capacity to handle each msg in parallel
+	// as it is easier than pass 2 channels for each func
+	txResponses = make([]*sdk.TxResponse, len(msgs))
+	failedMsgs = make([]sdk.Msg, len(msgs))
+
+	eg, egCtx := errgroup.WithContext(ctx)
+	eg.SetLimit(MaxParallelMsgs)
 
 	errAccKey := AccessKeyWithLock(cfg.KeyDirectory, func() error {
 		keybase, err := KeybaseFromCfg(cfg, encCfg.Codec)
@@ -95,32 +106,49 @@ func reliablySendEachMsgAsTx(
 		accSequence := covAcc.GetSequence()
 		accNumber := covAcc.GetAccountNumber()
 
-		for _, msg := range msgs {
-			txResp, err := ReliablySendMsgsWithSequence(
-				ctx,
-				cfg,
-				log,
-				cometClient,
-				c,
-				encCfg,
-				covAddrStr,
-				accSequence,
-				accNumber,
-				[]sdk.Msg{msg},
-				expectedErrors, unrecoverableErrors,
-			)
-			if err != nil {
-				// log msg fail
-				failedMsgs = append(failedMsgs, msg)
-			}
-			if txResp != nil {
-				log.Debug("resp", zap.String("txHash", txResp.TxHash))
+		for i, msg := range msgs {
+			eg.Go(func() error {
+				txResp, err := ReliablySendMsgsWithSequence(
+					egCtx,
+					cfg,
+					log,
+					cometClient,
+					c,
+					encCfg,
+					covAddrStr,
+					accSequence,
+					accNumber,
+					[]sdk.Msg{msg},
+					expectedErrors, unrecoverableErrors,
+				)
 
-				txResponses = append(txResponses, txResp)
-			} else {
-				failedMsgs = append(failedMsgs, msg)
-			}
+				if err != nil {
+					failedMsgs[i] = msg
+					log.Error(
+						"failed to submit message",
+						zap.Int("msg_index", i),
+						zap.String("msg_data", msg.String()),
+						zap.Error(err),
+					)
+					return err
+				}
 
+				if txResp != nil {
+					log.Debug(
+						"sucessfully submit message",
+						zap.Int("msg_index", i),
+						zap.String("tx_hash", txResp.TxHash),
+					)
+					txResponses[i] = txResp
+				} else {
+					log.Debug(
+						"sucessfully submit message, got expected error",
+						zap.Int("msg_index", i),
+					)
+					failedMsgs[i] = msg
+				}
+				return nil
+			})
 			accSequence++
 		}
 
@@ -130,8 +158,18 @@ func reliablySendEachMsgAsTx(
 		return nil, nil, err
 	}
 
+	err = eg.Wait()
+
+	// clean the outputs
+
+	if err != nil {
+		return txResponses, failedMsgs, err
+	}
+
 	return txResponses, failedMsgs, nil
 }
+
+// func cleanNil()
 
 // ReliablySendMsgsWithSequence reliably sends a list of messages to the chain.
 // It utilizes a file lock as well as a keyring lock to ensure atomic access.
@@ -163,7 +201,7 @@ func ReliablySendMsgsWithSequence(
 	wg.Add(1)
 
 	if err := retry.Do(func() error {
-		sendMsgErr := SendMessagesToMempool(ctx, cfg, logger, cometClient, rpcClient, encCfg, msgs, "", accAddress, accSequence, accNumber, []func(*sdk.TxResponse, error){callback})
+		sendMsgErr := SendMessagesToMempool(ctx, cfg, logger, cometClient, rpcClient, encCfg, msgs, accSequence, accNumber, []callbackTx{callback})
 		if sendMsgErr != nil {
 			if ErrorContained(sendMsgErr, unrecoverableErrors) {
 				logger.Error("unrecoverable err when submitting the tx, skip retrying", zap.Error(sendMsgErr))
@@ -220,17 +258,16 @@ func SendMessagesToMempool(
 	encCfg *appparams.EncodingConfig,
 
 	msgs []sdk.Msg,
-	memo string,
 
-	accAddress string,
 	accSequence, accNumber uint64,
 
-	asyncCallbacks []func(*sdk.TxResponse, error),
+	asyncCallbacks []callbackTx,
 ) error {
 	txSignerKey := cfg.Key
+	memo, gas := "", uint64(0)
 
 	txBytes, fees, err := BuildMessages(
-		ctx, cfg, cometClient, rpcClient, encCfg, msgs, memo, 0, txSignerKey, accAddress, accSequence, accNumber,
+		ctx, cfg, cometClient, rpcClient, encCfg, msgs, memo, gas, txSignerKey, accSequence, accNumber,
 	)
 	if err != nil {
 		return err
@@ -254,7 +291,6 @@ func BuildMessages(
 	memo string,
 	gas uint64,
 	txSignerKey string,
-	accAddress string,
 	accSequence, accNumber uint64,
 ) (
 	txBytes []byte,
@@ -266,18 +302,7 @@ func BuildMessages(
 		return nil, sdk.Coins{}, err
 	}
 
-	// cliCtx := client.Context{}.
-	// 	WithClient(cometClient).
-	// 	WithInterfaceRegistry(encCfg.InterfaceRegistry).
-	// 	WithChainID(cfg.ChainID).
-	// 	WithCodec(encCfg.Codec)
-
 	txf := TxFactory(cfg, encCfg.TxConfig, keybase)
-	// txf, err = PrepareFactory(cliCtx, txf, keybase, txSignerKey)
-	// if err != nil {
-	// 	return nil, sdk.Coins{}, err
-	// }
-
 	if memo != "" {
 		txf = txf.WithMemo(memo)
 	}
@@ -286,7 +311,6 @@ func BuildMessages(
 		WithAccountNumber(accNumber)
 
 	adjusted := gas
-
 	if gas == 0 {
 		_, adjusted, err = CalculateGas(ctx, rpcClient, keybase, txf, txSignerKey, cfg.GasAdjustment, msgs...)
 
@@ -336,7 +360,7 @@ func BroadcastTx(
 
 	asyncCtx context.Context, // context for async wait for block inclusion after successful tx broadcast
 	asyncTimeout time.Duration, // timeout for waiting for block inclusion
-	asyncCallbacks []func(*sdk.TxResponse, error), // callback for success/fail of the wait for block inclusion
+	asyncCallbacks []callbackTx, // callback for success/fail of the wait for block inclusion
 ) error {
 	res, err := rpcClient.BroadcastTxSync(ctx, tx)
 	isErr := err != nil
@@ -436,7 +460,7 @@ func waitForTx(
 	txHash []byte,
 	msgs []sdk.Msg, // used for logging only
 	waitTimeout time.Duration,
-	callbacks []func(*sdk.TxResponse, error),
+	callbacks []callbackTx,
 ) {
 	res, err := waitForBlockInclusion(ctx, rpcClient, txConfig, txHash, waitTimeout)
 	if err != nil {
@@ -738,7 +762,6 @@ func TxFactory(
 	cfg *config.BabylonConfig,
 	txConf client.TxConfig,
 	keybase keyring.Keyring,
-
 ) tx.Factory {
 	return tx.Factory{}.
 		WithChainID(cfg.ChainID).
