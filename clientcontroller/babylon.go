@@ -2,6 +2,7 @@ package clientcontroller
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"time"
@@ -155,6 +156,37 @@ func (bc *BabylonController) reliablySendMsg(msg sdk.Msg) (*provider.RelayerTxRe
 	return bc.reliablySendMsgs([]sdk.Msg{msg})
 }
 
+// SendMsgs first it tries to send all the messages in a single transaction
+// if it fails, sends each message in a different transaction.
+func (bc *BabylonController) SendMsgs(msgs []sdk.Msg) ([]*types.TxResponse, error) {
+	resSingleTx, errSingleTx := bc.reliablySendMsgs(msgs)
+	if errSingleTx != nil {
+		// failed to send as a batch tx
+		resMultipleTxs, errMultipleTx := bc.reliablySendMsgsAsMultipleTxs(msgs)
+		if errMultipleTx != nil {
+			return nil, errors.Join(errSingleTx, errMultipleTx)
+		}
+
+		return convertTxResp(resMultipleTxs...), nil
+	}
+
+	if resSingleTx == nil { // some expected error happened
+		return []*types.TxResponse{}, nil
+	}
+	return convertTxResp(resSingleTx), nil
+}
+
+func convertTxResp(txs ...*provider.RelayerTxResponse) []*types.TxResponse {
+	resp := make([]*types.TxResponse, len(txs))
+	for i, tx := range txs {
+		resp[i] = &types.TxResponse{
+			TxHash: tx.TxHash,
+			Events: tx.Events,
+		}
+	}
+	return resp
+}
+
 func (bc *BabylonController) reliablySendMsgs(msgs []sdk.Msg) (*provider.RelayerTxResponse, error) {
 	return bc.bbnClient.ReliablySendMsgs(
 		context.Background(),
@@ -164,9 +196,15 @@ func (bc *BabylonController) reliablySendMsgs(msgs []sdk.Msg) (*provider.Relayer
 	)
 }
 
-func (bc *BabylonController) reliablySendMsgsAsMultipleTxs(msgs []sdk.Msg) (*provider.RelayerTxResponse, error) {
+func (bc *BabylonController) reliablySendMsgsAsMultipleTxs(msgs []sdk.Msg) ([]*provider.RelayerTxResponse, error) {
 	cfg := bc.bbnClient.GetConfig()
 	encCfg := bc.encCfg
+	log := bc.logger
+
+	var (
+		txResponses []*sdk.TxResponse
+		failedMsgs  []*failedMsg
+	)
 
 	errAccKey := AccessKeyWithLock(cfg.KeyDirectory, func() error {
 		keybase, err := KeybaseFromCfg(cfg, encCfg.Codec)
@@ -180,7 +218,7 @@ func (bc *BabylonController) reliablySendMsgsAsMultipleTxs(msgs []sdk.Msg) (*pro
 		}
 
 		covAddrStr := covAddr.String()
-		bc.logger.Debug(
+		log.Debug(
 			"covenant_signing",
 			zap.String("address", covAddrStr),
 		)
@@ -190,20 +228,39 @@ func (bc *BabylonController) reliablySendMsgsAsMultipleTxs(msgs []sdk.Msg) (*pro
 			return err
 		}
 
-		_, _, err = reliablySendEachMsgAsTx(cfg, msgs, bc.logger, bc.bbnClient.RPCClient, encCfg, covAcc)
+		txResponses, failedMsgs, err = reliablySendEachMsgAsTx(cfg, msgs, log, bc.bbnClient.RPCClient, encCfg, covAcc)
 		return err
 	})
-
 	if errAccKey != nil {
 		return nil, errAccKey
 	}
 
-	return nil, nil
+	for _, failedMsg := range failedMsgs {
+		log.Warn(
+			"msg failed to submit as tx",
+			zap.String("msg", failedMsg.msg.String()),
+			zap.Error(failedMsg.reason),
+		)
+	}
+
+	resp := make([]*provider.RelayerTxResponse, len(txResponses))
+	for i, res := range txResponses {
+		resp[i] = &provider.RelayerTxResponse{
+			Height:    res.Height,
+			TxHash:    res.TxHash,
+			Codespace: res.Codespace,
+			Code:      res.Code,
+			Data:      res.Data,
+			Events:    parseEventsFromTxResponse(res),
+		}
+	}
+
+	return resp, nil
 }
 
 // SubmitCovenantSigs submits the Covenant signature via a MsgAddCovenantSig to Babylon if the daemon runs in Covenant mode
 // it returns tx hash and error
-func (bc *BabylonController) SubmitCovenantSigs(covSigs []*types.CovenantSigs) (*types.TxResponse, error) {
+func (bc *BabylonController) SubmitCovenantSigs(covSigs []*types.CovenantSigs) ([]*types.TxResponse, error) {
 	msgs := make([]sdk.Msg, 0, len(covSigs))
 	for _, covSig := range covSigs {
 		bip340UnbondingSig := bbntypes.NewBIP340SignatureFromBTCSig(covSig.UnbondingSig)
@@ -216,20 +273,7 @@ func (bc *BabylonController) SubmitCovenantSigs(covSigs []*types.CovenantSigs) (
 			SlashingUnbondingTxSigs: covSig.SlashingUnbondingSigs,
 		})
 	}
-	// res, err := bc.reliablySendMsgs(msgs)
-	// if err != nil {
-	// 	return nil, err
-	// }
-	res, err := bc.reliablySendMsgsAsMultipleTxs(msgs)
-	if err != nil {
-		return nil, err
-	}
-
-	if res == nil {
-		return &types.TxResponse{}, nil
-	}
-
-	return &types.TxResponse{TxHash: res.TxHash, Events: res.Events}, nil
+	return bc.SendMsgs(msgs)
 }
 
 func (bc *BabylonController) QueryPendingDelegations(limit uint64, filter FilterFn) ([]*types.Delegation, error) {

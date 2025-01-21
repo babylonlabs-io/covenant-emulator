@@ -64,7 +64,7 @@ test-e2e:
 
 test-e2e-cov-emu-life:
 	cd $(TOOLS_DIR); go install -trimpath $(BABYLON_PKG)
-	go test -run TestCovenantEmulatorLifeCycle -mod=readonly -timeout=5m -v $(PACKAGES_E2E) --tags=e2e
+	go test -run TestCovenantEmulatorLifeCycle -mod=readonly -timeout=7m -v $(PACKAGES_E2E) --tags=e2e
 
 test-e2e-cov-pending-del:
 	cd $(TOOLS_DIR); go install -trimpath $(BABYLON_PKG)

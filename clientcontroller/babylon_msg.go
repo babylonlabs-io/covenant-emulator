@@ -57,6 +57,11 @@ var (
 // callbackTx is the expected type that waits for the inclusion of a transaction on the chain to be called
 type callbackTx func(*sdk.TxResponse, error)
 
+type failedMsg struct {
+	msg    sdk.Msg
+	reason error
+}
+
 // reliablySendEachMsgAsTx creates multiple
 func reliablySendEachMsgAsTx(
 	cfg *config.BabylonConfig,
@@ -65,7 +70,7 @@ func reliablySendEachMsgAsTx(
 	cometClient client.CometRPC,
 	encCfg *appparams.EncodingConfig,
 	covAcc sdk.AccountI,
-) (txResponses []*sdk.TxResponse, failedMsgs []*sdk.Msg, err error) {
+) (txResponses []*sdk.TxResponse, failedMsgs []*failedMsg, err error) {
 	rpcClient, err := strangeloveclient.NewClient(cfg.RPCAddr, cfg.Timeout)
 	if err != nil {
 		return nil, nil, err
@@ -77,7 +82,7 @@ func reliablySendEachMsgAsTx(
 	// create outputs at msg len capacity to handle each msg in parallel
 	// as it is easier than pass 2 channels for each func
 	txResponses = make([]*sdk.TxResponse, msgLen)
-	failedMsgs = make([]*sdk.Msg, msgLen)
+	failedMsgs = make([]*failedMsg, msgLen)
 
 	var wg sync.WaitGroup
 
@@ -792,13 +797,16 @@ func reliablySendEachMsgAsTxCallback(
 	msg sdk.Msg,
 	msgIndex int,
 	txResponses []*sdk.TxResponse,
-	failedMsgs []*sdk.Msg,
+	failedMsgs []*failedMsg,
 ) callbackTx {
 	return func(txResp *sdk.TxResponse, err error) {
 		defer wg.Done()
 
 		if err != nil {
-			failedMsgs[msgIndex] = &msg
+			failedMsgs[msgIndex] = &failedMsg{
+				msg:    msg,
+				reason: err,
+			}
 
 			if ErrorContained(err, expectedErrors) {
 				log.Debug(

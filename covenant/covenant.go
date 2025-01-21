@@ -83,7 +83,7 @@ func (ce *CovenantEmulator) PublicKeyStr() string {
 // AddCovenantSignatures adds Covenant signatures on every given Bitcoin delegations and submits them
 // in a batch to Babylon. Invalid delegations will be skipped with error log error will be returned if
 // the batch submission fails
-func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (*types.TxResponse, error) {
+func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) ([]*types.TxResponse, error) {
 	if len(btcDels) == 0 {
 		return nil, fmt.Errorf("no delegations")
 	}
@@ -511,8 +511,10 @@ func (ce *CovenantEmulator) covenantSigSubmissionLoop() {
 	limit := ce.config.DelegationLimit
 	covenantSigTicker := time.NewTicker(interval)
 
-	ce.logger.Info("starting signature submission loop",
-		zap.Float64("interval seconds", interval.Seconds()))
+	ce.logger.Info(
+		"starting signature submission loop",
+		zap.Float64("interval seconds", interval.Seconds()),
+	)
 
 	for {
 		select {

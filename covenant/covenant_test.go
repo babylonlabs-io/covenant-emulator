@@ -254,10 +254,10 @@ func FuzzAddCovenantSig(f *testing.F) {
 		// check the sigs are expected
 		expectedTxHash := testutil.GenRandomHexStr(r, 32)
 		mockClientController.EXPECT().SubmitCovenantSigs(covSigsSet).
-			Return(&types.TxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
+			Return([]*types.TxResponse{&types.TxResponse{TxHash: expectedTxHash}}, nil).AnyTimes()
 		res, err := ce.AddCovenantSignatures(btcDels)
 		require.NoError(t, err)
-		require.Equal(t, expectedTxHash, res.TxHash)
+		require.Equal(t, expectedTxHash, res[0].TxHash)
 	})
 }
 

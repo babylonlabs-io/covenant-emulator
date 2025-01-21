@@ -20,7 +20,7 @@ type (
 		// SubmitCovenantSigs submits Covenant signatures to the consumer chain, each corresponding to
 		// a finality provider that the delegation is (re-)staked to
 		// it returns tx hash and error
-		SubmitCovenantSigs(covSigMsgs []*types.CovenantSigs) (*types.TxResponse, error)
+		SubmitCovenantSigs(covSigMsgs []*types.CovenantSigs) ([]*types.TxResponse, error)
 
 		// QueryPendingDelegations queries BTC delegations that are in status of pending
 		QueryPendingDelegations(limit uint64, filter FilterFn) ([]*types.Delegation, error)
