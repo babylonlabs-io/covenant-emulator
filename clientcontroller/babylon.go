@@ -166,20 +166,33 @@ func (bc *BabylonController) reliablySendMsgs(msgs []sdk.Msg) (*provider.Relayer
 
 func (bc *BabylonController) reliablySendMsgsAsMultipleTxs(msgs []sdk.Msg) (*provider.RelayerTxResponse, error) {
 	// ctx := context.Background()
-
+	cfg := bc.bbnClient.GetConfig()
+	encCfg := bc.encCfg
 	// c := bc.bbnClient.GetConfig()
 	// c.acc
+	keybase, err := KeybaseFromCfg(cfg, encCfg.Codec)
+	if err != nil {
+		return nil, err
+	}
 
-	_, _, err := reliablySendEachMsgAsTx(bc.bbnClient.GetConfig(), msgs, bc.logger, bc.bbnClient.RPCClient, bc.encCfg, bc.QueryAccount, expectedErrors, unrecoverableErrors)
+	covAddr, err := GetKeyAddressForKey(keybase, cfg.Key)
+	if err != nil {
+		return nil, err
+	}
 
+	covAddrStr := covAddr.String()
+	bc.logger.Debug(
+		"covenant_signing",
+		zap.String("address", covAddrStr),
+	)
+
+	covAcc, err := bc.QueryAccount(covAddrStr)
+	if err != nil {
+		return nil, err
+	}
+
+	_, _, err = reliablySendEachMsgAsTx(cfg, msgs, bc.logger, bc.bbnClient.RPCClient, encCfg, covAcc, expectedErrors, unrecoverableErrors)
 	return nil, err
-	// bc.bbnClient.SendMsgToMempool()
-	// return bc.bbnClient.ReliablySendMsgs(
-	// 	context.Background(),
-	// 	msgs,
-	// 	expectedErrors,
-	// 	unrecoverableErrors,
-	// )
 }
 
 // SubmitCovenantSigs submits the Covenant signature via a MsgAddCovenantSig to Babylon if the daemon runs in Covenant mode

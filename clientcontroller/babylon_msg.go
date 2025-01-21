@@ -64,7 +64,7 @@ func reliablySendEachMsgAsTx(
 	log *zap.Logger,
 	cometClient client.CometRPC,
 	encCfg *appparams.EncodingConfig,
-	getAcc func(addr string) (sdk.AccountI, error),
+	covAcc sdk.AccountI,
 	expectedErrors, unrecoverableErrors []*sdkerrors.Error,
 ) (txResponses []*sdk.TxResponse, failedMsgs []*sdk.Msg, err error) {
 	rpcClient, err := strangeloveclient.NewClient(cfg.RPCAddr, cfg.Timeout)
@@ -83,27 +83,6 @@ func reliablySendEachMsgAsTx(
 	var wg sync.WaitGroup
 
 	errAccKey := AccessKeyWithLock(cfg.KeyDirectory, func() error {
-		keybase, err := KeybaseFromCfg(cfg, encCfg.Codec)
-		if err != nil {
-			return err
-		}
-
-		covAddr, err := GetKeyAddressForKey(keybase, cfg.Key)
-		if err != nil {
-			return err
-		}
-
-		covAddrStr := covAddr.String()
-		log.Debug(
-			"covenant_signing",
-			zap.String("address", covAddrStr),
-		)
-
-		covAcc, err := getAcc(covAddrStr)
-		if err != nil {
-			return err
-		}
-
 		accSequence := covAcc.GetSequence()
 		accNumber := covAcc.GetAccountNumber()
 
@@ -113,14 +92,15 @@ func reliablySendEachMsgAsTx(
 			callback := reliablySendEachMsgAsTxCallback(log, &wg, msg, i, txResponses, failedMsgs)
 			errRetry := retry.Do(func() error {
 				// SendMessagesToMempool launches a go routine to wait for the tx be included and call the callback func
-				sendMsgErr := SendMessagesToMempool(ctx, cfg, log, cometClient, rpcClient, encCfg, msgs, accSequence, accNumber, []callbackTx{callback})
+				sendMsgErr := SendMessagesToMempool(ctx, cfg, log, cometClient, rpcClient, encCfg, msgs, accSequence, accNumber, callback)
 				if sendMsgErr != nil {
+					defer wg.Done()
+
 					if ErrorContained(sendMsgErr, unrecoverableErrors) {
 						log.Error("unrecoverable err when submitting the tx, skip retrying", zap.Error(sendMsgErr))
 						return retry.Unrecoverable(sendMsgErr)
 					}
 					if ErrorContained(sendMsgErr, expectedErrors) {
-						defer wg.Done()
 						// this is necessary because if err is returned
 						// the callback function will not be executed so
 						// that the inside wg.Done will not be executed
@@ -131,6 +111,7 @@ func reliablySendEachMsgAsTx(
 				}
 				return nil
 			}, retry.Context(ctx), rtyAtt, rtyDel, rtyErr, retry.OnRetry(func(n uint, err error) {
+				wg.Add(1)
 				log.Debug("retrying", zap.Uint("attempt", n+1), zap.Uint("max_attempts", rtyAttNum), zap.Error(err))
 			}))
 
@@ -153,83 +134,6 @@ func reliablySendEachMsgAsTx(
 	return CleanSlice(txResponses), CleanSlice(failedMsgs), nil
 }
 
-// func cleanNil()
-
-// ReliablySendMsgsWithSequence reliably sends a list of messages to the chain.
-// It utilizes a file lock as well as a keyring lock to ensure atomic access.
-func ReliablySendMsgsWithSequence(
-	ctx context.Context,
-	cfg *config.BabylonConfig,
-	log *zap.Logger,
-	cometClient client.CometRPC,
-	rpcClient *strangeloveclient.Client,
-	encCfg *appparams.EncodingConfig,
-
-	accAddress string,
-	accSequence, accNumber uint64,
-	msgs []sdk.Msg,
-	expectedErrors, unrecoverableErrors []*sdkerrors.Error,
-) (*sdk.TxResponse, error) {
-	var (
-		tx          *sdk.TxResponse
-		callbackErr error
-		wg          sync.WaitGroup
-	)
-
-	// todo: callback needs to be in outside func
-	callback := func(txResp *sdk.TxResponse, err error) {
-		tx = txResp
-		callbackErr = err
-		wg.Done()
-	}
-
-	wg.Add(1)
-
-	if err := retry.Do(func() error {
-		sendMsgErr := SendMessagesToMempool(ctx, cfg, log, cometClient, rpcClient, encCfg, msgs, accSequence, accNumber, []callbackTx{callback})
-		if sendMsgErr != nil {
-			if ErrorContained(sendMsgErr, unrecoverableErrors) {
-				log.Error("unrecoverable err when submitting the tx, skip retrying", zap.Error(sendMsgErr))
-				return retry.Unrecoverable(sendMsgErr)
-			}
-			if ErrorContained(sendMsgErr, expectedErrors) {
-				// this is necessary because if err is returned
-				// the callback function will not be executed so
-				// that the inside wg.Done will not be executed
-				wg.Done()
-				log.Error("expected err when submitting the tx, skip retrying", zap.Error(sendMsgErr))
-				return nil
-			}
-			return sendMsgErr
-		}
-		return nil
-	}, retry.Context(ctx), rtyAtt, rtyDel, rtyErr, retry.OnRetry(func(n uint, err error) {
-		log.Debug("retrying", zap.Uint("attempt", n+1), zap.Uint("max_attempts", rtyAttNum), zap.Error(err))
-	})); err != nil {
-		return nil, err
-	}
-
-	wg.Wait()
-
-	if callbackErr != nil {
-		if ErrorContained(callbackErr, expectedErrors) {
-			return nil, nil
-		}
-		return nil, callbackErr
-	}
-
-	if tx == nil {
-		// this case could happen if the error within the retry is an expected error
-		return nil, nil
-	}
-
-	if tx.Code != 0 {
-		return tx, fmt.Errorf("transaction failed with code: %d", tx.Code)
-	}
-
-	return tx, nil
-}
-
 // SendMessagesToMempool simulates and broadcasts a transaction with the given msgs and memo.
 // This method will return once the transaction has entered the mempool.
 // In an async goroutine, will wait for the tx to be included in the block unless asyncCtx exits.
@@ -246,7 +150,7 @@ func SendMessagesToMempool(
 
 	accSequence, accNumber uint64,
 
-	asyncCallbacks []callbackTx,
+	asyncCallbacks ...callbackTx,
 ) error {
 	txSignerKey := cfg.Key
 	memo, gas := "", uint64(0)

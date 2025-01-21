@@ -48,8 +48,13 @@ func TestCovenantEmulatorLifeCycle(t *testing.T) {
 	res, err := tm.CovenantEmulator.AddCovenantSignatures(dels)
 	require.NoError(t, err)
 	require.Empty(t, res)
+}
 
-	// Check pending dels
+func TestQueryPendingDelegations(t *testing.T) {
+	tm, btcPks := StartManagerWithFinalityProvider(t, 1)
+	defer tm.Stop(t)
+
+	// manually sets the pg to a low value
 	clientcontroller.MaxPaginationLimit = 2
 
 	numDels := 3
@@ -57,7 +62,7 @@ func TestCovenantEmulatorLifeCycle(t *testing.T) {
 		_ = tm.InsertBTCDelegation(t, btcPks, stakingTime, stakingAmount, false)
 	}
 
-	dels, err = tm.CovBBNClient.QueryPendingDelegations(uint64(numDels), nil)
+	dels, err := tm.CovBBNClient.QueryPendingDelegations(uint64(numDels), nil)
 	require.NoError(t, err)
 	require.Len(t, dels, numDels)
 }
