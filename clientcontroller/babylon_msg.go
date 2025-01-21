@@ -96,19 +96,23 @@ func reliablySendEachMsgAsTx(
 			cometClient client.CometRPC,
 			rpcClient *strangeloveclient.Client,
 			encCfg *appparams.EncodingConfig,
-			msgs []sdk.Msg,
+			msg sdk.Msg,
 			accSequence, accNumber uint64,
 			callback callbackTx,
 
 			msgIndex int,
 		) {
-			err := RetrySendMessagesToMempool(ctx, cfg, log, cometClient, rpcClient, encCfg, msgs, accSequence, accNumber, callback)
+			err := RetrySendMessagesToMempool(ctx, cfg, log, cometClient, rpcClient, encCfg, []sdk.Msg{msg}, accSequence, accNumber, callback)
 			if err != nil {
-				log.Error("failed to retry message", zap.Int("msg_index", msgIndex), zap.Error(err))
+				if ErrorContained(err, expectedErrors) {
+					log.Error("expected err when submitting the tx, skip retrying", zap.Error(err))
+				} else {
+					log.Error("failed to retry message", zap.Int("msg_index", msgIndex), zap.Error(err))
+				}
 				// If the callback was not invoked, decrement the wait group here
 				wg.Done()
 			}
-		}(ctx, cfg, log, cometClient, rpcClient, encCfg, []sdk.Msg{msg}, accSequence, accNumber, callback, msgIndex)
+		}(ctx, cfg, log, cometClient, rpcClient, encCfg, msg, accSequence, accNumber, callback, msgIndex)
 
 		accSequence++
 	}
@@ -138,10 +142,6 @@ func RetrySendMessagesToMempool(
 			if ErrorContained(sendMsgErr, unrecoverableErrors) {
 				log.Error("unrecoverable err when submitting the tx, skip retrying", zap.Error(sendMsgErr))
 				return retry.Unrecoverable(sendMsgErr)
-			}
-			if ErrorContained(sendMsgErr, expectedErrors) {
-				log.Error("expected err when submitting the tx, skip retrying", zap.Error(sendMsgErr))
-				return nil
 			}
 			return sendMsgErr
 		}
