@@ -85,6 +85,7 @@ func reliablySendEachMsgAsTx(
 	accNumber := covAcc.GetAccountNumber()
 
 	for msgIndex, msg := range msgs {
+		wg.Add(1)
 
 		callback := reliablySendEachMsgAsTxCallback(log, &wg, msg, msgIndex, txResponses, failedMsgs)
 
@@ -101,8 +102,6 @@ func reliablySendEachMsgAsTx(
 
 			msgIndex int,
 		) {
-			wg.Add(1)
-
 			errSendMsgs := RetrySendMessagesToMempool(ctx, cfg, log, cometClient, rpcClient, encCfg, msgs, accSequence, accNumber, callback)
 			if errSendMsgs != nil {
 				log.Error("failed to retry message", zap.Int("msg_index", msgIndex), zap.Error(errSendMsgs))
