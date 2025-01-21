@@ -38,7 +38,6 @@ import (
 	strangeloveclient "github.com/strangelove-ventures/cometbft-client/client"
 	rpcclient "github.com/strangelove-ventures/cometbft-client/rpc/client"
 	"go.uber.org/zap"
-	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -65,8 +64,8 @@ func reliablySendEachMsgAsTx(
 	encCfg *appparams.EncodingConfig,
 	getAcc func(addr string) (sdk.AccountI, error),
 	expectedErrors, unrecoverableErrors []*sdkerrors.Error,
-) (txResponses []*sdk.TxResponse, failedMsgs []sdk.Msg, err error) {
-	c, err := strangeloveclient.NewClient(cfg.RPCAddr, cfg.Timeout)
+) (txResponses []*sdk.TxResponse, failedMsgs []*sdk.Msg, err error) {
+	rpcClient, err := strangeloveclient.NewClient(cfg.RPCAddr, cfg.Timeout)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -76,10 +75,12 @@ func reliablySendEachMsgAsTx(
 	// create outputs at msg len capacity to handle each msg in parallel
 	// as it is easier than pass 2 channels for each func
 	txResponses = make([]*sdk.TxResponse, len(msgs))
-	failedMsgs = make([]sdk.Msg, len(msgs))
+	failedMsgs = make([]*sdk.Msg, len(msgs))
 
-	eg, egCtx := errgroup.WithContext(ctx)
-	eg.SetLimit(MaxParallelMsgs)
+	// eg, egCtx := errgroup.WithContext(ctx)
+	// eg.SetLimit(MaxParallelMsgs)
+
+	var wg sync.WaitGroup
 
 	errAccKey := AccessKeyWithLock(cfg.KeyDirectory, func() error {
 		keybase, err := KeybaseFromCfg(cfg, encCfg.Codec)
@@ -107,66 +108,86 @@ func reliablySendEachMsgAsTx(
 		accNumber := covAcc.GetAccountNumber()
 
 		for i, msg := range msgs {
-			eg.Go(func() error {
-				txResp, err := ReliablySendMsgsWithSequence(
-					egCtx,
-					cfg,
-					log,
-					cometClient,
-					c,
-					encCfg,
-					covAddrStr,
-					accSequence,
-					accNumber,
-					[]sdk.Msg{msg},
-					expectedErrors, unrecoverableErrors,
-				)
+			wg.Add(1)
+
+			callback := func(txResp *sdk.TxResponse, err error) {
+				defer wg.Done()
 
 				if err != nil {
-					failedMsgs[i] = msg
+					failedMsgs[i] = &msg
+
+					if ErrorContained(err, expectedErrors) {
+						log.Debug(
+							"sucessfully submit message, got expected error",
+							zap.Int("msg_index", i),
+						)
+						return
+					}
+
 					log.Error(
 						"failed to submit message",
 						zap.Int("msg_index", i),
 						zap.String("msg_data", msg.String()),
 						zap.Error(err),
 					)
-					return err
+					return
 				}
 
-				if txResp != nil {
-					log.Debug(
-						"sucessfully submit message",
-						zap.Int("msg_index", i),
-						zap.String("tx_hash", txResp.TxHash),
-					)
-					txResponses[i] = txResp
-				} else {
-					log.Debug(
-						"sucessfully submit message, got expected error",
-						zap.Int("msg_index", i),
-					)
-					failedMsgs[i] = msg
+				log.Debug(
+					"sucessfully submit message",
+					zap.Int("msg_index", i),
+					zap.String("tx_hash", txResp.TxHash),
+				)
+				txResponses[i] = txResp
+			}
+
+			errRetry := retry.Do(func() error {
+				sendMsgErr := SendMessagesToMempool(ctx, cfg, log, cometClient, rpcClient, encCfg, msgs, accSequence, accNumber, []callbackTx{callback})
+				if sendMsgErr != nil {
+					if ErrorContained(sendMsgErr, unrecoverableErrors) {
+						log.Error("unrecoverable err when submitting the tx, skip retrying", zap.Error(sendMsgErr))
+						return retry.Unrecoverable(sendMsgErr)
+					}
+					if ErrorContained(sendMsgErr, expectedErrors) {
+						// this is necessary because if err is returned
+						// the callback function will not be executed so
+						// that the inside wg.Done will not be executed
+						wg.Done()
+						log.Error("expected err when submitting the tx, skip retrying", zap.Error(sendMsgErr))
+						return nil
+					}
+					return sendMsgErr
 				}
 				return nil
-			})
+			}, retry.Context(ctx), rtyAtt, rtyDel, rtyErr, retry.OnRetry(func(n uint, err error) {
+				log.Debug("retrying", zap.Uint("attempt", n+1), zap.Uint("max_attempts", rtyAttNum), zap.Error(err))
+			}))
+
+			if errRetry != nil {
+				return errRetry
+			}
+
 			accSequence++
 		}
 
 		return nil
 	})
+
+	wg.Wait()
+
 	if errAccKey != nil {
 		return nil, nil, err
 	}
 
-	err = eg.Wait()
+	// err = eg.Wait()
 
 	// clean the outputs
 
-	if err != nil {
-		return txResponses, failedMsgs, err
-	}
+	// if err != nil {
+	// 	return txResponses, failedMsgs, err
+	// }
 
-	return txResponses, failedMsgs, nil
+	return CleanSlice(txResponses), CleanSlice(failedMsgs), nil
 }
 
 // func cleanNil()
@@ -176,7 +197,7 @@ func reliablySendEachMsgAsTx(
 func ReliablySendMsgsWithSequence(
 	ctx context.Context,
 	cfg *config.BabylonConfig,
-	logger *zap.Logger,
+	log *zap.Logger,
 	cometClient client.CometRPC,
 	rpcClient *strangeloveclient.Client,
 	encCfg *appparams.EncodingConfig,
@@ -192,6 +213,7 @@ func ReliablySendMsgsWithSequence(
 		wg          sync.WaitGroup
 	)
 
+	// todo: callback needs to be in outside func
 	callback := func(txResp *sdk.TxResponse, err error) {
 		tx = txResp
 		callbackErr = err
@@ -201,10 +223,10 @@ func ReliablySendMsgsWithSequence(
 	wg.Add(1)
 
 	if err := retry.Do(func() error {
-		sendMsgErr := SendMessagesToMempool(ctx, cfg, logger, cometClient, rpcClient, encCfg, msgs, accSequence, accNumber, []callbackTx{callback})
+		sendMsgErr := SendMessagesToMempool(ctx, cfg, log, cometClient, rpcClient, encCfg, msgs, accSequence, accNumber, []callbackTx{callback})
 		if sendMsgErr != nil {
 			if ErrorContained(sendMsgErr, unrecoverableErrors) {
-				logger.Error("unrecoverable err when submitting the tx, skip retrying", zap.Error(sendMsgErr))
+				log.Error("unrecoverable err when submitting the tx, skip retrying", zap.Error(sendMsgErr))
 				return retry.Unrecoverable(sendMsgErr)
 			}
 			if ErrorContained(sendMsgErr, expectedErrors) {
@@ -212,14 +234,14 @@ func ReliablySendMsgsWithSequence(
 				// the callback function will not be executed so
 				// that the inside wg.Done will not be executed
 				wg.Done()
-				logger.Error("expected err when submitting the tx, skip retrying", zap.Error(sendMsgErr))
+				log.Error("expected err when submitting the tx, skip retrying", zap.Error(sendMsgErr))
 				return nil
 			}
 			return sendMsgErr
 		}
 		return nil
 	}, retry.Context(ctx), rtyAtt, rtyDel, rtyErr, retry.OnRetry(func(n uint, err error) {
-		logger.Debug("retrying", zap.Uint("attempt", n+1), zap.Uint("max_attempts", rtyAttNum), zap.Error(err))
+		log.Debug("retrying", zap.Uint("attempt", n+1), zap.Uint("max_attempts", rtyAttNum), zap.Error(err))
 	})); err != nil {
 		return nil, err
 	}
@@ -867,4 +889,15 @@ func sdkError(codespace string, code uint32) error {
 // deprecating (StdTxConfig support)
 type intoAny interface {
 	AsAny() *codectypes.Any
+}
+
+// CleanSlice removes nil values from a slice of pointers.
+func CleanSlice[T any](slice []*T) []*T {
+	result := make([]*T, 0, len(slice))
+	for _, item := range slice {
+		if item != nil {
+			result = append(result, item)
+		}
+	}
+	return result
 }
