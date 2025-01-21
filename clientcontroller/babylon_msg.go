@@ -84,36 +84,32 @@ func reliablySendEachMsgAsTx(
 	accSequence := covAcc.GetSequence()
 	accNumber := covAcc.GetAccountNumber()
 
-	for i, msg := range msgs {
-		wg.Add(1)
+	for msgIndex, msg := range msgs {
 
-		callback := reliablySendEachMsgAsTxCallback(log, &wg, msg, i, txResponses, failedMsgs)
+		callback := reliablySendEachMsgAsTxCallback(log, &wg, msg, msgIndex, txResponses, failedMsgs)
 
-		go func(msg sdk.Msg, index int) {
-			errRetry := retry.Do(func() error {
-				sendMsgErr := SendMessagesToMempool(ctx, cfg, log, cometClient, rpcClient, encCfg, msgs, accSequence, accNumber, callback)
-				if sendMsgErr != nil {
-					if ErrorContained(sendMsgErr, unrecoverableErrors) {
-						log.Error("unrecoverable err when submitting the tx, skip retrying", zap.Error(sendMsgErr))
-						return retry.Unrecoverable(sendMsgErr)
-					}
-					if ErrorContained(sendMsgErr, expectedErrors) {
-						log.Error("expected err when submitting the tx, skip retrying", zap.Error(sendMsgErr))
-						return nil
-					}
-					return sendMsgErr
-				}
-				return nil
-			}, retry.Context(ctx), rtyAtt, rtyDel, rtyErr, retry.OnRetry(func(n uint, err error) {
-				log.Debug("retrying", zap.Uint("attempt", n+1), zap.Uint("max_attempts", rtyAttNum), zap.Error(err))
-			}))
+		go func(
+			ctx context.Context,
+			cfg *config.BabylonConfig,
+			log *zap.Logger,
+			cometClient client.CometRPC,
+			rpcClient *strangeloveclient.Client,
+			encCfg *appparams.EncodingConfig,
+			msgs []sdk.Msg,
+			accSequence, accNumber uint64,
+			callback callbackTx,
 
-			if errRetry != nil {
-				log.Error("failed to retry message", zap.Int("msg_index", index), zap.Error(errRetry))
+			msgIndex int,
+		) {
+			wg.Add(1)
+
+			errSendMsgs := RetrySendMessagesToMempool(ctx, cfg, log, cometClient, rpcClient, encCfg, msgs, accSequence, accNumber, callback)
+			if errSendMsgs != nil {
+				log.Error("failed to retry message", zap.Int("msg_index", msgIndex), zap.Error(errSendMsgs))
 				// If the callback was not invoked, decrement the wait group here
 				wg.Done()
 			}
-		}(msg, i) // Pass msg and i as arguments to avoid closure issues
+		}(ctx, cfg, log, cometClient, rpcClient, encCfg, msgs, accSequence, accNumber, callback, msgIndex)
 
 		accSequence++
 	}
@@ -121,6 +117,39 @@ func reliablySendEachMsgAsTx(
 	wg.Wait()
 
 	return CleanSlice(txResponses), CleanSlice(failedMsgs), nil
+}
+
+func RetrySendMessagesToMempool(
+	ctx context.Context,
+	cfg *config.BabylonConfig,
+	log *zap.Logger,
+	cometClient client.CometRPC,
+	rpcClient *strangeloveclient.Client,
+	encCfg *appparams.EncodingConfig,
+
+	msgs []sdk.Msg,
+
+	accSequence, accNumber uint64,
+
+	asyncCallbacks ...callbackTx,
+) error {
+	return retry.Do(func() error {
+		sendMsgErr := SendMessagesToMempool(ctx, cfg, log, cometClient, rpcClient, encCfg, msgs, accSequence, accNumber, asyncCallbacks...)
+		if sendMsgErr != nil {
+			if ErrorContained(sendMsgErr, unrecoverableErrors) {
+				log.Error("unrecoverable err when submitting the tx, skip retrying", zap.Error(sendMsgErr))
+				return retry.Unrecoverable(sendMsgErr)
+			}
+			if ErrorContained(sendMsgErr, expectedErrors) {
+				log.Error("expected err when submitting the tx, skip retrying", zap.Error(sendMsgErr))
+				return nil
+			}
+			return sendMsgErr
+		}
+		return nil
+	}, retry.Context(ctx), rtyAtt, rtyDel, rtyErr, retry.OnRetry(func(n uint, err error) {
+		log.Debug("retrying", zap.Uint("attempt", n+1), zap.Uint("max_attempts", rtyAttNum), zap.Error(err))
+	}))
 }
 
 // SendMessagesToMempool simulates and broadcasts a transaction with the given msgs and memo.
@@ -762,7 +791,7 @@ func reliablySendEachMsgAsTxCallback(
 	log *zap.Logger,
 	wg *sync.WaitGroup,
 	msg sdk.Msg,
-	index int,
+	msgIndex int,
 	txResponses []*sdk.TxResponse,
 	failedMsgs []*sdk.Msg,
 ) callbackTx {
@@ -770,19 +799,19 @@ func reliablySendEachMsgAsTxCallback(
 		defer wg.Done()
 
 		if err != nil {
-			failedMsgs[index] = &msg
+			failedMsgs[msgIndex] = &msg
 
 			if ErrorContained(err, expectedErrors) {
 				log.Debug(
 					"sucessfully submit message, got expected error",
-					zap.Int("msg_index", index),
+					zap.Int("msg_index", msgIndex),
 				)
 				return
 			}
 
 			log.Error(
 				"failed to submit message",
-				zap.Int("msg_index", index),
+				zap.Int("msg_index", msgIndex),
 				zap.String("msg_data", msg.String()),
 				zap.Error(err),
 			)
@@ -791,10 +820,10 @@ func reliablySendEachMsgAsTxCallback(
 
 		log.Debug(
 			"sucessfully submit message",
-			zap.Int("msg_index", index),
+			zap.Int("msg_index", msgIndex),
 			zap.String("tx_hash", txResp.TxHash),
 		)
-		txResponses[index] = txResp
+		txResponses[msgIndex] = txResp
 	}
 
 }
