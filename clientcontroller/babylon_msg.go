@@ -42,8 +42,8 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-const MaxParallelMsgs = 20
-
+// Note: most of the functions were adappt from
+// https://github.com/babylonlabs-io/babylon/blob/cd0bbcd98be5e4dda081f7330140cf9dbee4c94d/client/client/tx.go#L76
 var (
 	rtyAttNum                   = uint(5)
 	rtyAtt                      = retry.Attempts(rtyAttNum)
@@ -54,8 +54,10 @@ var (
 	dstChanTag                  = "packet_dst_channel"
 )
 
+// callbackTx is the expected type that waits for the inclusion of a transaction on the chain to be called
 type callbackTx func(*sdk.TxResponse, error)
 
+// reliablySendEachMsgAsTx creates multiple
 func reliablySendEachMsgAsTx(
 	cfg *config.BabylonConfig,
 	msgs []sdk.Msg,
@@ -72,13 +74,11 @@ func reliablySendEachMsgAsTx(
 
 	ctx := context.Background()
 
+	msgLen := len(msgs)
 	// create outputs at msg len capacity to handle each msg in parallel
 	// as it is easier than pass 2 channels for each func
-	txResponses = make([]*sdk.TxResponse, len(msgs))
-	failedMsgs = make([]*sdk.Msg, len(msgs))
-
-	// eg, egCtx := errgroup.WithContext(ctx)
-	// eg.SetLimit(MaxParallelMsgs)
+	txResponses = make([]*sdk.TxResponse, msgLen)
+	failedMsgs = make([]*sdk.Msg, msgLen)
 
 	var wg sync.WaitGroup
 
@@ -110,38 +110,9 @@ func reliablySendEachMsgAsTx(
 		for i, msg := range msgs {
 			wg.Add(1)
 
-			callback := func(txResp *sdk.TxResponse, err error) {
-				defer wg.Done()
-
-				if err != nil {
-					failedMsgs[i] = &msg
-
-					if ErrorContained(err, expectedErrors) {
-						log.Debug(
-							"sucessfully submit message, got expected error",
-							zap.Int("msg_index", i),
-						)
-						return
-					}
-
-					log.Error(
-						"failed to submit message",
-						zap.Int("msg_index", i),
-						zap.String("msg_data", msg.String()),
-						zap.Error(err),
-					)
-					return
-				}
-
-				log.Debug(
-					"sucessfully submit message",
-					zap.Int("msg_index", i),
-					zap.String("tx_hash", txResp.TxHash),
-				)
-				txResponses[i] = txResp
-			}
-
+			callback := reliablySendEachMsgAsTxCallback(log, &wg, msg, i, txResponses, failedMsgs)
 			errRetry := retry.Do(func() error {
+				// SendMessagesToMempool launches a go routine to wait for the tx be included and call the callback func
 				sendMsgErr := SendMessagesToMempool(ctx, cfg, log, cometClient, rpcClient, encCfg, msgs, accSequence, accNumber, []callbackTx{callback})
 				if sendMsgErr != nil {
 					if ErrorContained(sendMsgErr, unrecoverableErrors) {
@@ -149,10 +120,10 @@ func reliablySendEachMsgAsTx(
 						return retry.Unrecoverable(sendMsgErr)
 					}
 					if ErrorContained(sendMsgErr, expectedErrors) {
+						defer wg.Done()
 						// this is necessary because if err is returned
 						// the callback function will not be executed so
 						// that the inside wg.Done will not be executed
-						wg.Done()
 						log.Error("expected err when submitting the tx, skip retrying", zap.Error(sendMsgErr))
 						return nil
 					}
@@ -178,14 +149,6 @@ func reliablySendEachMsgAsTx(
 	if errAccKey != nil {
 		return nil, nil, err
 	}
-
-	// err = eg.Wait()
-
-	// clean the outputs
-
-	// if err != nil {
-	// 	return txResponses, failedMsgs, err
-	// }
 
 	return CleanSlice(txResponses), CleanSlice(failedMsgs), nil
 }
@@ -900,4 +863,45 @@ func CleanSlice[T any](slice []*T) []*T {
 		}
 	}
 	return result
+}
+
+func reliablySendEachMsgAsTxCallback(
+	log *zap.Logger,
+	wg *sync.WaitGroup,
+	msg sdk.Msg,
+	index int,
+	txResponses []*sdk.TxResponse,
+	failedMsgs []*sdk.Msg,
+) callbackTx {
+	return func(txResp *sdk.TxResponse, err error) {
+		defer wg.Done()
+
+		if err != nil {
+			failedMsgs[index] = &msg
+
+			if ErrorContained(err, expectedErrors) {
+				log.Debug(
+					"sucessfully submit message, got expected error",
+					zap.Int("msg_index", index),
+				)
+				return
+			}
+
+			log.Error(
+				"failed to submit message",
+				zap.Int("msg_index", index),
+				zap.String("msg_data", msg.String()),
+				zap.Error(err),
+			)
+			return
+		}
+
+		log.Debug(
+			"sucessfully submit message",
+			zap.Int("msg_index", index),
+			zap.String("tx_hash", txResp.TxHash),
+		)
+		txResponses[index] = txResp
+	}
+
 }
