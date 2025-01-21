@@ -55,7 +55,7 @@ var (
 func reliablySendEachMsgAsTx(
 	cfg *config.BabylonConfig,
 	msgs []sdk.Msg,
-	logger *zap.Logger,
+	log *zap.Logger,
 	cometClient client.CometRPC,
 	encCfg *appparams.EncodingConfig,
 	getAcc func(addr string) (sdk.AccountI, error),
@@ -82,7 +82,10 @@ func reliablySendEachMsgAsTx(
 		}
 
 		covAddrStr := covAddr.String()
-		logger.Debug("covenant_signing", zap.String("address", covAddrStr))
+		log.Debug(
+			"covenant_signing",
+			zap.String("address", covAddrStr),
+		)
 
 		covAcc, err := getAcc(covAddrStr)
 		if err != nil {
@@ -96,7 +99,7 @@ func reliablySendEachMsgAsTx(
 			txResp, err := ReliablySendMsgsWithSequence(
 				ctx,
 				cfg,
-				logger,
+				log,
 				cometClient,
 				c,
 				encCfg,
@@ -110,10 +113,15 @@ func reliablySendEachMsgAsTx(
 				// log msg fail
 				failedMsgs = append(failedMsgs, msg)
 			}
+			if txResp != nil {
+				log.Debug("resp", zap.String("txHash", txResp.TxHash))
+
+				txResponses = append(txResponses, txResp)
+			} else {
+				failedMsgs = append(failedMsgs, msg)
+			}
 
 			accSequence++
-			logger.Debug("resp", zap.String("txHash", txResp.TxHash))
-			txResponses = append(txResponses, txResp)
 		}
 
 		return nil
@@ -141,13 +149,13 @@ func ReliablySendMsgsWithSequence(
 	expectedErrors, unrecoverableErrors []*sdkerrors.Error,
 ) (*sdk.TxResponse, error) {
 	var (
-		rlyResp     *sdk.TxResponse
+		tx          *sdk.TxResponse
 		callbackErr error
 		wg          sync.WaitGroup
 	)
 
-	callback := func(rtr *sdk.TxResponse, err error) {
-		rlyResp = rtr
+	callback := func(txResp *sdk.TxResponse, err error) {
+		tx = txResp
 		callbackErr = err
 		wg.Done()
 	}
@@ -187,16 +195,16 @@ func ReliablySendMsgsWithSequence(
 		return nil, callbackErr
 	}
 
-	if rlyResp == nil {
+	if tx == nil {
 		// this case could happen if the error within the retry is an expected error
 		return nil, nil
 	}
 
-	if rlyResp.Code != 0 {
-		return rlyResp, fmt.Errorf("transaction failed with code: %d", rlyResp.Code)
+	if tx.Code != 0 {
+		return tx, fmt.Errorf("transaction failed with code: %d", tx.Code)
 	}
 
-	return rlyResp, nil
+	return tx, nil
 }
 
 // SendMessagesToMempool simulates and broadcasts a transaction with the given msgs and memo.
