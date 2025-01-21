@@ -17,7 +17,7 @@ var (
 )
 
 func TestCovenantEmulatorLifeCycle(t *testing.T) {
-	tm, btcPks := StartManagerWithFinalityProvider(t, 1)
+	tm, btcPks := StartManagerWithFinalityProvider(t, 1, true)
 	defer tm.Stop(t)
 
 	// send a BTC delegation that is not following pre-approval flow
@@ -51,7 +51,7 @@ func TestCovenantEmulatorLifeCycle(t *testing.T) {
 }
 
 func TestQueryPendingDelegations(t *testing.T) {
-	tm, btcPks := StartManagerWithFinalityProvider(t, 1)
+	tm, btcPks := StartManagerWithFinalityProvider(t, 1, false)
 	defer tm.Stop(t)
 
 	// manually sets the pg to a low value

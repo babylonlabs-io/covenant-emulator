@@ -77,7 +77,7 @@ type testFinalityProviderData struct {
 	PoP            *bstypes.ProofOfPossessionBTC
 }
 
-func StartManager(t *testing.T) *TestManager {
+func StartManager(t *testing.T, shouldStartEmulator bool) *TestManager {
 	testDir, err := baseDir("cee2etest")
 	require.NoError(t, err)
 
@@ -158,8 +158,10 @@ func StartManager(t *testing.T) *TestManager {
 
 	ce, err := covenant.NewCovenantEmulator(covenantConfig, covbc, logger, signer)
 	require.NoError(t, err)
-	err = ce.Start()
-	require.NoError(t, err)
+	if shouldStartEmulator {
+		err = ce.Start()
+		require.NoError(t, err)
+	}
 
 	tm := &TestManager{
 		BabylonHandler:   bh,
@@ -206,8 +208,8 @@ func (tm *TestManager) SendToAddr(t *testing.T, toAddr, amount string) {
 	require.NoError(t, err)
 }
 
-func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*btcec.PublicKey) {
-	tm := StartManager(t)
+func StartManagerWithFinalityProvider(t *testing.T, n int, shouldStartEmulator bool) (*TestManager, []*btcec.PublicKey) {
+	tm := StartManager(t, shouldStartEmulator)
 
 	var btcPks []*btcec.PublicKey
 	for i := 0; i < n; i++ {
