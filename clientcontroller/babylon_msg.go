@@ -65,7 +65,6 @@ func reliablySendEachMsgAsTx(
 	cometClient client.CometRPC,
 	encCfg *appparams.EncodingConfig,
 	covAcc sdk.AccountI,
-	expectedErrors, unrecoverableErrors []*sdkerrors.Error,
 ) (txResponses []*sdk.TxResponse, failedMsgs []*sdk.Msg, err error) {
 	rpcClient, err := strangeloveclient.NewClient(cfg.RPCAddr, cfg.Timeout)
 	if err != nil {
@@ -82,28 +81,23 @@ func reliablySendEachMsgAsTx(
 
 	var wg sync.WaitGroup
 
-	errAccKey := AccessKeyWithLock(cfg.KeyDirectory, func() error {
-		accSequence := covAcc.GetSequence()
-		accNumber := covAcc.GetAccountNumber()
+	accSequence := covAcc.GetSequence()
+	accNumber := covAcc.GetAccountNumber()
 
-		for i, msg := range msgs {
-			wg.Add(1)
+	for i, msg := range msgs {
+		wg.Add(1)
 
-			callback := reliablySendEachMsgAsTxCallback(log, &wg, msg, i, txResponses, failedMsgs)
+		callback := reliablySendEachMsgAsTxCallback(log, &wg, msg, i, txResponses, failedMsgs)
+
+		go func(msg sdk.Msg, index int) {
 			errRetry := retry.Do(func() error {
-				// SendMessagesToMempool launches a go routine to wait for the tx be included and call the callback func
 				sendMsgErr := SendMessagesToMempool(ctx, cfg, log, cometClient, rpcClient, encCfg, msgs, accSequence, accNumber, callback)
 				if sendMsgErr != nil {
-					defer wg.Done()
-
 					if ErrorContained(sendMsgErr, unrecoverableErrors) {
 						log.Error("unrecoverable err when submitting the tx, skip retrying", zap.Error(sendMsgErr))
 						return retry.Unrecoverable(sendMsgErr)
 					}
 					if ErrorContained(sendMsgErr, expectedErrors) {
-						// this is necessary because if err is returned
-						// the callback function will not be executed so
-						// that the inside wg.Done will not be executed
 						log.Error("expected err when submitting the tx, skip retrying", zap.Error(sendMsgErr))
 						return nil
 					}
@@ -111,25 +105,20 @@ func reliablySendEachMsgAsTx(
 				}
 				return nil
 			}, retry.Context(ctx), rtyAtt, rtyDel, rtyErr, retry.OnRetry(func(n uint, err error) {
-				wg.Add(1)
 				log.Debug("retrying", zap.Uint("attempt", n+1), zap.Uint("max_attempts", rtyAttNum), zap.Error(err))
 			}))
 
 			if errRetry != nil {
-				return errRetry
+				log.Error("failed to retry message", zap.Int("msg_index", index), zap.Error(errRetry))
+				// If the callback was not invoked, decrement the wait group here
+				wg.Done()
 			}
+		}(msg, i) // Pass msg and i as arguments to avoid closure issues
 
-			accSequence++
-		}
-
-		return nil
-	})
+		accSequence++
+	}
 
 	wg.Wait()
-
-	if errAccKey != nil {
-		return nil, nil, err
-	}
 
 	return CleanSlice(txResponses), CleanSlice(failedMsgs), nil
 }
