@@ -542,7 +542,7 @@ func (bc *BabylonController) QueryAccount(addr string) (sdk.AccountI, error) {
 	ctx, cancel := getContextWithCancel(bc.cfg.Timeout)
 	defer cancel()
 
-	clientCtx := sdkclient.Context{Client: bc.bbnClient.RPCClient}
+	clientCtx := sdkclient.Context{Client: bc.bbnClient.RPCClient}.WithCodec(bc.encCfg.Codec)
 
 	queryClient := authtypes.NewQueryClient(clientCtx)
 

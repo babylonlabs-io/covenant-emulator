@@ -253,16 +253,17 @@ func BuildMessages(
 		return nil, sdk.Coins{}, err
 	}
 
-	cliCtx := client.Context{}.WithClient(cometClient).
-		WithInterfaceRegistry(encCfg.InterfaceRegistry).
-		WithChainID(cfg.ChainID).
-		WithCodec(encCfg.Codec)
+	// cliCtx := client.Context{}.
+	// 	WithClient(cometClient).
+	// 	WithInterfaceRegistry(encCfg.InterfaceRegistry).
+	// 	WithChainID(cfg.ChainID).
+	// 	WithCodec(encCfg.Codec)
 
 	txf := TxFactory(cfg, encCfg.TxConfig, keybase)
-	txf, err = PrepareFactory(cliCtx, txf, keybase, txSignerKey)
-	if err != nil {
-		return nil, sdk.Coins{}, err
-	}
+	// txf, err = PrepareFactory(cliCtx, txf, keybase, txSignerKey)
+	// if err != nil {
+	// 	return nil, sdk.Coins{}, err
+	// }
 
 	if memo != "" {
 		txf = txf.WithMemo(memo)
@@ -684,16 +685,6 @@ func PrepareFactory(
 	}
 
 	cliCtx = cliCtx.WithFromAddress(from)
-
-	// Set the account number and sequence on the transaction factory and retry if fail
-	if err = retry.Do(func() error {
-		if err = txf.AccountRetriever().EnsureExists(cliCtx, from); err != nil {
-			return err
-		}
-		return err
-	}, rtyAtt, rtyDel, rtyErr); err != nil {
-		return txf, err
-	}
 
 	// TODO: why this code? this may potentially require another query when we don't want one
 	initNum, initSeq := txf.AccountNumber(), txf.Sequence()
