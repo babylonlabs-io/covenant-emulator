@@ -81,12 +81,16 @@ func reliablySendEachMsgAsTx(
 			return err
 		}
 
-		covAcc, err := getAcc(covAddr.String())
+		covAddrStr := covAddr.String()
+		logger.Debug("covenant_signing", zap.String("address", covAddrStr))
+
+		covAcc, err := getAcc(covAddrStr)
 		if err != nil {
 			return err
 		}
 
 		accSequence := covAcc.GetSequence()
+		accNumber := covAcc.GetAccountNumber()
 
 		for _, msg := range msgs {
 			txResp, err := ReliablySendMsgsWithSequence(
@@ -96,7 +100,9 @@ func reliablySendEachMsgAsTx(
 				cometClient,
 				c,
 				encCfg,
+				covAddrStr,
 				accSequence,
+				accNumber,
 				[]sdk.Msg{msg},
 				expectedErrors, unrecoverableErrors,
 			)
@@ -129,7 +135,8 @@ func ReliablySendMsgsWithSequence(
 	rpcClient *strangeloveclient.Client,
 	encCfg *appparams.EncodingConfig,
 
-	accSequence uint64,
+	accAddress string,
+	accSequence, accNumber uint64,
 	msgs []sdk.Msg,
 	expectedErrors, unrecoverableErrors []*sdkerrors.Error,
 ) (*sdk.TxResponse, error) {
@@ -148,7 +155,7 @@ func ReliablySendMsgsWithSequence(
 	wg.Add(1)
 
 	if err := retry.Do(func() error {
-		sendMsgErr := SendMessagesToMempool(ctx, cfg, logger, cometClient, rpcClient, encCfg, msgs, "", accSequence, []func(*sdk.TxResponse, error){callback})
+		sendMsgErr := SendMessagesToMempool(ctx, cfg, logger, cometClient, rpcClient, encCfg, msgs, "", accAddress, accSequence, accNumber, []func(*sdk.TxResponse, error){callback})
 		if sendMsgErr != nil {
 			if ErrorContained(sendMsgErr, unrecoverableErrors) {
 				logger.Error("unrecoverable err when submitting the tx, skip retrying", zap.Error(sendMsgErr))
@@ -207,14 +214,15 @@ func SendMessagesToMempool(
 	msgs []sdk.Msg,
 	memo string,
 
-	sequence uint64,
+	accAddress string,
+	accSequence, accNumber uint64,
 
 	asyncCallbacks []func(*sdk.TxResponse, error),
 ) error {
 	txSignerKey := cfg.Key
 
 	txBytes, fees, err := BuildMessages(
-		ctx, cfg, cometClient, rpcClient, encCfg, msgs, memo, 0, txSignerKey, sequence,
+		ctx, cfg, cometClient, rpcClient, encCfg, msgs, memo, 0, txSignerKey, accAddress, accSequence, accNumber,
 	)
 	if err != nil {
 		return err
@@ -238,7 +246,8 @@ func BuildMessages(
 	memo string,
 	gas uint64,
 	txSignerKey string,
-	sequence uint64,
+	accAddress string,
+	accSequence, accNumber uint64,
 ) (
 	txBytes []byte,
 	fees sdk.Coins,
@@ -265,7 +274,8 @@ func BuildMessages(
 		txf = txf.WithMemo(memo)
 	}
 
-	txf = txf.WithSequence(sequence)
+	txf = txf.WithSequence(accSequence).
+		WithAccountNumber(accNumber)
 
 	adjusted := gas
 
@@ -720,6 +730,7 @@ func TxFactory(
 	cfg *config.BabylonConfig,
 	txConf client.TxConfig,
 	keybase keyring.Keyring,
+
 ) tx.Factory {
 	return tx.Factory{}.
 		WithChainID(cfg.ChainID).
