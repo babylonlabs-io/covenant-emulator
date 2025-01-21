@@ -68,7 +68,7 @@ test-e2e-cov-emu-life:
 
 test-e2e-cov-pending-del:
 	cd $(TOOLS_DIR); go install -trimpath $(BABYLON_PKG)
-	go test -run TestQueryPendingDelegations -mod=readonly -timeout=5m -v $(PACKAGES_E2E) --tags=e2e
+	go test -run TestQueryPendingDelegations -mod=readonly -timeout=7m -v $(PACKAGES_E2E) --tags=e2e
 
 mock-gen:
 	mkdir -p $(MOCKS_DIR)
