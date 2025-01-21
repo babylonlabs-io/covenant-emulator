@@ -163,9 +163,6 @@ func getFeePayer(log *zap.Logger, cdc *codec.ProtoCodec, tx *typestx.Tx) string 
 		return firstMsg.Signer
 	case *clienttypes.MsgUpgradeClient:
 		return firstMsg.Signer
-	case *clienttypes.MsgSubmitMisbehaviour:
-		// Same failure mode as MsgCreateClient.
-		return firstMsg.Signer
 	case *feetypes.MsgRegisterPayee:
 		return firstMsg.Relayer
 	case *feetypes.MsgRegisterCounterpartyPayee:

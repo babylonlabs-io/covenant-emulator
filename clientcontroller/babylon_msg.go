@@ -27,8 +27,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/codec"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
-	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
-	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	legacyerrors "github.com/cosmos/cosmos-sdk/types/errors"
 	txtypes "github.com/cosmos/cosmos-sdk/types/tx"
@@ -50,8 +48,6 @@ var (
 	rtyDel                      = retry.Delay(time.Millisecond * 400)
 	rtyErr                      = retry.LastErrorOnly(true)
 	defaultBroadcastWaitTimeout = 10 * time.Minute
-	spTag                       = "send_packet"
-	waTag                       = "write_acknowledgement"
 	srcChanTag                  = "packet_src_channel"
 	dstChanTag                  = "packet_dst_channel"
 )
@@ -753,9 +749,7 @@ func BuildSimTx(info *keyring.Record, txf tx.Factory, msgs ...sdk.Msg) ([]byte, 
 		return nil, err
 	}
 
-	var pk cryptotypes.PubKey = &secp256k1.PubKey{} // use default public key type
-
-	pk, err = info.GetPubKey()
+	pk, err := info.GetPubKey()
 	if err != nil {
 		return nil, err
 	}
