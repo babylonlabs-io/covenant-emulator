@@ -102,13 +102,13 @@ func reliablySendEachMsgAsTx(
 
 			msgIndex int,
 		) {
-			errSendMsgs := RetrySendMessagesToMempool(ctx, cfg, log, cometClient, rpcClient, encCfg, msgs, accSequence, accNumber, callback)
-			if errSendMsgs != nil {
-				log.Error("failed to retry message", zap.Int("msg_index", msgIndex), zap.Error(errSendMsgs))
+			err := RetrySendMessagesToMempool(ctx, cfg, log, cometClient, rpcClient, encCfg, msgs, accSequence, accNumber, callback)
+			if err != nil {
+				log.Error("failed to retry message", zap.Int("msg_index", msgIndex), zap.Error(err))
 				// If the callback was not invoked, decrement the wait group here
 				wg.Done()
 			}
-		}(ctx, cfg, log, cometClient, rpcClient, encCfg, msgs, accSequence, accNumber, callback, msgIndex)
+		}(ctx, cfg, log, cometClient, rpcClient, encCfg, []sdk.Msg{msg}, accSequence, accNumber, callback, msgIndex)
 
 		accSequence++
 	}
