@@ -47,6 +47,7 @@ as the covenant emulator should only connect to a remote signer
 * [#96](https://github.com/babylonlabs-io/covenant-emulator/pull/96) add pagination to `queryDelegationsWithStatus`
 * [#99](https://github.com/babylonlabs-io/covenant-emulator/pull/99) add more metrics
 covenant-signer
+* [#100](https://github.com/babylonlabs-io/covenant-emulator/pull/100) bump babylon to v1.0.0-rc.4
 
 ## v0.11.3
 

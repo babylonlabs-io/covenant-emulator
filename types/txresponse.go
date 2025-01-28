@@ -1,10 +1,8 @@
 package types
 
-import (
-	"github.com/cosmos/relayer/v2/relayer/provider"
-)
+import "github.com/babylonlabs-io/babylon/client/babylonclient"
 
 type TxResponse struct {
 	TxHash string
-	Events []provider.RelayerEvent
+	Events []babylonclient.RelayerEvent
 }
