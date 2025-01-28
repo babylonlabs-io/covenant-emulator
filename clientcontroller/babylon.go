@@ -10,6 +10,7 @@ import (
 	"github.com/btcsuite/btcd/btcec/v2"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 
+	"github.com/babylonlabs-io/babylon/client/babylonclient"
 	bbnclient "github.com/babylonlabs-io/babylon/client/client"
 	bbntypes "github.com/babylonlabs-io/babylon/types"
 	btcctypes "github.com/babylonlabs-io/babylon/x/btccheckpoint/types"
@@ -20,14 +21,16 @@ import (
 	sdkclient "github.com/cosmos/cosmos-sdk/client"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkquery "github.com/cosmos/cosmos-sdk/types/query"
-	"github.com/cosmos/relayer/v2/relayer/provider"
 	"go.uber.org/zap"
 
 	"github.com/babylonlabs-io/covenant-emulator/config"
 	"github.com/babylonlabs-io/covenant-emulator/types"
 )
 
-var _ ClientController = &BabylonController{}
+var (
+	_                  ClientController = &BabylonController{}
+	MaxPaginationLimit                  = uint64(1000)
+)
 
 type BabylonController struct {
 	bbnClient *bbnclient.Client
@@ -143,11 +146,11 @@ func (bc *BabylonController) QueryStakingParamsByVersion(version uint32) (*types
 	}, nil
 }
 
-func (bc *BabylonController) reliablySendMsg(msg sdk.Msg) (*provider.RelayerTxResponse, error) {
+func (bc *BabylonController) reliablySendMsg(msg sdk.Msg) (*babylonclient.RelayerTxResponse, error) {
 	return bc.reliablySendMsgs([]sdk.Msg{msg})
 }
 
-func (bc *BabylonController) reliablySendMsgs(msgs []sdk.Msg) (*provider.RelayerTxResponse, error) {
+func (bc *BabylonController) reliablySendMsgs(msgs []sdk.Msg) (*babylonclient.RelayerTxResponse, error) {
 	return bc.bbnClient.ReliablySendMsgs(
 		context.Background(),
 		msgs,
@@ -183,39 +186,67 @@ func (bc *BabylonController) SubmitCovenantSigs(covSigs []*types.CovenantSigs) (
 	return &types.TxResponse{TxHash: res.TxHash, Events: res.Events}, nil
 }
 
-func (bc *BabylonController) QueryPendingDelegations(limit uint64) ([]*types.Delegation, error) {
-	return bc.queryDelegationsWithStatus(btcstakingtypes.BTCDelegationStatus_PENDING, limit)
+func (bc *BabylonController) QueryPendingDelegations(limit uint64, filter FilterFn) ([]*types.Delegation, error) {
+	return bc.queryDelegationsWithStatus(btcstakingtypes.BTCDelegationStatus_PENDING, limit, filter)
 }
 
 func (bc *BabylonController) QueryActiveDelegations(limit uint64) ([]*types.Delegation, error) {
-	return bc.queryDelegationsWithStatus(btcstakingtypes.BTCDelegationStatus_ACTIVE, limit)
+	return bc.queryDelegationsWithStatus(btcstakingtypes.BTCDelegationStatus_ACTIVE, limit, nil)
 }
 
 func (bc *BabylonController) QueryVerifiedDelegations(limit uint64) ([]*types.Delegation, error) {
-	return bc.queryDelegationsWithStatus(btcstakingtypes.BTCDelegationStatus_VERIFIED, limit)
+	return bc.queryDelegationsWithStatus(btcstakingtypes.BTCDelegationStatus_VERIFIED, limit, nil)
 }
 
 // queryDelegationsWithStatus queries BTC delegations that need a Covenant signature
 // with the given status (either pending or unbonding)
 // it is only used when the program is running in Covenant mode
-func (bc *BabylonController) queryDelegationsWithStatus(status btcstakingtypes.BTCDelegationStatus, limit uint64) ([]*types.Delegation, error) {
+func (bc *BabylonController) queryDelegationsWithStatus(status btcstakingtypes.BTCDelegationStatus, delsLimit uint64, filter FilterFn) ([]*types.Delegation, error) {
+	pgLimit := min(MaxPaginationLimit, delsLimit)
 	pagination := &sdkquery.PageRequest{
-		Limit: limit,
+		Limit: pgLimit,
 	}
 
-	res, err := bc.bbnClient.QueryClient.BTCDelegations(status, pagination)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query BTC delegations: %v", err)
-	}
+	dels := make([]*types.Delegation, 0, delsLimit)
+	indexDels := uint64(0)
 
-	dels := make([]*types.Delegation, 0, len(res.BtcDelegations))
-	for _, delResp := range res.BtcDelegations {
-		del, err := DelegationRespToDelegation(delResp)
+	for indexDels < delsLimit {
+		res, err := bc.bbnClient.QueryClient.BTCDelegations(status, pagination)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to query BTC delegations: %v", err)
 		}
 
-		dels = append(dels, del)
+		for _, delResp := range res.BtcDelegations {
+			del, err := DelegationRespToDelegation(delResp)
+			if err != nil {
+				return nil, err
+			}
+
+			if filter != nil {
+				accept, err := filter(del)
+				if err != nil {
+					return nil, err
+				}
+
+				if !accept {
+					continue
+				}
+			}
+
+			dels = append(dels, del)
+			indexDels++
+
+			if indexDels == delsLimit {
+				return dels, nil
+			}
+		}
+
+		// if returned a different number of btc delegations than the pagination limit
+		// it means that there is no more delegations at the store
+		if uint64(len(res.BtcDelegations)) != pgLimit {
+			return dels, nil
+		}
+		pagination.Key = res.Pagination.NextKey
 	}
 
 	return dels, nil
@@ -399,7 +430,7 @@ func (bc *BabylonController) CreateBTCDelegation(
 // Currently this is only used for e2e tests, probably does not need to add it into the interface
 func (bc *BabylonController) RegisterFinalityProvider(
 	btcPubKey *bbntypes.BIP340PubKey, commission *sdkmath.LegacyDec,
-	description *stakingtypes.Description, pop *btcstakingtypes.ProofOfPossessionBTC) (*provider.RelayerTxResponse, error) {
+	description *stakingtypes.Description, pop *btcstakingtypes.ProofOfPossessionBTC) (*babylonclient.RelayerTxResponse, error) {
 	registerMsg := &btcstakingtypes.MsgCreateFinalityProvider{
 		Addr:        bc.mustGetTxSigner(),
 		Commission:  commission,
@@ -413,7 +444,7 @@ func (bc *BabylonController) RegisterFinalityProvider(
 
 // Insert BTC block header using rpc client
 // Currently this is only used for e2e tests, probably does not need to add it into the interface
-func (bc *BabylonController) InsertBtcBlockHeaders(headers []bbntypes.BTCHeaderBytes) (*provider.RelayerTxResponse, error) {
+func (bc *BabylonController) InsertBtcBlockHeaders(headers []bbntypes.BTCHeaderBytes) (*babylonclient.RelayerTxResponse, error) {
 	msg := &btclctypes.MsgInsertHeaders{
 		Signer:  bc.mustGetTxSigner(),
 		Headers: headers,

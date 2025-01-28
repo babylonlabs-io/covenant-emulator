@@ -23,14 +23,16 @@ type babylonNode struct {
 	cmd          *exec.Cmd
 	pidFile      string
 	dataDir      string
+	nodeHome     string
 	chainID      string
 	slashingAddr string
 	covenantPk   *types.BIP340PubKey
 }
 
-func newBabylonNode(dataDir string, cmd *exec.Cmd, chainID string, slashingAddr string, covenantPk *types.BIP340PubKey) *babylonNode {
+func newBabylonNode(dataDir, nodeHome string, cmd *exec.Cmd, chainID string, slashingAddr string, covenantPk *types.BIP340PubKey) *babylonNode {
 	return &babylonNode{
 		dataDir:      dataDir,
+		nodeHome:     nodeHome,
 		cmd:          cmd,
 		chainID:      chainID,
 		slashingAddr: slashingAddr,
@@ -122,7 +124,7 @@ func NewBabylonNodeHandler(t *testing.T, covenantPk *types.BIP340PubKey) *Babylo
 		}
 	}()
 
-	nodeDataDir := filepath.Join(testDir, "node0", "babylond")
+	nodeHome := filepath.Join(testDir, "node0", "babylond")
 
 	slashingAddr := "SZtRT4BySL3o4efdGLh3k7Kny8GAnsBrSW"
 	decodedAddr, err := btcutil.DecodeAddress(slashingAddr, &chaincfg.SimNetParams)
@@ -164,14 +166,14 @@ func NewBabylonNodeHandler(t *testing.T, covenantPk *types.BIP340PubKey) *Babylo
 	startCmd := exec.Command(
 		"babylond",
 		"start",
-		fmt.Sprintf("--home=%s", nodeDataDir),
+		fmt.Sprintf("--home=%s", nodeHome),
 		"--log_level=debug",
 	)
 
 	startCmd.Stdout = f
 
 	return &BabylonNodeHandler{
-		babylonNode: newBabylonNode(testDir, startCmd, chainID, slashingAddr, covenantPk),
+		babylonNode: newBabylonNode(testDir, nodeHome, startCmd, chainID, slashingAddr, covenantPk),
 	}
 }
 

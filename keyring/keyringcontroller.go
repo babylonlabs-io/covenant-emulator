@@ -53,18 +53,6 @@ func NewChainKeyringController(ctx client.Context, name, keyringBackend string) 
 	}, nil
 }
 
-func NewChainKeyringControllerWithKeyring(kr keyring.Keyring, name string, input *strings.Reader) (*ChainKeyringController, error) {
-	if name == "" {
-		return nil, fmt.Errorf("the key name should not be empty")
-	}
-
-	return &ChainKeyringController{
-		kr:      kr,
-		keyName: name,
-		input:   input,
-	}, nil
-}
-
 func (kc *ChainKeyringController) GetKeyring() keyring.Keyring {
 	return kc.kr
 }

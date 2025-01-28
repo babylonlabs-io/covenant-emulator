@@ -62,6 +62,39 @@ response to delegation conversion
 
 ### Improvements
 
+* [#83](https://github.com/babylonlabs-io/covenant-emulator/pull/83) covenant-signer: remove go.mod
+* [#95](https://github.com/babylonlabs-io/covenant-emulator/pull/95) removed local signer option
+as the covenant emulator should only connect to a remote signer
+* [#96](https://github.com/babylonlabs-io/covenant-emulator/pull/96) add pagination to `queryDelegationsWithStatus`
+* [#99](https://github.com/babylonlabs-io/covenant-emulator/pull/99) add more metrics
+covenant-signer
+* [#100](https://github.com/babylonlabs-io/covenant-emulator/pull/100) bump babylon to v1.0.0-rc.4
+
+## v0.11.3
+
+### Bug fixes
+
+* [#91](https://github.com/babylonlabs-io/covenant-emulator/pull/91) Add verification
+if the covenant public key was present in the params of the versioned BTC delegation
+
+## v0.11.2
+
+### Bug fixes
+
+* [#84](https://github.com/babylonlabs-io/covenant-emulator/pull/84) Fix bug with
+deduplication of already signed delegations
+
+## v0.11.1
+
+### Bug fixes
+
+* [#71](https://github.com/babylonlabs-io/covenant-emulator/pull/71) Fix delegation
+response to delegation conversion
+
+## v0.11.0
+
+### Improvements
+
 * [#68](https://github.com/babylonlabs-io/covenant-emulator/pull/68) Bump babylon to v1.0.0-rc.1
 * [#63](https://github.com/babylonlabs-io/covenant-emulator/pull/63) Add babylon
 address to keys command output and fix casing in dockerfile

@@ -1,6 +1,7 @@
 package covenant_test
 
 import (
+	"context"
 	"encoding/hex"
 	"fmt"
 	"math/rand"
@@ -10,6 +11,7 @@ import (
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/btcsuite/btcd/btcutil"
+	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 
 	"github.com/babylonlabs-io/babylon/btcstaking"
 	asig "github.com/babylonlabs-io/babylon/crypto/schnorr-adaptor-signature"
@@ -23,7 +25,13 @@ import (
 
 	covcfg "github.com/babylonlabs-io/covenant-emulator/config"
 	"github.com/babylonlabs-io/covenant-emulator/covenant"
+	signerCfg "github.com/babylonlabs-io/covenant-emulator/covenant-signer/config"
+	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/keystore/cosmos"
+	signerMetrics "github.com/babylonlabs-io/covenant-emulator/covenant-signer/observability/metrics"
+	signerApp "github.com/babylonlabs-io/covenant-emulator/covenant-signer/signerapp"
+	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/signerservice"
 	"github.com/babylonlabs-io/covenant-emulator/keyring"
+	"github.com/babylonlabs-io/covenant-emulator/remotesigner"
 	"github.com/babylonlabs-io/covenant-emulator/testutil"
 	"github.com/babylonlabs-io/covenant-emulator/types"
 )
@@ -37,29 +45,71 @@ var net = &chaincfg.SimNetParams
 
 func FuzzAddCovenantSig(f *testing.F) {
 	testutil.AddRandomSeedsToFuzzer(f, 10)
+
+	// create a Covenant key pair in the keyring
+	covenantConfig := covcfg.DefaultConfig()
+
+	covenantConfig.BabylonConfig.KeyDirectory = f.TempDir()
+
+	signerConfig := signerCfg.DefaultConfig()
+	signerConfig.KeyStore.CosmosKeyStore.ChainID = covenantConfig.BabylonConfig.ChainID
+	signerConfig.KeyStore.CosmosKeyStore.KeyName = covenantConfig.BabylonConfig.Key
+	signerConfig.KeyStore.CosmosKeyStore.KeyringBackend = covenantConfig.BabylonConfig.KeyringBackend
+	signerConfig.KeyStore.CosmosKeyStore.KeyDirectory = covenantConfig.BabylonConfig.KeyDirectory
+	keyRetriever, err := cosmos.NewCosmosKeyringRetriever(signerConfig.KeyStore.CosmosKeyStore)
+	require.NoError(f, err)
+
+	covKeyPair, err := keyRetriever.Kr.CreateChainKey(
+		passphrase,
+		hdPath,
+	)
+	require.NoError(f, err)
+	require.NotNil(f, covKeyPair)
+
+	app := signerApp.NewSignerApp(
+		keyRetriever,
+	)
+
+	met := signerMetrics.NewCovenantSignerMetrics()
+	parsedConfig, err := signerConfig.Parse()
+	require.NoError(f, err)
+
+	server, err := signerservice.New(
+		context.Background(),
+		parsedConfig,
+		app,
+		met,
+	)
+	require.NoError(f, err)
+
+	signer := remotesigner.NewRemoteSigner(covenantConfig.RemoteSigner)
+
+	go func() {
+		_ = server.Start()
+	}()
+
+	// Give some time to launch server
+	time.Sleep(time.Second)
+
+	// unlock the signer before usage
+	err = signerservice.Unlock(
+		context.Background(),
+		covenantConfig.RemoteSigner.URL,
+		covenantConfig.RemoteSigner.Timeout,
+		passphrase,
+	)
+	require.NoError(f, err)
+
+	f.Cleanup(func() {
+		_ = server.Stop(context.TODO())
+	})
+
 	f.Fuzz(func(t *testing.T, seed int64) {
 		t.Log("Seed", seed)
 		r := rand.New(rand.NewSource(seed))
 
 		params := testutil.GenRandomParams(r, t)
 		mockClientController := testutil.PrepareMockedClientController(t, params)
-
-		// create a Covenant key pair in the keyring
-		covenantConfig := covcfg.DefaultConfig()
-		covenantConfig.BabylonConfig.KeyDirectory = t.TempDir()
-
-		covKeyPair, err := keyring.CreateCovenantKey(
-			covenantConfig.BabylonConfig.KeyDirectory,
-			covenantConfig.BabylonConfig.ChainID,
-			covenantConfig.BabylonConfig.Key,
-			covenantConfig.BabylonConfig.KeyringBackend,
-			passphrase,
-			hdPath,
-		)
-		require.NoError(t, err)
-
-		signer, err := keyring.NewKeyringSigner(covenantConfig.BabylonConfig.ChainID, covenantConfig.BabylonConfig.Key, covenantConfig.BabylonConfig.KeyDirectory, covenantConfig.BabylonConfig.KeyringBackend, passphrase)
-		require.NoError(t, err)
 
 		// create and start covenant emulator
 		ce, err := covenant.NewCovenantEmulator(&covenantConfig, mockClientController, zap.NewNop(), signer)
@@ -101,7 +151,7 @@ func FuzzAddCovenantSig(f *testing.F) {
 				BtcPk:            delPK,
 				FpBtcPks:         fpPks,
 				StakingTime:      stakingTimeBlocks,
-				StartHeight:      startHeight, // not relevant here
+				StartHeight:      startHeight,
 				EndHeight:        startHeight + stakingTimeBlocks,
 				TotalSat:         btcutil.Amount(stakingValue),
 				UnbondingTime:    unbondingTime,
@@ -227,27 +277,26 @@ func TestDeduplicationWithOddKey(t *testing.T) {
 
 	randomKey, err := btcec.NewPrivateKey()
 	require.NoError(t, err)
-	pubKey := randomKey.PubKey()
+	randPubKey := randomKey.PubKey()
 
 	paramVersion := uint32(2)
-	delegations := []*types.Delegation{
-		&types.Delegation{
-			CovenantSigs: []*types.CovenantAdaptorSigInfo{
-				&types.CovenantAdaptorSigInfo{
-					// 3. Delegation is already signed by the public key with odd y coordinate
-					Pk: pubKeyFromSchnorr,
-				},
+	delAlreadySigned := &types.Delegation{
+		CovenantSigs: []*types.CovenantAdaptorSigInfo{
+			&types.CovenantAdaptorSigInfo{
+				// 3. Delegation is already signed by the public key with odd y coordinate
+				Pk: pubKeyFromSchnorr,
 			},
-			ParamsVersion: paramVersion,
 		},
-		&types.Delegation{
-			CovenantSigs: []*types.CovenantAdaptorSigInfo{
-				&types.CovenantAdaptorSigInfo{
-					Pk: pubKey,
-				},
+		ParamsVersion: paramVersion,
+	}
+
+	delNotSigned := &types.Delegation{
+		CovenantSigs: []*types.CovenantAdaptorSigInfo{
+			&types.CovenantAdaptorSigInfo{
+				Pk: randPubKey,
 			},
-			ParamsVersion: paramVersion,
 		},
+		ParamsVersion: paramVersion,
 	}
 
 	paramsGet := NewMockParam(map[uint32]*types.StakingParams{
@@ -257,9 +306,13 @@ func TestDeduplicationWithOddKey(t *testing.T) {
 	})
 
 	// 4. After removing the already signed delegation, the list should have only one element
-	sanitized, err := covenant.SanitizeDelegations(oddKeyPub, paramsGet, delegations)
-	require.Equal(t, 1, len(sanitized))
+	accept, err := covenant.AcceptDelegationToSign(oddKeyPub, paramsGet, delAlreadySigned)
 	require.NoError(t, err)
+	require.False(t, accept)
+
+	accept, err = covenant.AcceptDelegationToSign(oddKeyPub, paramsGet, delNotSigned)
+	require.NoError(t, err)
+	require.True(t, accept)
 }
 
 func TestIsKeyInCommittee(t *testing.T) {
@@ -306,51 +359,23 @@ func TestIsKeyInCommittee(t *testing.T) {
 	actual, err := covenant.IsKeyInCommittee(paramsGet, covenantSerializedPk, delNoCovenant)
 	require.False(t, actual)
 	require.NoError(t, err)
-	emptyDels, err := covenant.SanitizeDelegations(covKeyPair.PublicKey, paramsGet, []*types.Delegation{delNoCovenant, delNoCovenant})
+
+	accept, err := covenant.AcceptDelegationToSign(covKeyPair.PublicKey, paramsGet, delNoCovenant)
 	require.NoError(t, err)
-	require.Len(t, emptyDels, 0)
+	require.False(t, accept)
 
 	// checks the case where the covenant is in the committee
 	actual, err = covenant.IsKeyInCommittee(paramsGet, covenantSerializedPk, delWithCovenant)
 	require.True(t, actual)
 	require.NoError(t, err)
-	dels, err := covenant.SanitizeDelegations(covKeyPair.PublicKey, paramsGet, []*types.Delegation{delWithCovenant, delNoCovenant})
-	require.NoError(t, err)
-	require.Len(t, dels, 1)
-	dels, err = covenant.SanitizeDelegations(covKeyPair.PublicKey, paramsGet, []*types.Delegation{delWithCovenant})
-	require.NoError(t, err)
-	require.Len(t, dels, 1)
 
-	amtSatFirst := btcutil.Amount(100)
-	amtSatSecond := btcutil.Amount(150)
-	amtSatThird := btcutil.Amount(200)
-	lastUnsanitizedDels := []*types.Delegation{
-		&types.Delegation{
-			ParamsVersion: pVersionWithCovenant,
-			TotalSat:      amtSatFirst,
-		},
-		delNoCovenant,
-		&types.Delegation{
-			ParamsVersion: pVersionWithCovenant,
-			TotalSat:      amtSatSecond,
-		},
-		delNoCovenant,
-		&types.Delegation{
-			ParamsVersion: pVersionWithCovenant,
-			TotalSat:      amtSatThird,
-		},
-	}
-
-	sanitizedDels, err := covenant.SanitizeDelegations(covKeyPair.PublicKey, paramsGet, lastUnsanitizedDels)
+	accept, err = covenant.AcceptDelegationToSign(covKeyPair.PublicKey, paramsGet, delWithCovenant)
 	require.NoError(t, err)
-	require.Len(t, sanitizedDels, 3)
-	require.Equal(t, amtSatFirst, sanitizedDels[0].TotalSat)
-	require.Equal(t, amtSatSecond, sanitizedDels[1].TotalSat)
-	require.Equal(t, amtSatThird, sanitizedDels[2].TotalSat)
+	require.True(t, accept)
 
 	errParamGet := fmt.Errorf("dumbErr")
-	sanitizedDels, err = covenant.SanitizeDelegations(covKeyPair.PublicKey, NewMockParamError(errParamGet), lastUnsanitizedDels)
-	require.Nil(t, sanitizedDels)
+	accept, err = covenant.AcceptDelegationToSign(covKeyPair.PublicKey, NewMockParamError(errParamGet), delWithCovenant)
+	require.False(t, accept)
 
 	errKeyIsInCommittee := fmt.Errorf("unable to get the param version: %d, reason: %s", pVersionWithCovenant, errParamGet.Error())
 	expErr := fmt.Errorf("unable to verify if covenant key is in committee: %s", errKeyIsInCommittee.Error())

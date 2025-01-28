@@ -61,7 +61,7 @@ jobs:
     with:
       publish: true
       dockerfile: ./covenant-signer/Dockerfile
-      dockerContext: ./covenant-signer 
+      dockerContext: ./
       repoName: covenant-signer
       docker_scan: true
     permissions:
