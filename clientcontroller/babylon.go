@@ -10,6 +10,7 @@ import (
 	"github.com/btcsuite/btcd/btcec/v2"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 
+	"github.com/babylonlabs-io/babylon/client/babylonclient"
 	bbnclient "github.com/babylonlabs-io/babylon/client/client"
 	bbntypes "github.com/babylonlabs-io/babylon/types"
 	btcctypes "github.com/babylonlabs-io/babylon/x/btccheckpoint/types"
@@ -20,7 +21,6 @@ import (
 	sdkclient "github.com/cosmos/cosmos-sdk/client"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkquery "github.com/cosmos/cosmos-sdk/types/query"
-	"github.com/cosmos/relayer/v2/relayer/provider"
 	"go.uber.org/zap"
 
 	"github.com/babylonlabs-io/covenant-emulator/config"
@@ -146,11 +146,11 @@ func (bc *BabylonController) QueryStakingParamsByVersion(version uint32) (*types
 	}, nil
 }
 
-func (bc *BabylonController) reliablySendMsg(msg sdk.Msg) (*provider.RelayerTxResponse, error) {
+func (bc *BabylonController) reliablySendMsg(msg sdk.Msg) (*babylonclient.RelayerTxResponse, error) {
 	return bc.reliablySendMsgs([]sdk.Msg{msg})
 }
 
-func (bc *BabylonController) reliablySendMsgs(msgs []sdk.Msg) (*provider.RelayerTxResponse, error) {
+func (bc *BabylonController) reliablySendMsgs(msgs []sdk.Msg) (*babylonclient.RelayerTxResponse, error) {
 	return bc.bbnClient.ReliablySendMsgs(
 		context.Background(),
 		msgs,
@@ -430,7 +430,7 @@ func (bc *BabylonController) CreateBTCDelegation(
 // Currently this is only used for e2e tests, probably does not need to add it into the interface
 func (bc *BabylonController) RegisterFinalityProvider(
 	btcPubKey *bbntypes.BIP340PubKey, commission *sdkmath.LegacyDec,
-	description *stakingtypes.Description, pop *btcstakingtypes.ProofOfPossessionBTC) (*provider.RelayerTxResponse, error) {
+	description *stakingtypes.Description, pop *btcstakingtypes.ProofOfPossessionBTC) (*babylonclient.RelayerTxResponse, error) {
 	registerMsg := &btcstakingtypes.MsgCreateFinalityProvider{
 		Addr:        bc.mustGetTxSigner(),
 		Commission:  commission,
@@ -444,7 +444,7 @@ func (bc *BabylonController) RegisterFinalityProvider(
 
 // Insert BTC block header using rpc client
 // Currently this is only used for e2e tests, probably does not need to add it into the interface
-func (bc *BabylonController) InsertBtcBlockHeaders(headers []bbntypes.BTCHeaderBytes) (*provider.RelayerTxResponse, error) {
+func (bc *BabylonController) InsertBtcBlockHeaders(headers []bbntypes.BTCHeaderBytes) (*babylonclient.RelayerTxResponse, error) {
 	msg := &btclctypes.MsgInsertHeaders{
 		Signer:  bc.mustGetTxSigner(),
 		Headers: headers,
