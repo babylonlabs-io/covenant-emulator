@@ -228,7 +228,7 @@ func (bc *BabylonController) reliablySendMsgsAsMultipleTxs(msgs []sdk.Msg) ([]*b
 			return err
 		}
 
-		txResponses, failedMsgs, err = reliablySendEachMsgAsTx(cfg, msgs, log, bc.bbnClient.RPCClient, encCfg, covAcc)
+		txResponses, failedMsgs, err = reliablySendEachMsgAsTx(cfg, bc.bbnClient.Provider(), msgs, log, encCfg, covAcc)
 		return err
 	})
 	if errAccKey != nil {

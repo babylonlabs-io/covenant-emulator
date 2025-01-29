@@ -16,12 +16,12 @@ import (
 	"cosmossdk.io/store/rootmulti"
 	"github.com/avast/retry-go/v4"
 	appparams "github.com/babylonlabs-io/babylon/app/params"
+	"github.com/babylonlabs-io/babylon/client/babylonclient"
 	"github.com/babylonlabs-io/babylon/client/config"
 	abci "github.com/cometbft/cometbft/abci/types"
-	"github.com/cometbft/cometbft/crypto/merkle"
-	"github.com/cometbft/cometbft/libs/bytes"
+	rpcclient "github.com/cometbft/cometbft/rpc/client"
+	"github.com/cometbft/cometbft/rpc/client/http"
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
-	tmtypes "github.com/cometbft/cometbft/types"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/tx"
 	"github.com/cosmos/cosmos-sdk/codec"
@@ -31,12 +31,8 @@ import (
 	legacyerrors "github.com/cosmos/cosmos-sdk/types/errors"
 	txtypes "github.com/cosmos/cosmos-sdk/types/tx"
 	"github.com/cosmos/cosmos-sdk/types/tx/signing"
-	"github.com/cosmos/relayer/v2/relayer/chains/cosmos"
-	"github.com/cosmos/relayer/v2/relayer/provider"
 	"github.com/juju/fslock"
-	abcistrange "github.com/strangelove-ventures/cometbft-client/abci/types"
-	strangeloveclient "github.com/strangelove-ventures/cometbft-client/client"
-	rpcclient "github.com/strangelove-ventures/cometbft-client/rpc/client"
+
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -65,16 +61,17 @@ type failedMsg struct {
 // reliablySendEachMsgAsTx creates multiple
 func reliablySendEachMsgAsTx(
 	cfg *config.BabylonConfig,
+	cp *babylonclient.CosmosProvider,
 	msgs []sdk.Msg,
 	log *zap.Logger,
-	cometClient client.CometRPC,
 	encCfg *appparams.EncodingConfig,
 	covAcc sdk.AccountI,
 ) (txResponses []*sdk.TxResponse, failedMsgs []*failedMsg, err error) {
-	rpcClient, err := strangeloveclient.NewClient(cfg.RPCAddr, cfg.Timeout)
+	c, err := http.NewWithTimeout(cfg.RPCAddr, "/websocket", uint(cfg.Timeout.Seconds()))
 	if err != nil {
 		return nil, nil, err
 	}
+	rpcClient := babylonclient.NewRPCClient(c)
 
 	ctx := context.Background()
 
@@ -97,9 +94,9 @@ func reliablySendEachMsgAsTx(
 		go func(
 			ctx context.Context,
 			cfg *config.BabylonConfig,
+			cp *babylonclient.CosmosProvider,
 			log *zap.Logger,
-			cometClient client.CometRPC,
-			rpcClient *strangeloveclient.Client,
+			rpcClient *babylonclient.RPCClient,
 			encCfg *appparams.EncodingConfig,
 			msg sdk.Msg,
 			accSequence, accNumber uint64,
@@ -107,7 +104,7 @@ func reliablySendEachMsgAsTx(
 
 			msgIndex int,
 		) {
-			err := RetrySendMessagesToMempool(ctx, cfg, log, cometClient, rpcClient, encCfg, []sdk.Msg{msg}, accSequence, accNumber, callback)
+			err := RetrySendMessagesToMempool(ctx, cfg, cp, log, rpcClient, encCfg, []sdk.Msg{msg}, accSequence, accNumber, callback)
 			if err != nil {
 				if ErrorContained(err, expectedErrors) {
 					log.Error("expected err when submitting the tx, skip retrying", zap.Error(err))
@@ -117,7 +114,7 @@ func reliablySendEachMsgAsTx(
 				// If the callback was not invoked, decrement the wait group here
 				wg.Done()
 			}
-		}(ctx, cfg, log, cometClient, rpcClient, encCfg, msg, accSequence, accNumber, callback, msgIndex)
+		}(ctx, cfg, cp, log, &rpcClient, encCfg, msg, accSequence, accNumber, callback, msgIndex)
 
 		accSequence++
 	}
@@ -130,9 +127,9 @@ func reliablySendEachMsgAsTx(
 func RetrySendMessagesToMempool(
 	ctx context.Context,
 	cfg *config.BabylonConfig,
+	cp *babylonclient.CosmosProvider,
 	log *zap.Logger,
-	cometClient client.CometRPC,
-	rpcClient *strangeloveclient.Client,
+	rpcClient *babylonclient.RPCClient,
 	encCfg *appparams.EncodingConfig,
 
 	msgs []sdk.Msg,
@@ -142,7 +139,7 @@ func RetrySendMessagesToMempool(
 	asyncCallbacks ...callbackTx,
 ) error {
 	return retry.Do(func() error {
-		sendMsgErr := SendMessagesToMempool(ctx, cfg, log, cometClient, rpcClient, encCfg, msgs, accSequence, accNumber, asyncCallbacks...)
+		sendMsgErr := SendMessagesToMempool(ctx, cfg, cp, log, rpcClient, encCfg, msgs, accSequence, accNumber, asyncCallbacks...)
 		if sendMsgErr != nil {
 			if ErrorContained(sendMsgErr, unrecoverableErrors) {
 				log.Error("unrecoverable err when submitting the tx, skip retrying", zap.Error(sendMsgErr))
@@ -163,9 +160,9 @@ func RetrySendMessagesToMempool(
 func SendMessagesToMempool(
 	ctx context.Context,
 	cfg *config.BabylonConfig,
+	cp *babylonclient.CosmosProvider,
 	logger *zap.Logger,
-	cometClient client.CometRPC,
-	rpcClient *strangeloveclient.Client,
+	rpcClient *babylonclient.RPCClient,
 	encCfg *appparams.EncodingConfig,
 
 	msgs []sdk.Msg,
@@ -174,17 +171,14 @@ func SendMessagesToMempool(
 
 	asyncCallbacks ...callbackTx,
 ) error {
-	txSignerKey := cfg.Key
 	memo, gas := "", uint64(0)
 
-	txBytes, fees, err := BuildMessages(
-		ctx, cfg, cometClient, rpcClient, encCfg, msgs, memo, gas, txSignerKey, accSequence, accNumber,
-	)
+	txBytes, _, err := BuildMessages(ctx, cfg, cp, encCfg, msgs, accSequence, accNumber, memo, gas)
 	if err != nil {
 		return err
 	}
 
-	err = BroadcastTx(ctx, logger, cfg, encCfg, rpcClient, txBytes, msgs, fees, ctx, defaultBroadcastWaitTimeout, asyncCallbacks)
+	err = BroadcastTx(ctx, logger, cfg, encCfg, rpcClient, txBytes, msgs, ctx, defaultBroadcastWaitTimeout, asyncCallbacks)
 	if err != nil {
 		return err
 	}
@@ -195,19 +189,19 @@ func SendMessagesToMempool(
 func BuildMessages(
 	ctx context.Context,
 	cfg *config.BabylonConfig,
-	cometClient client.CometRPC,
-	rpcClient *strangeloveclient.Client,
+	cp *babylonclient.CosmosProvider,
 	encCfg *appparams.EncodingConfig,
 	msgs []sdk.Msg,
+	accSequence, accNumber uint64,
+	// optional
 	memo string,
 	gas uint64,
-	txSignerKey string,
-	accSequence, accNumber uint64,
 ) (
 	txBytes []byte,
 	fees sdk.Coins,
 	err error,
 ) {
+	txSignerKey := cfg.Key
 	keybase, err := KeybaseFromCfg(cfg, encCfg.Codec)
 	if err != nil {
 		return nil, sdk.Coins{}, err
@@ -223,8 +217,7 @@ func BuildMessages(
 
 	adjusted := gas
 	if gas == 0 {
-		_, adjusted, err = CalculateGas(ctx, rpcClient, keybase, txf, txSignerKey, cfg.GasAdjustment, msgs...)
-
+		_, adjusted, err = cp.CalculateGas(ctx, txf, txSignerKey, msgs...)
 		if err != nil {
 			return nil, sdk.Coins{}, err
 		}
@@ -264,10 +257,9 @@ func BroadcastTx(
 	cfg *config.BabylonConfig,
 	encCfg *appparams.EncodingConfig,
 
-	rpcClient *strangeloveclient.Client,
+	rpcClient *babylonclient.RPCClient,
 	tx []byte, // raw tx to be broadcasted
 	msgs []sdk.Msg, // used for logging only
-	fees sdk.Coins, // used for metrics
 
 	asyncCtx context.Context, // context for async wait for block inclusion after successful tx broadcast
 	asyncTimeout time.Duration, // timeout for waiting for block inclusion
@@ -282,7 +274,7 @@ func BroadcastTx(
 			// ResultBroadcastTx will be nil.
 			return err
 		}
-		rlyResp := &provider.RelayerTxResponse{
+		rlyResp := &babylonclient.RelayerTxResponse{
 			TxHash:    res.Hash.String(),
 			Codespace: res.Codespace,
 			Code:      res.Code,
@@ -306,65 +298,12 @@ func BroadcastTx(
 	return nil
 }
 
-// CalculateGas simulates a tx to generate the appropriate gas settings before broadcasting a tx.
-func CalculateGas(
-	ctx context.Context,
-	rpcClient *strangeloveclient.Client,
-	keybase keyring.Keyring,
-	txf tx.Factory,
-	signingKey string,
-	gasAdjustment float64,
-	msgs ...sdk.Msg,
-) (txtypes.SimulateResponse, uint64, error) {
-	keyInfo, err := keybase.Key(signingKey)
-	if err != nil {
-		return txtypes.SimulateResponse{}, 0, err
-	}
-
-	var txBytes []byte
-	if err := retry.Do(func() error {
-		var err error
-		txBytes, err = BuildSimTx(keyInfo, txf, msgs...)
-		if err != nil {
-			return err
-		}
-		return nil
-	}, retry.Context(ctx), rtyAtt, rtyDel, rtyErr); err != nil {
-		return txtypes.SimulateResponse{}, 0, err
-	}
-
-	simQuery := abci.RequestQuery{
-		Path: "/cosmos.tx.v1beta1.Service/Simulate",
-		Data: txBytes,
-	}
-
-	var res abcistrange.ResponseQuery
-	if err := retry.Do(func() error {
-		var err error
-		res, err = QueryABCI(ctx, rpcClient, simQuery)
-		if err != nil {
-			return err
-		}
-		return nil
-	}, retry.Context(ctx), rtyAtt, rtyDel, rtyErr); err != nil {
-		return txtypes.SimulateResponse{}, 0, err
-	}
-
-	var simRes txtypes.SimulateResponse
-	if err := simRes.Unmarshal(res.Value); err != nil {
-		return txtypes.SimulateResponse{}, 0, err
-	}
-
-	gas, err := AdjustEstimatedGas(gasAdjustment, simRes.GasInfo.GasUsed)
-	return simRes, gas, err
-}
-
 // waitForTx waits for a transaction to be included in a block, logs success/fail, then invokes callback.
 // This is intended to be called as an async goroutine.
 func waitForTx(
 	ctx context.Context,
 	log *zap.Logger,
-	rpcClient *strangeloveclient.Client,
+	rpcClient *babylonclient.RPCClient,
 	cdc *codec.ProtoCodec,
 	txConfig client.TxConfig,
 	chainId string,
@@ -385,7 +324,7 @@ func waitForTx(
 		return
 	}
 
-	rlyResp := &provider.RelayerTxResponse{
+	rlyResp := &babylonclient.RelayerTxResponse{
 		Height:    res.Height,
 		TxHash:    res.TxHash,
 		Codespace: res.Codespace,
@@ -426,7 +365,7 @@ func waitForTx(
 // waitForBlockInclusion will wait for a transaction to be included in a block, up to waitTimeout or context cancellation.
 func waitForBlockInclusion(
 	ctx context.Context,
-	rpcClient *strangeloveclient.Client,
+	rpcClient *babylonclient.RPCClient,
 	txConfig client.TxConfig,
 	txHash []byte,
 	waitTimeout time.Duration,
@@ -435,12 +374,12 @@ func waitForBlockInclusion(
 	for {
 		select {
 		case <-exitAfter:
-			return nil, fmt.Errorf("timed out after: %d; %w", waitTimeout, cosmos.ErrTimeoutAfterWaitingForTxBroadcast)
+			return nil, fmt.Errorf("timed out after: %d; %w", waitTimeout, babylonclient.ErrTimeoutAfterWaitingForTxBroadcast)
 		// This fixed poll is fine because it's only for logging and updating prometheus metrics currently.
 		case <-time.After(time.Millisecond * 100):
 			res, err := rpcClient.Tx(ctx, txHash, false)
 			if err == nil {
-				return mkTxResult(convertResultTx(res), txConfig)
+				return mkTxResult(res, txConfig)
 			}
 			if strings.Contains(err.Error(), "transaction indexing is disabled") {
 				return nil, fmt.Errorf("cannot determine success/failure of tx because transaction indexing is disabled on rpc url")
@@ -449,57 +388,6 @@ func waitForBlockInclusion(
 			return nil, ctx.Err()
 		}
 	}
-}
-
-func convertResultTx(res *strangeloveclient.TxResponse) *coretypes.ResultTx {
-	return &coretypes.ResultTx{
-		Hash:   bytes.HexBytes(res.Hash),
-		Height: res.Height,
-		Index:  res.Index,
-		TxResult: abci.ExecTxResult{
-			Code:      res.ExecTx.Code,
-			Data:      res.ExecTx.Data,
-			Log:       res.ExecTx.Log,
-			Info:      res.ExecTx.Info,
-			GasWanted: res.ExecTx.GasWanted,
-			GasUsed:   res.ExecTx.GasUsed,
-			Events:    converStringEvents(res.ExecTx.Events),
-			Codespace: res.ExecTx.Codespace,
-		},
-		Tx: tmtypes.Tx(res.Tx),
-		Proof: tmtypes.TxProof{
-			RootHash: bytes.HexBytes(res.Proof.RootHash),
-			Data:     tmtypes.Tx(res.Proof.Data),
-			Proof: merkle.Proof{
-				Total:    res.Proof.Proof.Total,
-				Index:    res.Proof.Proof.Index,
-				LeafHash: res.Proof.Proof.LeafHash,
-				Aunts:    res.Proof.Proof.Aunts,
-			},
-		},
-	}
-}
-
-func converStringEvents(events sdk.StringEvents) []abci.Event {
-	evts := make([]abci.Event, len(events))
-
-	for i, evt := range events {
-		attributes := make([]abci.EventAttribute, len(evt.Attributes))
-
-		for j, attr := range evt.Attributes {
-			attributes[j] = abci.EventAttribute{
-				Key:   attr.Key,
-				Value: attr.Value,
-			}
-		}
-
-		evts[i] = abci.Event{
-			Type:       evt.Type,
-			Attributes: attributes,
-		}
-	}
-
-	return evts
 }
 
 // mkTxResult decodes a comet transaction into an SDK TxResponse.
@@ -542,7 +430,7 @@ func AccessKeyWithLock(keyDir string, accessFunc func() error) error {
 }
 
 // QueryABCI performs an ABCI query and returns the appropriate response and error sdk error code.
-func QueryABCI(ctx context.Context, rpcClient *strangeloveclient.Client, req abci.RequestQuery) (abcistrange.ResponseQuery, error) {
+func QueryABCI(ctx context.Context, rpcClient *babylonclient.RPCClient, req abci.RequestQuery) (abci.ResponseQuery, error) {
 	opts := rpcclient.ABCIQueryOptions{
 		Height: req.Height,
 		Prove:  req.Prove,
@@ -550,11 +438,11 @@ func QueryABCI(ctx context.Context, rpcClient *strangeloveclient.Client, req abc
 
 	result, err := rpcClient.ABCIQueryWithOptions(ctx, req.Path, req.Data, opts)
 	if err != nil {
-		return abcistrange.ResponseQuery{}, err
+		return abci.ResponseQuery{}, err
 	}
 
 	if !result.Response.IsOK() {
-		return abcistrange.ResponseQuery{}, sdkErrorToGRPCError(result.Response.Code, result.Response.Log)
+		return abci.ResponseQuery{}, sdkErrorToGRPCError(result.Response.Code, result.Response.Log)
 	}
 
 	// data from trusted node or subspace query doesn't need verification

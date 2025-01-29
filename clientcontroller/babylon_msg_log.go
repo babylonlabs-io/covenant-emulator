@@ -4,6 +4,7 @@ import (
 	"errors"
 	"reflect"
 
+	"github.com/babylonlabs-io/babylon/client/babylonclient"
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	typestx "github.com/cosmos/cosmos-sdk/types/tx"
@@ -11,13 +12,12 @@ import (
 	transfertypes "github.com/cosmos/ibc-go/v8/modules/apps/transfer/types"
 	clienttypes "github.com/cosmos/ibc-go/v8/modules/core/02-client/types"
 	chantypes "github.com/cosmos/ibc-go/v8/modules/core/04-channel/types"
-	"github.com/cosmos/relayer/v2/relayer/provider"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
 
 // LogFailedTx takes the transaction and the messages to create it and logs the appropriate data
-func LogFailedTx(log *zap.Logger, chainId string, res *provider.RelayerTxResponse, err error, msgs []sdk.Msg) {
+func LogFailedTx(log *zap.Logger, chainId string, res *babylonclient.RelayerTxResponse, err error, msgs []sdk.Msg) {
 	// Include the chain_id
 	fields := []zapcore.Field{zap.String("chain_id", chainId)}
 
@@ -51,7 +51,7 @@ func LogFailedTx(log *zap.Logger, chainId string, res *provider.RelayerTxRespons
 		if sdkErr := sdkError(res.Codespace, res.Code); err != nil {
 			fields = append(fields, zap.NamedError("sdk_error", sdkErr))
 		}
-		fields = append(fields, zap.Object("response", res))
+		fields = append(fields, zap.Any("response", res))
 		log.Warn(
 			"Sent transaction but received failure response",
 			fields...,
@@ -105,7 +105,7 @@ func LogSuccessTx(log *zap.Logger, chainId string, cdc *codec.ProtoCodec, res *s
 }
 
 // getChannelsIfPresent scans the events for channel tags
-func getChannelsIfPresent(events []provider.RelayerEvent) []zapcore.Field {
+func getChannelsIfPresent(events []babylonclient.RelayerEvent) []zapcore.Field {
 	channelTags := []string{srcChanTag, dstChanTag}
 	fields := []zap.Field{}
 
@@ -182,8 +182,8 @@ func getFeePayer(log *zap.Logger, cdc *codec.ProtoCodec, tx *typestx.Tx) string 
 	}
 }
 
-func parseEventsFromTxResponse(resp *sdk.TxResponse) []provider.RelayerEvent {
-	var events []provider.RelayerEvent
+func parseEventsFromTxResponse(resp *sdk.TxResponse) []babylonclient.RelayerEvent {
+	var events []babylonclient.RelayerEvent
 
 	if resp == nil {
 		return events
@@ -195,7 +195,7 @@ func parseEventsFromTxResponse(resp *sdk.TxResponse) []provider.RelayerEvent {
 			for _, attribute := range event.Attributes {
 				attributes[attribute.Key] = attribute.Value
 			}
-			events = append(events, provider.RelayerEvent{
+			events = append(events, babylonclient.RelayerEvent{
 				EventType:  event.Type,
 				Attributes: attributes,
 			})
@@ -210,7 +210,7 @@ func parseEventsFromTxResponse(resp *sdk.TxResponse) []provider.RelayerEvent {
 			for _, attribute := range event.Attributes {
 				attributes[attribute.Key] = attribute.Value
 			}
-			events = append(events, provider.RelayerEvent{
+			events = append(events, babylonclient.RelayerEvent{
 				EventType:  event.Type,
 				Attributes: attributes,
 			})
