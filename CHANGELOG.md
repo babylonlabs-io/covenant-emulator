@@ -37,6 +37,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## Unreleased
 
+## v0.12.0
+
 ### Improvements
 
 * [#83](https://github.com/babylonlabs-io/covenant-emulator/pull/83) covenant-signer: remove go.mod
@@ -45,6 +47,9 @@ as the covenant emulator should only connect to a remote signer
 * [#96](https://github.com/babylonlabs-io/covenant-emulator/pull/96) add pagination to `queryDelegationsWithStatus`
 * [#98](https://github.com/babylonlabs-io/covenant-emulator/pull/98) add submission of covenant
 signatures as one msg per transaction if batch of transactions fails
+* [#99](https://github.com/babylonlabs-io/covenant-emulator/pull/99) add more metrics
+covenant-signer
+* [#100](https://github.com/babylonlabs-io/covenant-emulator/pull/100) bump babylon to v1.0.0-rc.4
 
 ## v0.11.3
 
