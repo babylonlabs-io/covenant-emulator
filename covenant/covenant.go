@@ -473,13 +473,14 @@ func CovenantAlreadySigned(covenantSerializedPk []byte, del *types.Delegation) b
 
 // acceptDelegationToSign verifies if the delegation should be accepted to sign.
 func (ce *CovenantEmulator) acceptDelegationToSign(del *types.Delegation) (accept bool, err error) {
-	return AcceptDelegationToSign(ce.pk, ce.paramCache, del)
+	return AcceptDelegationToSign(ce.logger, ce.pk, ce.paramCache, del)
 }
 
 // AcceptDelegationToSign returns true if the delegation should be accepted to be signed.
 // Returns false if the covenant public key already signed
 // or if the delegation was not constructed with that covenant public key.
 func AcceptDelegationToSign(
+	logger *zap.Logger,
 	pk *btcec.PublicKey,
 	paramCache ParamsGetter,
 	del *types.Delegation,
@@ -488,15 +489,33 @@ func AcceptDelegationToSign(
 	// 1. Check if the delegation does not need the covenant's signature because
 	// this covenant already signed
 	if CovenantAlreadySigned(covenantSerializedPk, del) {
+		logger.Debug(
+			"btc delegation was already signed by covenant",
+			zap.String("staking_tx_hex", del.StakingTxHex),
+			zap.ByteString("covenant_pk", covenantSerializedPk),
+		)
 		return false, nil
 	}
 
 	// 2. Check if the delegation was not constructed with this covenant public key
 	isInCommittee, err := IsKeyInCommittee(paramCache, covenantSerializedPk, del)
 	if err != nil {
+		logger.Error(
+			"btc delegation failed to verify if covenant is in committee",
+			zap.String("staking_tx_hex", del.StakingTxHex),
+			zap.Uint32("params_version", del.ParamsVersion),
+			zap.ByteString("covenant_pk", covenantSerializedPk),
+			zap.Error(err),
+		)
 		return false, fmt.Errorf("unable to verify if covenant key is in committee: %w", err)
 	}
 	if !isInCommittee {
+		logger.Debug(
+			"btc delegation was constructed with a parameter that the covenant did not participated",
+			zap.String("staking_tx_hex", del.StakingTxHex),
+			zap.Uint32("params_version", del.ParamsVersion),
+			zap.ByteString("covenant_pk", covenantSerializedPk),
+		)
 		return false, nil
 	}
 

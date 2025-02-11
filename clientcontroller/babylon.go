@@ -216,19 +216,38 @@ func (bc *BabylonController) queryDelegationsWithStatus(status btcstakingtypes.B
 			return nil, fmt.Errorf("failed to query BTC delegations: %v", err)
 		}
 
+		bc.logger.Debug(
+			"query BTC delegations",
+			zap.String("status", status.String()),
+			zap.Int("length", len(res.BtcDelegations)),
+		)
+
 		for _, delResp := range res.BtcDelegations {
 			del, err := DelegationRespToDelegation(delResp)
 			if err != nil {
+				bc.logger.Debug(
+					"query BTC delegations, failed to parse response",
+					zap.String("staking_tx_hex", delResp.StakingTxHex),
+				)
 				return nil, err
 			}
 
 			if filter != nil {
 				accept, err := filter(del)
 				if err != nil {
+					bc.logger.Error(
+						"query BTC delegations, filtered out due to error",
+						zap.String("staking_tx_hex", delResp.StakingTxHex),
+						zap.Error(err),
+					)
 					return nil, err
 				}
 
 				if !accept {
+					bc.logger.Debug(
+						"query BTC delegations, filtered out without errors",
+						zap.String("staking_tx_hex", delResp.StakingTxHex),
+					)
 					continue
 				}
 			}
