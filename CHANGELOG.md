@@ -37,6 +37,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## Unreleased
 
+### Bug Fixes
+
+- [#107](https://github.com/babylonlabs-io/covenant-emulator/pull/107) crypto: replace dcrd fork with btcd fork
+with crypto fix
+- [#106](https://github.com/babylonlabs-io/covenant-emulator/pull/106) crypto: use dcrd fork with crypto fix
+
 ## v0.12.0
 
 ### Improvements
