@@ -9,8 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"errors"
-
 	sdkerrors "cosmossdk.io/errors"
 	"github.com/avast/retry-go/v4"
 	appparams "github.com/babylonlabs-io/babylon/app/params"
@@ -21,7 +19,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/tx"
 	"github.com/cosmos/cosmos-sdk/codec"
-	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/tx/signing"
@@ -38,8 +35,6 @@ var (
 	rtyDel                      = retry.Delay(time.Millisecond * 400)
 	rtyErr                      = retry.LastErrorOnly(true)
 	defaultBroadcastWaitTimeout = 10 * time.Minute
-	srcChanTag                  = "packet_src_channel"
-	dstChanTag                  = "packet_dst_channel"
 )
 
 // callbackTx is the expected type that waits for the inclusion of a transaction on the chain to be called
@@ -278,23 +273,6 @@ func SignMode(signModeStr string) signing.SignMode {
 	default:
 		return signing.SignMode_SIGN_MODE_UNSPECIFIED
 	}
-}
-
-// sdkError will return the Cosmos SDK registered error for a given codespace/code combo if registered, otherwise nil.
-func sdkError(codespace string, code uint32) error {
-	// ABCIError will return an error other than "unknown" if syncRes.Code is a registered error in syncRes.Codespace
-	// This catches all of the sdk errors https://github.com/cosmos/cosmos-sdk/blob/f10f5e5974d2ecbf9efc05bc0bfe1c99fdeed4b6/types/errors/errors.go
-	err := errors.Unwrap(sdkerrors.ABCIError(codespace, code, "error broadcasting transaction"))
-	if err.Error() != "unknown" {
-		return err
-	}
-	return nil
-}
-
-// Deprecated: this interface is used only internally for scenario we are
-// deprecating (StdTxConfig support)
-type intoAny interface {
-	AsAny() *codectypes.Any
 }
 
 // CleanSlice removes nil values from a slice of pointers.
