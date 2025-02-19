@@ -202,17 +202,13 @@ func (bc *BabylonController) reliablySendMsgsAsMultipleTxs(msgs []sdk.Msg) ([]*b
 	log := bc.logger
 
 	var (
-		txResponses []*sdk.TxResponse
+		txResponses []*babylonclient.RelayerTxResponse
 		failedMsgs  []*failedMsg
 	)
 
 	errAccKey := AccessKeyWithLock(cfg.KeyDirectory, func() error {
-		keybase, err := KeybaseFromCfg(cfg, encCfg.Codec)
-		if err != nil {
-			return err
-		}
-
-		covAddr, err := GetKeyAddressForKey(keybase, cfg.Key)
+		cp := bc.bbnClient.Provider()
+		covAddr, err := cp.GetKeyAddressForKey(cfg.Key)
 		if err != nil {
 			return err
 		}
@@ -228,7 +224,7 @@ func (bc *BabylonController) reliablySendMsgsAsMultipleTxs(msgs []sdk.Msg) ([]*b
 			return err
 		}
 
-		txResponses, failedMsgs, err = reliablySendEachMsgAsTx(cfg, bc.bbnClient.Provider(), msgs, log, encCfg, covAcc)
+		txResponses, failedMsgs, err = reliablySendEachMsgAsTx(cfg, cp, msgs, log, encCfg, covAcc)
 		return err
 	})
 	if errAccKey != nil {
@@ -243,19 +239,7 @@ func (bc *BabylonController) reliablySendMsgsAsMultipleTxs(msgs []sdk.Msg) ([]*b
 		)
 	}
 
-	resp := make([]*babylonclient.RelayerTxResponse, len(txResponses))
-	for i, res := range txResponses {
-		resp[i] = &babylonclient.RelayerTxResponse{
-			Height:    res.Height,
-			TxHash:    res.TxHash,
-			Codespace: res.Codespace,
-			Code:      res.Code,
-			Data:      res.Data,
-			Events:    parseEventsFromTxResponse(res),
-		}
-	}
-
-	return resp, nil
+	return txResponses, nil
 }
 
 // SubmitCovenantSigs submits the Covenant signature via a MsgAddCovenantSig to Babylon if the daemon runs in Covenant mode
