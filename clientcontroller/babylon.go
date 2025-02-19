@@ -2,7 +2,6 @@ package clientcontroller
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"math"
 	"time"
@@ -159,21 +158,22 @@ func (bc *BabylonController) reliablySendMsg(msg sdk.Msg) (*babylonclient.Relaye
 // SendMsgs first it tries to send all the messages in a single transaction
 // if it fails, sends each message in a different transaction.
 func (bc *BabylonController) SendMsgs(msgs []sdk.Msg) ([]*types.TxResponse, error) {
-	resSingleTx, errSingleTx := bc.reliablySendMsgs(msgs)
-	if errSingleTx != nil {
-		// failed to send as a batch tx
-		resMultipleTxs, errMultipleTx := bc.reliablySendMsgsAsMultipleTxs(msgs)
-		if errMultipleTx != nil {
-			return nil, errors.Join(errSingleTx, errMultipleTx)
-		}
-
-		return convertTxResp(resMultipleTxs...), nil
+	// resSingleTx, errSingleTx := bc.reliablySendMsgs(msgs)
+	// if errSingleTx != nil {
+	// failed to send as a batch tx
+	resMultipleTxs, errMultipleTx := bc.reliablySendMsgsAsMultipleTxs(msgs)
+	if errMultipleTx != nil {
+		// return nil, errors.Join(errSingleTx, errMultipleTx)
+		return nil, errMultipleTx
 	}
 
-	if resSingleTx == nil { // some expected error happened
-		return []*types.TxResponse{}, nil
-	}
-	return convertTxResp(resSingleTx), nil
+	return convertTxResp(resMultipleTxs...), nil
+	// }
+
+	// if resSingleTx == nil { // some expected error happened
+	// 	return []*types.TxResponse{}, nil
+	// }
+	// return convertTxResp(resSingleTx), nil
 }
 
 func convertTxResp(txs ...*babylonclient.RelayerTxResponse) []*types.TxResponse {

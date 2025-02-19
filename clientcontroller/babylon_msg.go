@@ -17,6 +17,7 @@ import (
 	"github.com/avast/retry-go/v4"
 	appparams "github.com/babylonlabs-io/babylon/app/params"
 	"github.com/babylonlabs-io/babylon/client/babylonclient"
+	bbnclient "github.com/babylonlabs-io/babylon/client/client"
 	"github.com/babylonlabs-io/babylon/client/config"
 	abci "github.com/cometbft/cometbft/abci/types"
 	rpcclient "github.com/cometbft/cometbft/rpc/client"
@@ -201,7 +202,6 @@ func BuildMessages(
 	fees sdk.Coins,
 	err error,
 ) {
-	txSignerKey := cfg.Key
 	keybase, err := KeybaseFromCfg(cfg, encCfg.Codec)
 	if err != nil {
 		return nil, sdk.Coins{}, err
@@ -215,35 +215,48 @@ func BuildMessages(
 	txf = txf.WithSequence(accSequence).
 		WithAccountNumber(accNumber)
 
-	adjusted := gas
-	if gas == 0 {
-		_, adjusted, err = cp.CalculateGas(ctx, txf, txSignerKey, msgs...)
-		if err != nil {
-			return nil, sdk.Coins{}, err
-		}
+	txSignerKey := cfg.Key
+
+	ws := &babylonclient.WalletState{
+		NextAccountSequence: accSequence,
+		Mu:                  sync.Mutex{},
 	}
 
-	// Set the gas amount on the transaction factory
-	txf = txf.WithGas(adjusted)
-
-	// Build the transaction builder
-	txb, err := txf.BuildUnsignedTx(msgs...)
+	relayerMsgs := bbnclient.ToProviderMsgs(msgs)
+	txBytes, _, fees, err = cp.BuildMessages(ctx, txf, relayerMsgs, memo, 0, txSignerKey, ws)
 	if err != nil {
 		return nil, sdk.Coins{}, err
 	}
 
-	if err = tx.Sign(ctx, txf, txSignerKey, txb, false); err != nil {
-		return nil, sdk.Coins{}, err
-	}
+	// adjusted := gas
+	// if gas == 0 {
+	// 	_, adjusted, err = cp.CalculateGas(ctx, txf, txSignerKey, msgs...)
+	// 	if err != nil {
+	// 		return nil, sdk.Coins{}, err
+	// 	}
+	// }
 
-	tx := txb.GetTx()
-	fees = tx.GetFee()
+	// // Set the gas amount on the transaction factory
+	// txf = txf.WithGas(adjusted)
 
-	// Generate the transaction bytes
-	txBytes, err = encCfg.TxConfig.TxEncoder()(tx)
-	if err != nil {
-		return nil, sdk.Coins{}, err
-	}
+	// // Build the transaction builder
+	// txb, err := txf.BuildUnsignedTx(msgs...)
+	// if err != nil {
+	// 	return nil, sdk.Coins{}, err
+	// }
+
+	// if err = tx.Sign(ctx, txf, txSignerKey, txb, false); err != nil {
+	// 	return nil, sdk.Coins{}, err
+	// }
+
+	// tx := txb.GetTx()
+	// fees = tx.GetFee()
+
+	// // Generate the transaction bytes
+	// txBytes, err = encCfg.TxConfig.TxEncoder()(tx)
+	// if err != nil {
+	// 	return nil, sdk.Coins{}, err
+	// }
 
 	return txBytes, fees, nil
 }
