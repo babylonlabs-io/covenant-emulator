@@ -39,6 +39,6 @@ func DefaultServerConfig() *ServerConfig {
 		WriteTimeout:     15,
 		ReadTimeout:      15,
 		IdleTimeout:      120,
-		MaxContentLength: 8192,
+		MaxContentLength: 10 * 1024 * 1024, // 10MB,
 	}
 }
