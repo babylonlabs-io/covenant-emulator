@@ -77,7 +77,7 @@ type testFinalityProviderData struct {
 	PoP            *bstypes.ProofOfPossessionBTC
 }
 
-func StartManager(t *testing.T) *TestManager {
+func StartManager(t *testing.T, shouldStartEmulator bool) *TestManager {
 	testDir, err := baseDir("cee2etest")
 	require.NoError(t, err)
 
@@ -158,8 +158,10 @@ func StartManager(t *testing.T) *TestManager {
 
 	ce, err := covenant.NewCovenantEmulator(covenantConfig, covbc, logger, signer)
 	require.NoError(t, err)
-	err = ce.Start()
-	require.NoError(t, err)
+	if shouldStartEmulator {
+		err = ce.Start()
+		require.NoError(t, err)
+	}
 
 	tm := &TestManager{
 		BabylonHandler:   bh,
@@ -206,8 +208,8 @@ func (tm *TestManager) SendToAddr(t *testing.T, toAddr, amount string) {
 	require.NoError(t, err)
 }
 
-func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*btcec.PublicKey) {
-	tm := StartManager(t)
+func StartManagerWithFinalityProvider(t *testing.T, n int, shouldStartEmulator bool) (*TestManager, []*btcec.PublicKey) {
+	tm := StartManager(t, shouldStartEmulator)
 
 	var btcPks []*btcec.PublicKey
 	for i := 0; i < n; i++ {
@@ -245,7 +247,7 @@ func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*btc
 func genTestFinalityProviderData(t *testing.T, babylonAddr sdk.AccAddress) *testFinalityProviderData {
 	finalityProviderEOTSPrivKey, err := btcec.NewPrivateKey()
 	require.NoError(t, err)
-	pop, err := bstypes.NewPoPBTC(babylonAddr, finalityProviderEOTSPrivKey)
+	pop, err := datagen.NewPoPBTC(babylonAddr, finalityProviderEOTSPrivKey)
 	require.NoError(t, err)
 
 	return &testFinalityProviderData{
@@ -358,7 +360,7 @@ func (tm *TestManager) InsertBTCDelegation(
 	)
 
 	// proof-of-possession
-	pop, err := bstypes.NewPoPBTC(tm.CovBBNClient.GetKeyAddress(), delBtcPrivKey)
+	pop, err := datagen.NewPoPBTC(tm.CovBBNClient.GetKeyAddress(), delBtcPrivKey)
 	require.NoError(t, err)
 
 	// create and insert BTC headers which include the staking tx to get staking tx info

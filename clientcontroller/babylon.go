@@ -2,14 +2,18 @@ package clientcontroller
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"time"
 
 	sdkmath "cosmossdk.io/math"
 	"github.com/btcsuite/btcd/btcec/v2"
+	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 
+	bbn "github.com/babylonlabs-io/babylon/app"
+	appparams "github.com/babylonlabs-io/babylon/app/params"
 	"github.com/babylonlabs-io/babylon/client/babylonclient"
 	bbnclient "github.com/babylonlabs-io/babylon/client/client"
 	bbntypes "github.com/babylonlabs-io/babylon/types"
@@ -36,6 +40,7 @@ type BabylonController struct {
 	bbnClient *bbnclient.Client
 	cfg       *config.BBNConfig
 	btcParams *chaincfg.Params
+	encCfg    *appparams.EncodingConfig
 	logger    *zap.Logger
 }
 
@@ -63,6 +68,7 @@ func NewBabylonController(
 		bc,
 		cfg,
 		btcParams,
+		bbn.GetEncodingConfig(),
 		logger,
 	}, nil
 }
@@ -150,6 +156,37 @@ func (bc *BabylonController) reliablySendMsg(msg sdk.Msg) (*babylonclient.Relaye
 	return bc.reliablySendMsgs([]sdk.Msg{msg})
 }
 
+// SendMsgs first it tries to send all the messages in a single transaction
+// if it fails, sends each message in a different transaction.
+func (bc *BabylonController) SendMsgs(msgs []sdk.Msg) ([]*types.TxResponse, error) {
+	resSingleTx, errSingleTx := bc.reliablySendMsgs(msgs)
+	if errSingleTx != nil {
+		// failed to send as a batch tx
+		resMultipleTxs, errMultipleTx := bc.reliablySendMsgsAsMultipleTxs(msgs)
+		if errMultipleTx != nil {
+			return nil, errors.Join(errSingleTx, errMultipleTx)
+		}
+
+		return convertTxResp(resMultipleTxs...), nil
+	}
+
+	if resSingleTx == nil { // some expected error happened
+		return []*types.TxResponse{}, nil
+	}
+	return convertTxResp(resSingleTx), nil
+}
+
+func convertTxResp(txs ...*babylonclient.RelayerTxResponse) []*types.TxResponse {
+	resp := make([]*types.TxResponse, len(txs))
+	for i, tx := range txs {
+		resp[i] = &types.TxResponse{
+			TxHash: tx.TxHash,
+			Events: tx.Events,
+		}
+	}
+	return resp
+}
+
 func (bc *BabylonController) reliablySendMsgs(msgs []sdk.Msg) (*babylonclient.RelayerTxResponse, error) {
 	return bc.bbnClient.ReliablySendMsgs(
 		context.Background(),
@@ -159,9 +196,55 @@ func (bc *BabylonController) reliablySendMsgs(msgs []sdk.Msg) (*babylonclient.Re
 	)
 }
 
+func (bc *BabylonController) reliablySendMsgsAsMultipleTxs(msgs []sdk.Msg) ([]*babylonclient.RelayerTxResponse, error) {
+	cfg := bc.bbnClient.GetConfig()
+	encCfg := bc.encCfg
+	log := bc.logger
+
+	var (
+		txResponses []*babylonclient.RelayerTxResponse
+		failedMsgs  []*failedMsg
+	)
+
+	errAccKey := AccessKeyWithLock(cfg.KeyDirectory, func() error {
+		cp := bc.bbnClient.Provider()
+		covAddr, err := cp.GetKeyAddressForKey(cfg.Key)
+		if err != nil {
+			return err
+		}
+
+		covAddrStr := covAddr.String()
+		log.Debug(
+			"covenant_signing",
+			zap.String("address", covAddrStr),
+		)
+
+		covAcc, err := bc.QueryAccount(covAddrStr)
+		if err != nil {
+			return err
+		}
+
+		txResponses, failedMsgs, err = reliablySendEachMsgAsTx(cfg, cp, msgs, log, encCfg, covAcc)
+		return err
+	})
+	if errAccKey != nil {
+		return nil, errAccKey
+	}
+
+	for _, failedMsg := range failedMsgs {
+		log.Warn(
+			"msg failed to submit as tx",
+			zap.String("msg", failedMsg.msg.String()),
+			zap.Error(failedMsg.reason),
+		)
+	}
+
+	return txResponses, nil
+}
+
 // SubmitCovenantSigs submits the Covenant signature via a MsgAddCovenantSig to Babylon if the daemon runs in Covenant mode
 // it returns tx hash and error
-func (bc *BabylonController) SubmitCovenantSigs(covSigs []*types.CovenantSigs) (*types.TxResponse, error) {
+func (bc *BabylonController) SubmitCovenantSigs(covSigs []*types.CovenantSigs) ([]*types.TxResponse, error) {
 	msgs := make([]sdk.Msg, 0, len(covSigs))
 	for _, covSig := range covSigs {
 		bip340UnbondingSig := bbntypes.NewBIP340SignatureFromBTCSig(covSig.UnbondingSig)
@@ -174,16 +257,7 @@ func (bc *BabylonController) SubmitCovenantSigs(covSigs []*types.CovenantSigs) (
 			SlashingUnbondingTxSigs: covSig.SlashingUnbondingSigs,
 		})
 	}
-	res, err := bc.reliablySendMsgs(msgs)
-	if err != nil {
-		return nil, err
-	}
-
-	if res == nil {
-		return &types.TxResponse{}, nil
-	}
-
-	return &types.TxResponse{TxHash: res.TxHash, Events: res.Events}, nil
+	return bc.SendMsgs(msgs)
 }
 
 func (bc *BabylonController) QueryPendingDelegations(limit uint64, filter FilterFn) ([]*types.Delegation, error) {
@@ -508,4 +582,29 @@ func (bc *BabylonController) QueryBtcLightClientTip() (*btclctypes.BTCHeaderInfo
 	}
 
 	return res.Header, nil
+}
+
+// QueryAccount returns the account interface based on the address
+func (bc *BabylonController) QueryAccount(addr string) (sdk.AccountI, error) {
+	ctx, cancel := getContextWithCancel(bc.cfg.Timeout)
+	defer cancel()
+
+	clientCtx := sdkclient.Context{Client: bc.bbnClient.RPCClient}.WithCodec(bc.encCfg.Codec)
+
+	queryClient := authtypes.NewQueryClient(clientCtx)
+
+	req := &authtypes.QueryAccountRequest{
+		Address: addr,
+	}
+	resp, err := queryClient.Account(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query account: %v", err)
+	}
+
+	var account sdk.AccountI
+	if err := bc.encCfg.InterfaceRegistry.UnpackAny(resp.Account, &account); err != nil {
+		return nil, err
+	}
+
+	return account, nil
 }
