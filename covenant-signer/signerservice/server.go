@@ -45,6 +45,14 @@ func New(
 	// be behind some reverse proxy like nginx or cloudflare, then it's not needed.
 	// Probably it needs to be configurable
 
+	// Add HMAC authentication middleware if configured
+	if cfg.ServerConfig.HMACKey != "" {
+		log.Info().Msg("HMAC authentication enabled")
+		r.Use(middlewares.HMACAuthMiddleware(cfg.ServerConfig.HMACKey))
+	} else {
+		log.Warn().Msg("HMAC authentication disabled - no key configured")
+	}
+
 	srv := &http.Server{
 		Addr:         fmt.Sprintf("%s:%d", cfg.ServerConfig.Host, cfg.ServerConfig.Port),
 		WriteTimeout: cfg.ServerConfig.WriteTimeout,
