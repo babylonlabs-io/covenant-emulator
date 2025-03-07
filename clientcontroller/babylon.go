@@ -433,7 +433,7 @@ func (bc *BabylonController) RegisterFinalityProvider(
 	description *stakingtypes.Description, pop *btcstakingtypes.ProofOfPossessionBTC) (*babylonclient.RelayerTxResponse, error) {
 	registerMsg := &btcstakingtypes.MsgCreateFinalityProvider{
 		Addr:        bc.mustGetTxSigner(),
-		Commission:  commission,
+		Commission:  btcstakingtypes.NewCommissionRates(*commission, *commission, sdkmath.LegacyOneDec()),
 		BtcPk:       btcPubKey,
 		Description: description,
 		Pop:         pop,
