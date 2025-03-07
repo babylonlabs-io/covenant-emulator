@@ -35,12 +35,14 @@ type TestManager struct {
 	signerConfig    *config.Config
 	app             *signerapp.SignerApp
 	server          *signerservice.SigningServer
+	hmacKey         string
 }
 
 func StartManager(
 	t *testing.T,
 	numMatureOutputsInWallet uint32,
 	useEncryptedFileKeyRing bool,
+	hmacKey string,
 ) *TestManager {
 	m, err := containers.NewManager()
 	require.NoError(t, err)
@@ -57,6 +59,11 @@ func StartManager(
 	_ = h.GenerateBlocks(int(numMatureOutputsInWallet) + 100)
 
 	appConfig := config.DefaultConfig()
+
+	// Configure HMAC key if provided
+	if hmacKey != "" {
+		appConfig.Server.HMACKey = hmacKey
+	}
 
 	var retriever *cosmos.CosmosKeyringRetriever
 
@@ -129,6 +136,7 @@ func StartManager(
 		signerConfig:    appConfig,
 		app:             app,
 		server:          server,
+		hmacKey:         hmacKey,
 	}
 }
 

@@ -18,6 +18,7 @@ const (
 	NotFound             ErrorCode = "NOT_FOUND"
 	BadRequest           ErrorCode = "BAD_REQUEST"
 	Forbidden            ErrorCode = "FORBIDDEN"
+	Unauthorized         ErrorCode = "UNAUTHORIZED"
 )
 
 // Error represents an error with an HTTP status code and an application-specific error code.
@@ -52,6 +53,10 @@ func NewError(statusCode int, errorCode ErrorCode, err error) *Error {
 
 func NewErrorWithMsg(statusCode int, errorCode ErrorCode, msg string) *Error {
 	return NewError(statusCode, errorCode, errors.New(msg))
+}
+
+func NewUnauthorizedError(msg string) *Error {
+	return NewErrorWithMsg(http.StatusUnauthorized, Unauthorized, msg)
 }
 
 func NewInternalServiceError(err error) *Error {

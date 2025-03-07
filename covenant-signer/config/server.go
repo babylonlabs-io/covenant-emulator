@@ -9,6 +9,7 @@ type ServerConfig struct {
 	ReadTimeout      uint32 `mapstructure:"read-timeout"`
 	IdleTimeout      uint32 `mapstructure:"idle-timeout"`
 	MaxContentLength uint32 `mapstructure:"max-content-length"`
+	HMACKey          string `mapstructure:"hmac-key"`
 }
 
 type ParsedServerConfig struct {
@@ -18,6 +19,7 @@ type ParsedServerConfig struct {
 	ReadTimeout      time.Duration
 	IdleTimeout      time.Duration
 	MaxContentLength uint32
+	HMACKey          string
 }
 
 func (c *ServerConfig) Parse() (*ParsedServerConfig, error) {
@@ -29,6 +31,7 @@ func (c *ServerConfig) Parse() (*ParsedServerConfig, error) {
 		ReadTimeout:      time.Duration(c.ReadTimeout) * time.Second,
 		IdleTimeout:      time.Duration(c.IdleTimeout) * time.Second,
 		MaxContentLength: c.MaxContentLength,
+		HMACKey:          c.HMACKey,
 	}, nil
 }
 
@@ -40,5 +43,6 @@ func DefaultServerConfig() *ServerConfig {
 		ReadTimeout:      15,
 		IdleTimeout:      120,
 		MaxContentLength: 10 * 1024 * 1024, // 10MB,
+		HMACKey:          "",
 	}
 }

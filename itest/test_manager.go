@@ -77,7 +77,7 @@ type testFinalityProviderData struct {
 	PoP            *bstypes.ProofOfPossessionBTC
 }
 
-func StartManager(t *testing.T) *TestManager {
+func StartManager(t *testing.T, hmacKey string) *TestManager {
 	testDir, err := baseDir("cee2etest")
 	require.NoError(t, err)
 
@@ -111,6 +111,13 @@ func StartManager(t *testing.T) *TestManager {
 
 	remoteSignerPort, url := AllocateUniquePort(t)
 	parsedConfig.ServerConfig.Port = remoteSignerPort
+
+	// Configure HMAC keys if provided
+	if hmacKey != "" {
+		parsedConfig.ServerConfig.HMACKey = hmacKey
+		covenantConfig.RemoteSigner.HMACKey = hmacKey
+	}
+
 	covenantConfig.RemoteSigner.URL = fmt.Sprintf("http://%s", url)
 
 	server, err := signerService.New(
@@ -137,6 +144,7 @@ func StartManager(t *testing.T) *TestManager {
 		covenantConfig.RemoteSigner.URL,
 		covenantConfig.RemoteSigner.Timeout,
 		passphrase,
+		covenantConfig.RemoteSigner.HMACKey,
 	)
 	require.NoError(t, err)
 
@@ -207,7 +215,7 @@ func (tm *TestManager) SendToAddr(t *testing.T, toAddr, amount string) {
 }
 
 func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*btcec.PublicKey) {
-	tm := StartManager(t)
+	tm := StartManager(t, "")
 
 	var btcPks []*btcec.PublicKey
 	for i := 0; i < n; i++ {

@@ -96,6 +96,7 @@ func FuzzAddCovenantSig(f *testing.F) {
 		covenantConfig.RemoteSigner.URL,
 		covenantConfig.RemoteSigner.Timeout,
 		passphrase,
+		covenantConfig.RemoteSigner.HMACKey,
 	)
 	require.NoError(f, err)
 

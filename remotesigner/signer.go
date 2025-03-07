@@ -45,7 +45,7 @@ func NewRemoteSigner(cfg *config.RemoteSignerCfg) RemoteSigner {
 }
 
 func (rs RemoteSigner) PubKey() (*btcec.PublicKey, error) {
-	return signerservice.GetPublicKey(context.Background(), rs.cfg.URL, rs.cfg.Timeout)
+	return signerservice.GetPublicKey(context.Background(), rs.cfg.URL, rs.cfg.Timeout, rs.cfg.HMACKey)
 }
 
 func (rs RemoteSigner) SignTransactions(req covenant.SigningRequest) (*covenant.SignaturesResponse, error) {
@@ -54,6 +54,7 @@ func (rs RemoteSigner) SignTransactions(req covenant.SigningRequest) (*covenant.
 		rs.cfg.URL,
 		rs.cfg.Timeout,
 		covenantRequestToSignerRequest(req),
+		rs.cfg.HMACKey,
 	)
 
 	if err != nil {
