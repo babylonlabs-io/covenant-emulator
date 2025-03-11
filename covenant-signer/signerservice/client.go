@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/signerservice/middlewares"
 	"io"
 	"net/http"
 	"time"
@@ -13,7 +14,6 @@ import (
 	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/signerapp"
 	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/signerservice/handlers"
 	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/signerservice/types"
-	"github.com/babylonlabs-io/covenant-emulator/util"
 	"github.com/btcsuite/btcd/btcec/v2"
 )
 
@@ -28,13 +28,13 @@ func addHMACHeader(req *http.Request, hmacKey string, body []byte) error {
 		return nil
 	}
 
-	hmacValue, err := util.GenerateHMAC(hmacKey, body)
+	hmacValue, err := middlewares.GenerateHMAC(hmacKey, body)
 	if err != nil {
 		return fmt.Errorf("failed to generate HMAC: %w", err)
 	}
 
 	if hmacValue != "" {
-		req.Header.Set(util.HeaderCovenantHMAC, hmacValue)
+		req.Header.Set(middlewares.HeaderCovenantHMAC, hmacValue)
 	}
 	return nil
 }
