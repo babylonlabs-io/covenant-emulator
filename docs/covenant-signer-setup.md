@@ -35,6 +35,7 @@ Schnorr adaptor signatures required for covenant operations.
     1. [Configuration](#51-configuration)
     2. [Starting the daemon](#52-starting-the-daemon)
     3. [Unlocking the key](#53-unlocking-the-key)
+    4. [HMAC Authentication](#54-hmac-authentication)
 
 ## 1. Prerequisites
 
@@ -422,3 +423,81 @@ the covenant key.
 
 Congratulations! You have successfully set up the covenant signer and are now able
 to sign transactions with the covenant key.
+
+### 5.4. HMAC Authentication
+
+HMAC (Hash-based Message Authentication Code) authentication provides an additional layer of security for the 
+communication between the covenant-emulator and covenant-signer. It ensures that only authenticated requests 
+from authorized clients are processed by the covenant-signer, preventing unauthorized access to your signing service.
+
+#### Why Use HMAC Authentication?
+
+HMAC authentication offers several security benefits:
+
+1. **Request Integrity**: Ensures that requests haven't been tampered with during transmission
+2. **Authentication**: Verifies that requests come from an authorized source
+3. **Protection Against Replay Attacks**: When combined with timestamps or nonces (not implemented in the current version)
+4. **Simple Implementation**: Doesn't require complex PKI infrastructure
+
+> **⚡ Note:** HMAC authentication is strongly recommended for production environments. Without it, any client 
+that can reach your covenant-signer service could potentially make signing requests.
+
+#### Configuring HMAC Authentication
+
+To enable HMAC authentication, you need to configure the same secret key in both the
+covenant-signer and the covenant-emulator.
+
+##### Step 1: Generate a Strong HMAC Key
+
+First, generate a strong random key. You can use the following command to generate a 32-byte random key encoded in hex:
+
+```shell
+ openssl rand -hex 32
+```
+
+This will output a 64-character hex string like:
+```
+8a7b3cf8e92d2a2d28b3623a6b1ce7b5d46a0c3d7a9b8c7d6e5f4a3b2c1d0e9f
+```
+
+##### Step 2: Configure the Covenant Signer
+
+Add the HMAC key to your covenant-signer configuration file:
+
+```toml
+[server-config]
+# The IP address where the covenant-signer server will listen
+host = "127.0.0.1"
+# The TCP port number where the covenant-signer server will listen
+port = 9791
+# HMAC key for authenticating requests
+hmac-key = "your-generated-hmac-key"
+```
+
+##### Step 3: Configure the Covenant Emulator
+
+Add the same HMAC key to your covenant-emulator configuration file (`covd.conf`):
+
+```
+[remotesigner]
+; URL of the remote signer
+URL = http://127.0.0.1:9791
+
+; client when making requests to the remote signer
+Timeout = 2s
+
+; HMAC key for authenticating requests to the remote signer
+; Must match the key configured in the covenant-signer
+HMACKey = "your-generated-hmac-key"
+```
+
+> **Note:** The HMAC key must be exactly the same in both configurations. Any mismatch will result 
+in authentication failures.
+
+#### Security Considerations
+
+1. **Key Storage**: Store your HMAC key securely. Consider using environment variables or a secure key management 
+service rather than hardcoding it in configuration files.
+2. **Network Security**: Even with HMAC authentication, it's recommended to run the covenant-signer on a private 
+network or use a firewall to restrict access.
+3. **Key Rotation**: Periodically rotate your HMAC keys as part of your security practices.

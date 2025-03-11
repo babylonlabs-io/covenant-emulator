@@ -94,6 +94,11 @@ idle-timeout = {{ .Server.IdleTimeout }}
 # Max content length in bytes
 max-content-length = {{ .Server.MaxContentLength }}
 
+# HMAC key for request authentication
+# This can be a direct key or a reference to a cloud secret manager
+# Leave empty to disable HMAC authentication
+hmac-key = "{{ .Server.HMACKey }}"
+
 [metrics]
 # The prometheus server host
 host = "{{ .Metrics.Host }}"

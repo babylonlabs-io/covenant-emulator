@@ -124,6 +124,10 @@ URL = http://127.0.0.1:9792
 
 ; client when making requests to the remote signer
 Timeout = 2s
+
+; HMAC key for authenticating requests to the remote signer
+; Leave empty to disable HMAC authentication (not recommended for production)
+HMACKey = ""
 ```
 
 Below are brief explanations of the configuration entries:
@@ -138,9 +142,37 @@ Below are brief explanations of the configuration entries:
 - `KeyringBackend` - Storage backend for the keyring (os, file, kwallet, pass, test, memory)
 - `URL` - Endpoint where the remote signing service is running
 - `Timeout` - Maximum time to wait for remote signer responses
+- `HMACKey` - Secret key for HMAC authentication with the covenant-signer
 
-Ensure that the covenant signer is running and unlocked before proceeding.
-Otherwise, you will be unable to run the emulator.
+### 3.3. Configure HMAC Authentication (Recommended for Production)
+
+HMAC (Hash-based Message Authentication Code) authentication provides an additional layer of security for the communication between the covenant-emulator and covenant-signer by ensuring that only authenticated requests are processed.
+
+#### Setting up HMAC Authentication
+
+1. **Generate a strong random key**:
+   ```bash
+   # Generate a 32-byte random key and encode it as hex
+   openssl rand -hex 32
+   ```
+
+2. **Configure the covenant-emulator**:
+   Add the HMAC key to your `covd.conf` file in the `[remotesigner]` section:
+   ```ini
+   [remotesigner]
+   URL = http://127.0.0.1:9792
+   Timeout = 2s
+   HMACKey = "your-generated-random-key"
+   ```
+
+3. **Configure the covenant-signer**:
+   The same HMAC key must be configured in your covenant-signer's configuration. Refer to the covenant-signer setup guide to set the matching key.
+
+
+### Verification
+
+When HMAC authentication is properly configured, all requests between the covenant-emulator and covenant-signer will include an authentication header. If there's a key mismatch or other authentication issues, you'll see error messages in the logs.
+
 
 ## 4. Generate key pairs
 
