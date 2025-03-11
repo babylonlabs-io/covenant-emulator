@@ -6,7 +6,6 @@ import (
 	"errors"
 	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/signerservice/middlewares"
 	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/signerservice/types"
-	"github.com/babylonlabs-io/covenant-emulator/util"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -32,7 +31,7 @@ func TestHMACAuthMiddleware(t *testing.T) {
 	makeRequestWithHMAC := func(t *testing.T, body []byte, hmacKey, hmacHeader string) *http.Request {
 		req := httptest.NewRequest(http.MethodPost, "/test", bytes.NewReader(body))
 		if hmacHeader != "" {
-			req.Header.Set(util.HeaderCovenantHMAC, hmacHeader)
+			req.Header.Set(middlewares.HeaderCovenantHMAC, hmacHeader)
 		}
 		return req
 	}
@@ -40,7 +39,7 @@ func TestHMACAuthMiddleware(t *testing.T) {
 	makeRequestWithMethodAndHMAC := func(t *testing.T, method string, body []byte, hmacKey, hmacHeader string) *http.Request {
 		req := httptest.NewRequest(method, "/test", bytes.NewReader(body))
 		if hmacHeader != "" {
-			req.Header.Set(util.HeaderCovenantHMAC, hmacHeader)
+			req.Header.Set(middlewares.HeaderCovenantHMAC, hmacHeader)
 		}
 		return req
 	}
@@ -107,7 +106,7 @@ func TestHMACAuthMiddleware(t *testing.T) {
 	t.Run("Valid HMAC, should proceed to next handler", func(t *testing.T) {
 		middleware := middlewares.HMACAuthMiddleware(testHMACKey)
 
-		validHMAC, err := util.GenerateHMAC(testHMACKey, testBody)
+		validHMAC, err := middlewares.GenerateHMAC(testHMACKey, testBody)
 		require.NoError(t, err, "Failed to generate HMAC")
 
 		req := makeRequestWithHMAC(t, testBody, testHMACKey, validHMAC)
@@ -121,7 +120,7 @@ func TestHMACAuthMiddleware(t *testing.T) {
 	t.Run("Request body can be read again after middleware", func(t *testing.T) {
 		middleware := middlewares.HMACAuthMiddleware(testHMACKey)
 
-		validHMAC, err := util.GenerateHMAC(testHMACKey, testBody)
+		validHMAC, err := middlewares.GenerateHMAC(testHMACKey, testBody)
 		require.NoError(t, err, "Failed to generate HMAC")
 
 		req := makeRequestWithHMAC(t, testBody, testHMACKey, validHMAC)
@@ -145,7 +144,7 @@ func TestHMACAuthMiddleware(t *testing.T) {
 
 		brokenBodyReader := &brokenReader{}
 		req := httptest.NewRequest(http.MethodPost, "/test", brokenBodyReader)
-		req.Header.Set(util.HeaderCovenantHMAC, "some-hmac")
+		req.Header.Set(middlewares.HeaderCovenantHMAC, "some-hmac")
 
 		rr := executeMiddleware(t, middleware, req)
 
@@ -173,7 +172,7 @@ func TestHMACAuthMiddleware(t *testing.T) {
 				middleware := middlewares.HMACAuthMiddleware(testHMACKey)
 
 				// Generate valid HMAC
-				validHMAC, err := util.GenerateHMAC(testHMACKey, testBody)
+				validHMAC, err := middlewares.GenerateHMAC(testHMACKey, testBody)
 				require.NoError(t, err, "Failed to generate HMAC")
 
 				// Create request with valid HMAC and specific method
@@ -214,11 +213,11 @@ func TestHMACAuthMiddleware(t *testing.T) {
 
 		// Create GET request for public-key endpoint with valid HMAC
 		body := []byte{}
-		validHMAC, err := util.GenerateHMAC(testHMACKey, body)
+		validHMAC, err := middlewares.GenerateHMAC(testHMACKey, body)
 		require.NoError(t, err, "Failed to generate HMAC")
 
 		req := httptest.NewRequest(http.MethodGet, "/v1/public-key", bytes.NewReader(body))
-		req.Header.Set(util.HeaderCovenantHMAC, validHMAC)
+		req.Header.Set(middlewares.HeaderCovenantHMAC, validHMAC)
 
 		// Execute middleware
 		rr := executeMiddleware(t, middleware, req)
