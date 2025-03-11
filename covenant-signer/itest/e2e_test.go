@@ -29,7 +29,6 @@ import (
 	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/signerapp"
 	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/signerservice"
 	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/signerservice/types"
-	"github.com/babylonlabs-io/covenant-emulator/util"
 )
 
 func buildDataToSign(t *testing.T, covnenantPublicKey *btcec.PublicKey) signerapp.ParsedSigningRequest {
@@ -309,13 +308,13 @@ func TestHMACDirectRequest(t *testing.T) {
 	body := []byte(`{"passphrase":""}`)
 	route := fmt.Sprintf("%s/v1/unlock", tm.SigningServerUrl())
 
-	hmacValue, err := util.GenerateHMAC(testHMACKey, body)
+	hmacValue, err := middlewares.GenerateHMAC(testHMACKey, body)
 	require.NoError(t, err)
 
 	httpRequest, err := http.NewRequestWithContext(context.Background(), "POST", route, bytes.NewReader(body))
 	require.NoError(t, err)
 	httpRequest.Header.Set("Content-Type", "application/json")
-	httpRequest.Header.Set(util.HeaderCovenantHMAC, hmacValue)
+	httpRequest.Header.Set(middlewares.HeaderCovenantHMAC, hmacValue)
 
 	client := http.Client{Timeout: 10 * time.Second}
 	res, err := client.Do(httpRequest)
@@ -326,7 +325,7 @@ func TestHMACDirectRequest(t *testing.T) {
 	httpRequest, err = http.NewRequestWithContext(context.Background(), "POST", route, bytes.NewReader(body))
 	require.NoError(t, err)
 	httpRequest.Header.Set("Content-Type", "application/json")
-	httpRequest.Header.Set(util.HeaderCovenantHMAC, "invalidhmacvalue")
+	httpRequest.Header.Set(middlewares.HeaderCovenantHMAC, "invalidhmacvalue")
 
 	res, err = client.Do(httpRequest)
 	require.NoError(t, err)
@@ -353,12 +352,12 @@ func TestHMACDirectRequest(t *testing.T) {
 	require.Equal(t, http.StatusUnauthorized, res.StatusCode, "Public key request without HMAC should fail with 401")
 
 	emptyBody := []byte{}
-	hmacValue, err = util.GenerateHMAC(testHMACKey, emptyBody)
+	hmacValue, err = middlewares.GenerateHMAC(testHMACKey, emptyBody)
 	require.NoError(t, err)
 
 	httpRequest, err = http.NewRequestWithContext(context.Background(), "GET", pkRoute, nil)
 	require.NoError(t, err)
-	httpRequest.Header.Set(util.HeaderCovenantHMAC, hmacValue)
+	httpRequest.Header.Set(middlewares.HeaderCovenantHMAC, hmacValue)
 
 	res, err = client.Do(httpRequest)
 	require.NoError(t, err)
@@ -401,9 +400,9 @@ func TestHMACMismatchedKeys(t *testing.T) {
 	httpRequest, err := http.NewRequestWithContext(context.Background(), "GET", route, nil)
 	require.NoError(t, err)
 
-	hmacValue, err := util.GenerateHMAC(serverKey, []byte{})
+	hmacValue, err := middlewares.GenerateHMAC(serverKey, []byte{})
 	require.NoError(t, err)
-	httpRequest.Header.Set(util.HeaderCovenantHMAC, hmacValue)
+	httpRequest.Header.Set(middlewares.HeaderCovenantHMAC, hmacValue)
 
 	client := http.Client{Timeout: 10 * time.Second}
 	res, err := client.Do(httpRequest)
