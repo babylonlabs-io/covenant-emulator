@@ -28,6 +28,7 @@ import (
 
 	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/signerapp"
 	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/signerservice"
+	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/signerservice/middlewares"
 	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/signerservice/types"
 )
 
