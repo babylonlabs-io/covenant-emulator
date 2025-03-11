@@ -37,6 +37,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## Unreleased
 
+### Improvements
+
+- [#109](https://github.com/babylonlabs-io/covenant-emulator/pull/109) HMAC authentication between signer and emulator.
+
 ### Bug Fixes
 
 - [#107](https://github.com/babylonlabs-io/covenant-emulator/pull/107) crypto: replace dcrd fork with btcd fork
