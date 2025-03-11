@@ -39,6 +39,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Improvements
 
+* [#109](https://github.com/babylonlabs-io/covenant-emulator/pull/109) HMAC authentication between signer and emulator.
 * [#110](https://github.com/babylonlabs-io/covenant-emulator/pull/110) bump babylon to v1.0.0-rc.7
 
 ### Bug Fixes
