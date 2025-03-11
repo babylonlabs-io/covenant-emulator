@@ -1,7 +1,7 @@
-package util_test
+package middlewares_test
 
 import (
-	"github.com/babylonlabs-io/covenant-emulator/util"
+	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/signerservice/middlewares"
 	"io"
 	"strings"
 	"testing"
@@ -36,7 +36,7 @@ func TestGenerateHMAC(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := util.GenerateHMAC(tt.hmacKey, tt.body)
+			result, err := middlewares.GenerateHMAC(tt.hmacKey, tt.body)
 
 			if tt.expectError && err == nil {
 				t.Errorf("Expected error but got none")
@@ -46,7 +46,7 @@ func TestGenerateHMAC(t *testing.T) {
 				t.Errorf("Unexpected error: %v", err)
 			}
 
-			resultAgain, err := util.GenerateHMAC(tt.hmacKey, tt.body)
+			resultAgain, err := middlewares.GenerateHMAC(tt.hmacKey, tt.body)
 			if err != nil {
 				t.Errorf("Unexpected error on second generation: %v", err)
 			}
@@ -91,12 +91,12 @@ func TestValidateHMAC(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			hmac, err := util.GenerateHMAC("test-key", tt.body)
+			hmac, err := middlewares.GenerateHMAC("test-key", tt.body)
 			if err != nil {
 				t.Fatalf("Failed to generate HMAC: %v", err)
 			}
 
-			valid, err := util.ValidateHMAC(tt.hmacKey, tt.body, hmac)
+			valid, err := middlewares.ValidateHMAC(tt.hmacKey, tt.body, hmac)
 
 			if tt.expectError && err == nil {
 				t.Errorf("Expected error but got none")
@@ -118,7 +118,7 @@ func TestEmptyReceivedHMAC(t *testing.T) {
 	body := []byte(`{"test":"data"}`)
 	receivedHMAC := ""
 
-	valid, err := util.ValidateHMAC(key, body, receivedHMAC)
+	valid, err := middlewares.ValidateHMAC(key, body, receivedHMAC)
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
@@ -150,7 +150,7 @@ func TestRewindRequestBody(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			readCloser := io.NopCloser(strings.NewReader(tt.inputBody))
 
-			body, newReader, err := util.RewindRequestBody(readCloser)
+			body, newReader, err := middlewares.RewindRequestBody(readCloser)
 
 			if tt.expectError && err == nil {
 				t.Errorf("Expected error but got none")

@@ -426,7 +426,9 @@ to sign transactions with the covenant key.
 
 ### 5.4. HMAC Authentication
 
-HMAC (Hash-based Message Authentication Code) authentication provides an additional layer of security for the communication between the covenant-emulator and covenant-signer. It ensures that only authenticated requests from authorized clients are processed by the covenant-signer, preventing unauthorized access to your signing service.
+HMAC (Hash-based Message Authentication Code) authentication provides an additional layer of security for the 
+communication between the covenant-emulator and covenant-signer. It ensures that only authenticated requests 
+from authorized clients are processed by the covenant-signer, preventing unauthorized access to your signing service.
 
 #### Why Use HMAC Authentication?
 
@@ -437,11 +439,13 @@ HMAC authentication offers several security benefits:
 3. **Protection Against Replay Attacks**: When combined with timestamps or nonces (not implemented in the current version)
 4. **Simple Implementation**: Doesn't require complex PKI infrastructure
 
-> **⚡ Note:** HMAC authentication is strongly recommended for production environments. Without it, any client that can reach your covenant-signer service could potentially make signing requests.
+> **⚡ Note:** HMAC authentication is strongly recommended for production environments. Without it, any client 
+that can reach your covenant-signer service could potentially make signing requests.
 
 #### Configuring HMAC Authentication
 
-To enable HMAC authentication, you need to configure the same secret key in both the covenant-signer and the covenant-emulator.
+To enable HMAC authentication, you need to configure the same secret key in both the
+covenant-signer and the covenant-emulator.
 
 ##### Step 1: Generate a Strong HMAC Key
 
@@ -487,10 +491,13 @@ Timeout = 2s
 HMACKey = "your-generated-hmac-key"
 ```
 
-> **Note:** The HMAC key must be exactly the same in both configurations. Any mismatch will result in authentication failures.
+> **Note:** The HMAC key must be exactly the same in both configurations. Any mismatch will result 
+in authentication failures.
 
 #### Security Considerations
 
-1. **Key Storage**: Store your HMAC key securely. Consider using environment variables or a secure key management service rather than hardcoding it in configuration files.
-2. **Network Security**: Even with HMAC authentication, it's recommended to run the covenant-signer on a private network or use a firewall to restrict access.
+1. **Key Storage**: Store your HMAC key securely. Consider using environment variables or a secure key management 
+service rather than hardcoding it in configuration files.
+2. **Network Security**: Even with HMAC authentication, it's recommended to run the covenant-signer on a private 
+network or use a firewall to restrict access.
 3. **Key Rotation**: Periodically rotate your HMAC keys as part of your security practices.
