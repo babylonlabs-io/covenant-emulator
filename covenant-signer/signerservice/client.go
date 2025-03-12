@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/signerservice/middlewares"
 	"io"
 	"net/http"
 	"time"
@@ -21,11 +22,29 @@ const (
 	maxResponseSize = 1 << 20 // 1MB
 )
 
+// addHMACHeader adds the HMAC header to the request if an HMAC key is provided
+func addHMACHeader(req *http.Request, hmacKey string, body []byte) error {
+	if hmacKey == "" {
+		return nil
+	}
+
+	hmacValue, err := middlewares.GenerateHMAC(hmacKey, body)
+	if err != nil {
+		return fmt.Errorf("failed to generate HMAC: %w", err)
+	}
+
+	if hmacValue != "" {
+		req.Header.Set(middlewares.HeaderCovenantHMAC, hmacValue)
+	}
+	return nil
+}
+
 func RequestCovenantSignaure(
 	ctx context.Context,
 	signerUrl string,
 	timeout time.Duration,
 	preq *signerapp.ParsedSigningRequest,
+	hmacKey string,
 ) (*signerapp.ParsedSigningResponse, error) {
 
 	req, err := types.ToSignTransactionRequest(preq)
@@ -50,6 +69,10 @@ func RequestCovenantSignaure(
 
 	// use json
 	httpRequest.Header.Set("Content-Type", "application/json")
+
+	if err := addHMACHeader(httpRequest, hmacKey, marshalled); err != nil {
+		return nil, err
+	}
 
 	client := http.Client{Timeout: timeout}
 	// send the request
@@ -82,12 +105,16 @@ func RequestCovenantSignaure(
 	return types.ToParsedSigningResponse(&response.Data)
 }
 
-func GetPublicKey(ctx context.Context, signerUrl string, timeout time.Duration) (*btcec.PublicKey, error) {
+func GetPublicKey(ctx context.Context, signerUrl string, timeout time.Duration, hmacKey string) (*btcec.PublicKey, error) {
 	route := fmt.Sprintf("%s/v1/public-key", signerUrl)
 
 	httpRequest, err := http.NewRequestWithContext(ctx, "GET", route, nil)
 
 	if err != nil {
+		return nil, err
+	}
+
+	if err := addHMACHeader(httpRequest, hmacKey, []byte{}); err != nil {
 		return nil, err
 	}
 
@@ -125,7 +152,7 @@ func GetPublicKey(ctx context.Context, signerUrl string, timeout time.Duration) 
 	return btcec.ParsePubKey(pubKey)
 }
 
-func Unlock(ctx context.Context, signerUrl string, timeout time.Duration, passphrase string) error {
+func Unlock(ctx context.Context, signerUrl string, timeout time.Duration, passphrase string, hmacKey string) error {
 	route := fmt.Sprintf("%s/v1/unlock", signerUrl)
 
 	req := &types.UnlockRequest{
@@ -145,6 +172,10 @@ func Unlock(ctx context.Context, signerUrl string, timeout time.Duration, passph
 
 	// use json
 	httpRequest.Header.Set("Content-Type", "application/json")
+
+	if err := addHMACHeader(httpRequest, hmacKey, marshalled); err != nil {
+		return err
+	}
 
 	client := http.Client{Timeout: timeout}
 	// send the request
@@ -172,9 +203,10 @@ func Unlock(ctx context.Context, signerUrl string, timeout time.Duration, passph
 	return nil
 }
 
-func Lock(ctx context.Context, signerUrl string, timeout time.Duration) error {
+func Lock(ctx context.Context, signerUrl string, timeout time.Duration, hmacKey string) error {
 	route := fmt.Sprintf("%s/v1/lock", signerUrl)
-	httpRequest, err := http.NewRequestWithContext(ctx, "POST", route, bytes.NewReader([]byte{}))
+	var emptyBody []byte
+	httpRequest, err := http.NewRequestWithContext(ctx, "POST", route, bytes.NewReader(emptyBody))
 
 	if err != nil {
 		return err
@@ -182,6 +214,10 @@ func Lock(ctx context.Context, signerUrl string, timeout time.Duration) error {
 
 	// use json
 	httpRequest.Header.Set("Content-Type", "application/json")
+
+	if err := addHMACHeader(httpRequest, hmacKey, emptyBody); err != nil {
+		return err
+	}
 
 	client := http.Client{Timeout: timeout}
 	// send the request
