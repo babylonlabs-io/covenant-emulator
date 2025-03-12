@@ -5,10 +5,12 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/signerservice/types"
+	"errors"
 	"io"
 	"net/http"
 	"strings"
+
+	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/signerservice/types"
 
 	"github.com/rs/zerolog/log"
 )
@@ -16,6 +18,8 @@ import (
 const (
 	// HeaderCovenantHMAC is the HTTP header name for the HMAC
 	HeaderCovenantHMAC = "X-Covenant-HMAC"
+	// MaxRequestBodySize is the maximum allowed size for request bodies in bytes (10 MB)
+	MaxRequestBodySize = 10 * 1024 * 1024
 )
 
 // HMACAuthMiddleware creates a middleware that verifies HMAC authentication
@@ -98,9 +102,15 @@ func ValidateHMAC(hmacKey string, body []byte, receivedHMAC string) (bool, error
 
 // RewindRequestBody reads a request body and then rewinds it, so it can be read again
 func RewindRequestBody(reader io.ReadCloser) ([]byte, io.ReadCloser, error) {
-	body, err := io.ReadAll(reader)
+	// The extra byte helps us determine if the body exceeds the limit
+	limitedReader := io.LimitReader(reader, MaxRequestBodySize+1)
+	body, err := io.ReadAll(limitedReader)
 	if err != nil {
 		return nil, nil, err
+	}
+
+	if len(body) > MaxRequestBodySize {
+		return nil, nil, errors.New("request body too large")
 	}
 
 	return body, io.NopCloser(strings.NewReader(string(body))), nil

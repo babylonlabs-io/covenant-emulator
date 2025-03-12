@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/signerservice/middlewares"
-	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/signerservice/types"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/signerservice/middlewares"
+	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/signerservice/types"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

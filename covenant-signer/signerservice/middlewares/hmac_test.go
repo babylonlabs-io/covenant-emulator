@@ -1,10 +1,13 @@
 package middlewares_test
 
 import (
-	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/signerservice/middlewares"
+	"bytes"
+	"errors"
 	"io"
 	"strings"
 	"testing"
+
+	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/signerservice/middlewares"
 )
 
 func TestGenerateHMAC(t *testing.T) {
@@ -174,4 +177,96 @@ func TestRewindRequestBody(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("Size limit tests", func(t *testing.T) {
+		testMaxSize := 1024 * 10 // 10KB for testing
+
+		testRewindRequestBody := func(reader io.ReadCloser) ([]byte, io.ReadCloser, error) {
+			limitedReader := io.LimitReader(reader, int64(testMaxSize+1))
+			body, err := io.ReadAll(limitedReader)
+			if err != nil {
+				return nil, nil, err
+			}
+
+			if len(body) > testMaxSize {
+				return nil, nil, errors.New("request body too large")
+			}
+
+			return body, io.NopCloser(bytes.NewReader(body)), nil
+		}
+
+		t.Run("Body at exactly max size", func(t *testing.T) {
+			exactSizeBody := bytes.Repeat([]byte("a"), testMaxSize)
+			reader := io.NopCloser(bytes.NewReader(exactSizeBody))
+
+			body, newBody, err := testRewindRequestBody(reader)
+			if err != nil {
+				t.Errorf("Unexpected error: %v", err)
+			}
+
+			if len(body) != testMaxSize {
+				t.Errorf("Expected body length %d, got %d", testMaxSize, len(body))
+			}
+
+			readBody, err := io.ReadAll(newBody)
+			if err != nil {
+				t.Errorf("Error reading from new reader: %v", err)
+			}
+
+			if len(readBody) != testMaxSize {
+				t.Errorf("Expected body length from new reader %d, got %d", testMaxSize, len(readBody))
+			}
+		})
+
+		t.Run("Body exceeding max size", func(t *testing.T) {
+			oversizeBody := bytes.Repeat([]byte("a"), testMaxSize+1)
+			reader := io.NopCloser(bytes.NewReader(oversizeBody))
+
+			_, _, err := testRewindRequestBody(reader)
+			if err == nil {
+				t.Errorf("Expected error but got none")
+			}
+
+			if err.Error() != "request body too large" {
+				t.Errorf("Expected error 'request body too large', got '%v'", err)
+			}
+		})
+
+		t.Run("Body exceeding max size by a lot", func(t *testing.T) {
+			largeReader := &infiniteReader{maxRead: testMaxSize * 2}
+			reader := io.NopCloser(largeReader)
+
+			_, _, err := testRewindRequestBody(reader)
+			if err == nil {
+				t.Errorf("Expected error but got none")
+			}
+
+			if err.Error() != "request body too large" {
+				t.Errorf("Expected error 'request body too large', got '%v'", err)
+			}
+		})
+	})
+}
+
+// infiniteReader is a mock io.Reader that returns a specified byte repeatedly
+// up to a maximum number of bytes
+type infiniteReader struct {
+	bytesRead int
+	maxRead   int
+}
+
+func (r *infiniteReader) Read(p []byte) (n int, err error) {
+	if r.bytesRead >= r.maxRead {
+		return 0, io.EOF
+	}
+
+	for i := range p {
+		p[i] = 'a'
+		r.bytesRead++
+		if r.bytesRead >= r.maxRead {
+			return i + 1, io.EOF
+		}
+	}
+
+	return len(p), nil
 }
