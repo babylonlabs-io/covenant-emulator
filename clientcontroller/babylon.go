@@ -181,16 +181,19 @@ func (bc *BabylonController) SubmitCovenantSigs(covSigs []*types.CovenantSigs) (
 	return bc.reliablySendMsgsResendingOnMsgErr(msgs)
 }
 
+// reliablySendMsgsResendingOnMsgErr sends the msgs to the chain, if some msg fails to execute
+// and contains 'message index: %d', it will remove that msg from the batch and send again
+// if there is no more message available, returns the last error.
 func (bc *BabylonController) reliablySendMsgsResendingOnMsgErr(msgs []sdk.Msg) (*types.TxResponse, error) {
 	res, err := bc.reliablySendMsgs(msgs)
 	if err != nil {
 		// something failed, check if it is the message index failure
-		// remove the failed msg from the batch and send again
 		if res == nil || len(msgs) <= 1 {
 			return nil, err
 		}
 
 		if strings.Contains(err.Error(), "message index: ") {
+			// remove the failed msg from the batch and send again
 			failedIndex, found := FailedMessageIndex(err)
 			if !found {
 				return nil, err
