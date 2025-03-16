@@ -33,6 +33,7 @@ import (
 var (
 	_                  ClientController = &BabylonController{}
 	MaxPaginationLimit                  = uint64(1000)
+	messageIndexRegex                   = regexp.MustCompile(`message index:\s*(\d+)`)
 )
 
 type BabylonController struct {
@@ -226,8 +227,7 @@ func RemoveMsgAtIndex(msgs []sdk.Msg, index int) []sdk.Msg {
 // the substring 'message index: %d'.
 // ex.:  rpc error: code = Unknown desc = failed to execute message; message index: 1: the covenant signature is already submitted
 func FailedMessageIndex(err error) (int, bool) {
-	re := regexp.MustCompile(`message index:\s*(\d+)`)
-	matches := re.FindStringSubmatch(err.Error())
+	matches := messageIndexRegex.FindStringSubmatch(err.Error())
 
 	if len(matches) > 1 {
 		index, errAtoi := strconv.Atoi(matches[1])
