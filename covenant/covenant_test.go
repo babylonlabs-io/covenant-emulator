@@ -12,7 +12,6 @@ import (
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
-	"github.com/golang/mock/gomock"
 
 	"github.com/babylonlabs-io/babylon/btcstaking"
 	asig "github.com/babylonlabs-io/babylon/crypto/schnorr-adaptor-signature"
@@ -20,6 +19,7 @@ import (
 	bbntypes "github.com/babylonlabs-io/babylon/types"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/wire"
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 
@@ -259,7 +259,7 @@ func FuzzAddCovenantSig(f *testing.F) {
 			Return(&types.TxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
 		res, err := ce.AddCovenantSignatures(btcDels)
 		require.NoError(t, err)
-		require.Equal(t, expectedTxHash, res.TxHash)
+		require.Equal(t, expectedTxHash, res.TxHash, "covSigsSet %+v didn't result in expected tx hash", covSigsSet)
 	})
 }
 
