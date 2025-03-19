@@ -12,6 +12,7 @@ import (
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
+	"github.com/golang/mock/gomock"
 
 	"github.com/babylonlabs-io/babylon/btcstaking"
 	asig "github.com/babylonlabs-io/babylon/crypto/schnorr-adaptor-signature"
@@ -254,7 +255,7 @@ func FuzzAddCovenantSig(f *testing.F) {
 
 		// check the sigs are expected
 		expectedTxHash := testutil.GenRandomHexStr(r, 32)
-		mockClientController.EXPECT().SubmitCovenantSigs(covSigsSet).
+		mockClientController.EXPECT().SubmitCovenantSigs(gomock.Any()).
 			Return(&types.TxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
 		res, err := ce.AddCovenantSignatures(btcDels)
 		require.NoError(t, err)
