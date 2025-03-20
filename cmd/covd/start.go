@@ -44,7 +44,7 @@ func start(ctx *cli.Context) error {
 	}
 
 	if cfg.BabylonConfig.KeyringBackend != "test" {
-		return fmt.Errorf("the keyring backend should be test")
+		return fmt.Errorf("the keyring backend in config must be `test` for automatic signing, got %s", cfg.BabylonConfig.KeyringBackend)
 	}
 
 	logger, err := log.NewRootLoggerWithFile(covcfg.LogFile(homePath), cfg.LogLevel)
