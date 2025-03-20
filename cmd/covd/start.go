@@ -43,6 +43,10 @@ func start(ctx *cli.Context) error {
 		return fmt.Errorf("failed to load config at %s: %w", homePath, err)
 	}
 
+	if cfg.BabylonConfig.KeyringBackend != "test" {
+		return fmt.Errorf("the keyring backend should be test")
+	}
+
 	logger, err := log.NewRootLoggerWithFile(covcfg.LogFile(homePath), cfg.LogLevel)
 	if err != nil {
 		return fmt.Errorf("failed to load the logger: %w", err)

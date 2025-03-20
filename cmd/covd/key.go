@@ -66,30 +66,13 @@ func createKey(ctx *cli.Context) error {
 	backend := ctx.String(keyringBackendFlag)
 	passphrase := ctx.String(passphraseFlag)
 	hdPath := ctx.String(hdPathFlag)
-
-	if backend != "test" {
-		return fmt.Errorf("the command-line keyring backend should be 'test'")
-	}
-
-	if keyName == "" {
-		return fmt.Errorf("the key name should not be empty")
-	}
+	keyBackend := ctx.String(keyringBackendFlag)
 
 	// check the config file exists
 	cfg, err := covcfg.LoadConfig(homePath)
 	if err != nil {
 		return fmt.Errorf("failed to load the config from %s: %w", covcfg.ConfigFile(homePath), err)
 	}
-
-	if cfg.BabylonConfig.KeyringBackend == "" {
-		return fmt.Errorf("the keyring backend should not be empty")
-	} else if cfg.BabylonConfig.KeyringBackend != "test" {
-		return fmt.Errorf("the keyring backend should be test")
-	}
-
-	// write the updated config into the config file
-	cfg.BabylonConfig.Key = keyName
-	cfg.BabylonConfig.KeyringBackend = backend
 
 	keyPair, err := keyring.CreateCovenantKey(
 		homePath,
@@ -112,6 +95,9 @@ func createKey(ctx *cli.Context) error {
 		},
 	)
 
+	// write the updated config into the config file
+	cfg.BabylonConfig.Key = keyName
+	cfg.BabylonConfig.KeyringBackend = keyBackend
 	fileParser := flags.NewParser(cfg, flags.Default)
 
 	return flags.NewIniParser(fileParser).WriteFile(covcfg.ConfigFile(homePath), flags.IniIncludeComments|flags.IniIncludeDefaults)
