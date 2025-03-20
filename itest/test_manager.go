@@ -159,7 +159,7 @@ func StartManager(t *testing.T, hmacKey string) *TestManager {
 
 	// 3. prepare covenant emulator
 	bbnCfg := defaultBBNConfigWithKey("test-spending-key", bh.GetNodeDataDir())
-	covbc, err := covcc.NewBabylonController(bbnCfg, &covenantConfig.BTCNetParams, logger)
+	covbc, err := covcc.NewBabylonController(bbnCfg, &covenantConfig.BTCNetParams, logger, covenantConfig.MaxRetiresBatchRemovingMsgs)
 	require.NoError(t, err)
 
 	require.NoError(t, err)

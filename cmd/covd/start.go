@@ -48,7 +48,7 @@ func start(ctx *cli.Context) error {
 		return fmt.Errorf("failed to load the logger: %w", err)
 	}
 
-	bbnClient, err := clientcontroller.NewBabylonController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
+	bbnClient, err := clientcontroller.NewBabylonController(cfg.BabylonConfig, &cfg.BTCNetParams, logger, cfg.MaxRetiresBatchRemovingMsgs)
 	if err != nil {
 		return fmt.Errorf("failed to create rpc client for the consumer chain: %w", err)
 	}
