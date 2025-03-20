@@ -19,6 +19,7 @@ import (
 	bbntypes "github.com/babylonlabs-io/babylon/types"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/wire"
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 
@@ -254,11 +255,11 @@ func FuzzAddCovenantSig(f *testing.F) {
 
 		// check the sigs are expected
 		expectedTxHash := testutil.GenRandomHexStr(r, 32)
-		mockClientController.EXPECT().SubmitCovenantSigs(covSigsSet).
+		mockClientController.EXPECT().SubmitCovenantSigs(gomock.Any()).
 			Return(&types.TxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
 		res, err := ce.AddCovenantSignatures(btcDels)
 		require.NoError(t, err)
-		require.Equal(t, expectedTxHash, res.TxHash)
+		require.Equal(t, expectedTxHash, res.TxHash, "covSigsSet %+v didn't result in expected tx hash", covSigsSet)
 	})
 }
 
