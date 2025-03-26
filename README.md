@@ -35,10 +35,10 @@ duty or power. If it has a dishonest super majority, then
 
 * it cannot:
  
-  * steal the staker’s bitcoins, because all the spending transactions
+  * steal the staker's bitcoins, because all the spending transactions
     require the staker's signature;
   
-  * slash the staker’s bitcoins by itself, because slashing requires the 
+  * slash the staker's bitcoins by itself, because slashing requires the 
     secret key of the finality provider, which the covenant committee does 
     not know in advance, and
    
@@ -47,8 +47,8 @@ duty or power. If it has a dishonest super majority, then
 
 In other words, there is no way the committee can act against the stakers, 
 except rejecting their staking requests. Furthermore, the dishonest actions 
-of the covenant committee can be contained by 1) including the staker’s 
-counterparty in the committee, such as the PoS system’s foundation, or 2) 
+of the covenant committee can be contained by 1) including the staker's 
+counterparty in the committee, such as the PoS system's foundation, or 2) 
 implementing a governance proposal to re-elect the committee.
 
 This rule-enforcing committee is necessary for now because the current BTC 
@@ -110,6 +110,21 @@ This flow ensures that all private key operations remain isolated within the
 secure Covenant Signer while the emulator handles the blockchain interaction 
 and validation logic.
 
+## Boot Order and Dependencies
+
+The Covenant Emulator requires the Covenant Signer to be running and unlocked 
+before it can start. This is because the emulator performs a health check
+during startup to ensure the signer is accessible and ready to handle signing requests.
+If the signer is not running or is locked, the emulator will fail to start with a clear error message.
+
+The required boot sequence is:
+1. Start and unlock the Covenant Signer
+2. Verify the signer is running and accessible
+3. Start the Covenant Emulator
+
+The emulator will automatically verify the signer's availability 
+during startup and will not proceed if the signer is not ready.
+
 ![Covenant Architecture](./static/covenant.png)
 
 ## Covenant Emulator Stack Setup
@@ -118,3 +133,10 @@ please follow the instructions in the following documents
 (in sequence):
 1. [Covenant Signer Setup](./docs/covenant-signer-setup.md)
 2. [Covenant Emulator Setup](./docs/covenant-emulator-setup.md)
+
+## Important Limitations
+
+**Keyring Backend**: The covenant emulator only supports the `test` 
+keyring backend. This limitation exists because the emulator requires automated
+signing capabilities without manual passphrase entry. Other keyring backends 
+will cause the emulator to fail at startup.
