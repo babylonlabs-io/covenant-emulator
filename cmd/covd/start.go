@@ -45,7 +45,7 @@ func start(ctx *cli.Context) error {
 	}
 
 	if cfg.BabylonConfig.KeyringBackend != keyring.BackendTest {
-		return fmt.Errorf("the keyring backend in config must be `test` for automatic signing, got %s", cfg.BabylonConfig.KeyringBackend)
+		return fmt.Errorf("the keyring backend in config must be `test` for automatic signing, got %s. Other keyring backends are not supported as they require manual passphrase entry", cfg.BabylonConfig.KeyringBackend)
 	}
 
 	logger, err := log.NewRootLoggerWithFile(covcfg.LogFile(homePath), cfg.LogLevel)
@@ -62,6 +62,13 @@ func start(ctx *cli.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to create remote signer from config: %w", err)
 	}
+
+	// Perform health check on the remote signer
+	logger.Info("Performing health check on remote signer...")
+	if _, err := signer.PubKey(); err != nil {
+		return fmt.Errorf("remote signer health check failed - ensure the signer is running and unlocked: %w", err)
+	}
+	logger.Info("Remote signer health check passed")
 
 	ce, err := covenant.NewCovenantEmulator(cfg, bbnClient, logger, signer)
 	if err != nil {
