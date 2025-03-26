@@ -259,3 +259,34 @@ covd start
 
 All the available CLI options can be viewed using the `--help` flag. These
 options can also be set in the configuration file.
+
+## 6. Monitoring and Health Checks
+
+### 6.1. Readiness Check Endpoint
+
+The covenant emulator provides a health check endpoint at `/health` that can be used 
+by monitoring systems, to determine if the service is ready to handle requests.
+
+The endpoint can be accessed through the same address as the Prometheus metrics endpoint, 
+which is configured in `covd.conf`:
+
+```
+http://<prometheusAddr>/health
+```
+
+The endpoint returns:
+- `HTTP 200 OK` with response body "Healthy" when the emulator is running properly
+and can connect to its dependencies
+- `HTTP 503 Service Unavailable` with an error message when the emulator is not ready
+
+The readiness check verifies:
+1. Whether the emulator's main loop is running
+2. Connectivity to the remote signer by calling its PubKey endpoint
+
+#### Example Usage
+
+To check the emulator's readiness:
+
+```bash
+curl -v http://127.0.0.1:2112/health
+```

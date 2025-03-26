@@ -6,9 +6,16 @@ import (
 	"net/http"
 	"time"
 
+	logger "github.com/rs/zerolog"
+
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
 )
+
+// ReadinessChecker defines the interface for checking readiness status
+type ReadinessChecker interface {
+	CheckReadiness() error
+}
 
 type PrometheusServer struct {
 	svr *http.Server
@@ -18,6 +25,8 @@ type PrometheusServer struct {
 	interval time.Duration
 
 	quit chan struct{}
+
+	readinessChecker ReadinessChecker
 }
 
 func NewPrometheusServer(addr string, interval time.Duration, logger *zap.Logger) *PrometheusServer {
@@ -36,6 +45,37 @@ func NewPrometheusServer(addr string, interval time.Duration, logger *zap.Logger
 		interval: interval,
 		logger:   logger,
 		quit:     make(chan struct{}, 1),
+	}
+}
+
+// SetReadinessChecker sets the readiness checker implementation
+func (ps *PrometheusServer) SetReadinessChecker(rc ReadinessChecker) {
+	ps.readinessChecker = rc
+
+	// Add the readiness endpoint only after the checker is set
+	if mux, ok := ps.svr.Handler.(*http.ServeMux); ok {
+		mux.HandleFunc("/health", ps.readinessHandler)
+		ps.logger.Info("Readiness endpoint registered at /health")
+	}
+}
+
+// readinessHandler handles the /health endpoint requests
+func (ps *PrometheusServer) readinessHandler(w http.ResponseWriter, r *http.Request) {
+	if ps.readinessChecker == nil {
+		ps.logger.Error("Readiness checker not configured")
+		http.Error(w, "Readiness checker not configured", http.StatusInternalServerError)
+		return
+	}
+
+	if err := ps.readinessChecker.CheckReadiness(); err != nil {
+		ps.logger.Error("Readiness check failed", zap.Error(err))
+		http.Error(w, err.Error(), http.StatusServiceUnavailable)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	if _, err := w.Write([]byte("Healthy")); err != nil {
+		logger.Ctx(r.Context()).Err(err).Msg("failed to write response")
 	}
 }
 

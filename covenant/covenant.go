@@ -610,3 +610,23 @@ func (ce *CovenantEmulator) Stop() error {
 	})
 	return stopErr
 }
+
+// CheckReadiness checks if the covenant emulator is ready to serve requests.
+// It verifies internal state (if the main loop is running) and connectivity to
+// dependencies (remote signer).
+func (ce *CovenantEmulator) CheckReadiness() error {
+	select {
+	case <-ce.quit:
+		return fmt.Errorf("emulator is not running")
+	default:
+		// Emulator is running
+	}
+
+	// Check connectivity to the remote signer by calling its PubKey endpoint
+	_, err := ce.signer.PubKey()
+	if err != nil {
+		return fmt.Errorf("failed to get public key from covenant signer: %w", err)
+	}
+
+	return nil
+}

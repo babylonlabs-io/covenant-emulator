@@ -39,7 +39,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Improvements
 
+* [#116](https://github.com/babylonlabs-io/covenant-emulator/pull/116) Add health check to prometheus server.
 * [#117](https://github.com/babylonlabs-io/covenant-emulator/pull/117) Add health check on startup, increase gas adjustment and update docs.
+
 
 ## v0.14.0
 
