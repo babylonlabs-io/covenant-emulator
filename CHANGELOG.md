@@ -44,7 +44,6 @@ just removing the failed one. Add config `MaxRetiresBatchRemovingMsgs` to limit 
 * [#116](https://github.com/babylonlabs-io/covenant-emulator/pull/116) Add health check to prometheus server.
 * [#117](https://github.com/babylonlabs-io/covenant-emulator/pull/117) Add health check on startup, increase gas adjustment and update docs.
 
-
 ## v0.14.0
 
 * [#114](https://github.com/babylonlabs-io/covenant-emulator/pull/114) bump babylon to v1.0.0-rc.8
