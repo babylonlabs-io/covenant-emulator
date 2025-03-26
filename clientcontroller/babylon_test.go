@@ -15,6 +15,82 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestBatchRetries(t *testing.T) {
+	t.Parallel()
+
+	tcs := []struct {
+		title                       string
+		msgsInputN                  uint
+		maxRetiresBatchRemovingMsgs uint64
+		expReturn                   uint64
+	}{
+		{
+			title:                       "2 msgs with max 5, return 2",
+			msgsInputN:                  2,
+			maxRetiresBatchRemovingMsgs: 5,
+			expReturn:                   2,
+		},
+		{
+			title:                       "2 msgs with max 1, return 1",
+			msgsInputN:                  2,
+			maxRetiresBatchRemovingMsgs: 1,
+			expReturn:                   1,
+		},
+		{
+			title:                       "5 msgs with max 6, return 5",
+			msgsInputN:                  5,
+			maxRetiresBatchRemovingMsgs: 6,
+			expReturn:                   5,
+		},
+		{
+			title:                       "5 msgs with max 6, return 5",
+			msgsInputN:                  5,
+			maxRetiresBatchRemovingMsgs: 6,
+			expReturn:                   5,
+		},
+		{
+			title:                       "2 msgs with max 6, return 2",
+			msgsInputN:                  2,
+			maxRetiresBatchRemovingMsgs: 6,
+			expReturn:                   2,
+		},
+		{
+			title:                       "5 msgs with max 3, return 3",
+			msgsInputN:                  5,
+			maxRetiresBatchRemovingMsgs: 3,
+			expReturn:                   3,
+		},
+		{
+			title:                       "8 msgs with max 4, return 4",
+			msgsInputN:                  8,
+			maxRetiresBatchRemovingMsgs: 4,
+			expReturn:                   4,
+		},
+		{
+			title:                       "0 msgs with max 4, return 0",
+			msgsInputN:                  0,
+			maxRetiresBatchRemovingMsgs: 4,
+			expReturn:                   0,
+		},
+		{
+			title:                       "1 msgs with max 4, return 1",
+			msgsInputN:                  1,
+			maxRetiresBatchRemovingMsgs: 4,
+			expReturn:                   1,
+		},
+	}
+
+	for _, tc := range tcs {
+		t.Run(tc.title, func(t *testing.T) {
+			t.Parallel()
+			msgs := make([]sdk.Msg, tc.msgsInputN)
+
+			actReturn := clientcontroller.BatchRetries(msgs, tc.maxRetiresBatchRemovingMsgs)
+			require.Equal(t, tc.expReturn, actReturn)
+		})
+	}
+}
+
 func FuzzDelegationRespToDelegation(f *testing.F) {
 	testutil.AddRandomSeedsToFuzzer(f, 10)
 	f.Fuzz(func(t *testing.T, seed int64) {

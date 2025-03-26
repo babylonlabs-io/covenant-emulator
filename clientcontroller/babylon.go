@@ -231,7 +231,7 @@ func (bc *BabylonController) reliablySendMsgsResendingOnMsgErr(msgs []sdk.Msg) (
 // BatchRetries returns the max number of retries it should execute based on the
 // amount of messages in the batch
 func BatchRetries(msgs []sdk.Msg, maxRetiresBatchRemovingMsgs uint64) uint64 {
-	maxRetriesByMsgLen := uint64(len(msgs)) - 1
+	maxRetriesByMsgLen := uint64(len(msgs))
 
 	if maxRetiresBatchRemovingMsgs == 0 {
 		return maxRetriesByMsgLen
