@@ -36,27 +36,9 @@ through a health check during the emulator's startup process.
 ### Required Boot Sequence
 
 1. Start the Covenant Signer:
-   ```shell
-   # Start the signer service
-   covenant-signer start
-   ```
-
 2. Unlock the Covenant Signer:
-   ```shell
-   # Unlock the signer (if required)
-   covenant-signer unlock
-   ```
-
 3. Verify the signer is running and accessible:
-   ```shell
-   # Test the signer's health
-   curl -X GET http://<signer-url>/health
-   ```
-
 4. Start the Covenant Emulator:
-   ```shell
-   covd start --home <path>
-   ```
 
 ### Health Check Behavior
 
