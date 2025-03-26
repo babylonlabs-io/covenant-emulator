@@ -39,6 +39,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Improvements
 
+* [#116](https://github.com/babylonlabs-io/covenant-emulator/pull/116) Add health check to prometheus server.
 * [#114](https://github.com/babylonlabs-io/covenant-emulator/pull/114) bump babylon to v1.0.0-rc.8
 * [#109](https://github.com/babylonlabs-io/covenant-emulator/pull/109) HMAC authentication between signer and emulator.
 
