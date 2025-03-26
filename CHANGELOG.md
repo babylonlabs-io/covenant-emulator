@@ -41,6 +41,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 * [#112](https://github.com/babylonlabs-io/covenant-emulator/pull/112) Send batch of messages again if some msg failed,
 just removing the failed one. Add config `MaxRetiresBatchRemovingMsgs` to limit the retries.
+
+## v0.14.0
+
 * [#114](https://github.com/babylonlabs-io/covenant-emulator/pull/114) bump babylon to v1.0.0-rc.8
 * [#109](https://github.com/babylonlabs-io/covenant-emulator/pull/109) HMAC authentication between signer and emulator.
 
