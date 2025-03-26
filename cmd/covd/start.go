@@ -8,6 +8,7 @@ import (
 	"github.com/babylonlabs-io/covenant-emulator/log"
 	"github.com/babylonlabs-io/covenant-emulator/remotesigner"
 	"github.com/babylonlabs-io/covenant-emulator/util"
+	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 
 	"github.com/lightningnetwork/lnd/signal"
 	"github.com/urfave/cli"
@@ -41,6 +42,10 @@ func start(ctx *cli.Context) error {
 	cfg, err := covcfg.LoadConfig(homePath)
 	if err != nil {
 		return fmt.Errorf("failed to load config at %s: %w", homePath, err)
+	}
+
+	if cfg.BabylonConfig.KeyringBackend != keyring.BackendTest {
+		return fmt.Errorf("the keyring backend in config must be `test` for automatic signing, got %s", cfg.BabylonConfig.KeyringBackend)
 	}
 
 	logger, err := log.NewRootLoggerWithFile(covcfg.LogFile(homePath), cfg.LogLevel)
