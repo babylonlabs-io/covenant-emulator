@@ -625,7 +625,7 @@ func (ce *CovenantEmulator) CheckReadiness() error {
 	// Check connectivity to the remote signer by calling its PubKey endpoint
 	_, err := ce.signer.PubKey()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get public key from covenant signer: %w", err)
 	}
 
 	return nil
