@@ -12,7 +12,7 @@ type BBNConfig struct {
 	RPCAddr        string        `long:"rpc-address" description:"address of the rpc server to connect to"`
 	GRPCAddr       string        `long:"grpc-address" description:"address of the grpc server to connect to"`
 	AccountPrefix  string        `long:"acc-prefix" description:"account prefix to use for addresses"`
-	KeyringBackend string        `long:"keyring-type" description:"type of keyring to use"`
+	KeyringBackend string        `long:"keyring-type" description:"type of keyring to use"` // IMPORTANT: Only 'test' backend is supported due to automated signing requirements
 	GasAdjustment  float64       `long:"gas-adjustment" description:"adjustment factor when using gas estimation"`
 	GasPrices      string        `long:"gas-prices" description:"comma separated minimum gas prices to accept for transactions"`
 	KeyDirectory   string        `long:"key-dir" description:"directory to store keys in"`
@@ -33,7 +33,7 @@ func DefaultBBNConfig() BBNConfig {
 		GRPCAddr:       dc.GRPCAddr,
 		AccountPrefix:  dc.AccountPrefix,
 		KeyringBackend: dc.KeyringBackend,
-		GasAdjustment:  dc.GasAdjustment,
+		GasAdjustment:  20, // Increased from default to ensure sufficient gas
 		GasPrices:      dc.GasPrices,
 		Debug:          dc.Debug,
 		Timeout:        dc.Timeout,
