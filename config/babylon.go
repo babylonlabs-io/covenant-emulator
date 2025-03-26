@@ -33,7 +33,7 @@ func DefaultBBNConfig() BBNConfig {
 		GRPCAddr:       dc.GRPCAddr,
 		AccountPrefix:  dc.AccountPrefix,
 		KeyringBackend: dc.KeyringBackend,
-		GasAdjustment:  20, // Increased from default to ensure sufficient gas
+		GasAdjustment:  5, // Increased from default to ensure sufficient gas
 		GasPrices:      dc.GasPrices,
 		Debug:          dc.Debug,
 		Timeout:        dc.Timeout,
