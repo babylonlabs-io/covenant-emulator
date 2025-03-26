@@ -44,6 +44,8 @@ func (s *CovenantServer) RunUntilShutdown() error {
 	}
 
 	ps := NewPrometheusServer(promAddr, metricsCfg.UpdateInterval, s.logger)
+	// Set the covenant emulator as the readiness checker
+	ps.SetReadinessChecker(s.ce)
 
 	defer func() {
 		ps.Stop()
