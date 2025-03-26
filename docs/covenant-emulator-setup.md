@@ -6,12 +6,13 @@ daemon program.
 ## Table of Contents
 
 1. [Prerequesites](#1-prerequisites)
-2. [Install Covenant Emulator Binary](#2-install-covenant-emulator-binary)
-3. [Setting up the Covenant Emulator Program](#3-setting-up-the-covenant-emulator-program)
-	1. [Initialize directories](#31-initialize-directories)
-	2. [Configure the covenant emulator](#32-configure-the-covenant-emulator)
-4. [Generate key pairs](#4-generate-key-pairs)
-5. [Start the emulator daemon](#5-start-the-emulator-daemon)
+2. [Boot Order and Signer Dependency](#2-boot-order-and-signer-dependency)
+3. [Install Covenant Emulator Binary](#3-install-covenant-emulator-binary)
+4. [Setting up the Covenant Emulator Program](#4-setting-up-the-covenant-emulator-program)
+	1. [Initialize directories](#41-initialize-directories)
+	2. [Configure the covenant emulator](#42-configure-the-covenant-emulator)
+5. [Generate key pairs](#5-generate-key-pairs)
+6. [Start the emulator daemon](#6-start-the-emulator-daemon)
 
 ## 1. Prerequisites
 
@@ -26,7 +27,36 @@ To successfully complete this guide, you will need:
 2. A connection to a Babylon node. To run your own node, please refer to the
   [Babylon Node Setup Guide](https://github.com/babylonlabs-io/networks/blob/main/bbn-test-5/bbn-test-5/babylon-node/README.md).
 
-## 2. Install covenant emulator binary
+## 2. Boot Order and Signer Dependency
+
+The Covenant Emulator requires the Covenant Signer to be running and
+unlocked before it can start. This is a critical dependency that is enforced 
+through a health check during the emulator's startup process.
+
+### Required Boot Sequence
+
+1. Start the Covenant Signer:
+2. Unlock the Covenant Signer:
+3. Verify the signer is running and accessible:
+4. Start the Covenant Emulator:
+
+### Health Check Behavior
+
+The emulator performs an automatic health check during startup by attempting 
+to fetch the signer's public key. If this check fails, the emulator will:
+- Log an error message indicating the signer is not accessible
+- Provide guidance to ensure the signer is running and unlocked
+- Exit with a non-zero status code
+
+### Troubleshooting
+
+If the emulator fails to start with a signer-related error:
+1. Verify the signer is running and accessible at the configured URL
+2. Check if the signer is locked and needs to be unlocked
+3. Verify the HMAC key in the emulator's configuration matches the signer's configuration
+4. Check the signer's logs for any errors or issues
+
+## 3. Install covenant emulator binary
 
 If you haven't already, download [Golang 1.23](https://go.dev/dl).
 
@@ -65,9 +95,9 @@ export PATH=$HOME/go/bin:$PATH
 echo 'export PATH=$HOME/go/bin:$PATH' >> ~/.profile
 ```
 
-## 3. Setting up the covenant emulator program
+## 4. Setting up the covenant emulator program
 
-### 3.1. Initialize directories
+### 4.1. Initialize directories
 
 Next, initialize the node and home directory by generating all of the
 necessary files such as `covd.conf`. These files will live in the `<path>`
@@ -85,7 +115,7 @@ $ ls <path>
   ├── logs      # Covd logs
 ```
 
-### 3.2. Configure the covenant emulator
+### 4.2. Configure the covenant emulator
 
 Use the following parameters to configure the `covd.conf` file.
 
@@ -140,11 +170,19 @@ Below are brief explanations of the configuration entries:
 - `GRPCAddr` - gRPC endpoint for connecting to a Babylon node
 - `Key` - Name of the key in the keyring used for transaction signing
 - `KeyringBackend` - Storage backend for the keyring (os, file, kwallet, pass, test, memory)
+
+> **IMPORTANT LIMITATION**: The covenant emulator only supports the `test` 
+keyring backend. This limitation exists because the emulator requires automated
+signing capabilities and the test backend is the only one that supports this
+feature without manual passphrase entry. Other keyring backends 
+(os, file, kwallet, pass, memory) will not work and will
+cause the emulator to fail at startup.
+
 - `URL` - Endpoint where the remote signing service is running
 - `Timeout` - Maximum time to wait for remote signer responses
 - `HMACKey` - Secret key for HMAC authentication with the covenant-signer
 
-### 3.3. Configure HMAC Authentication (Recommended for Production)
+### 4.3. Configure HMAC Authentication (Recommended for Production)
 
 HMAC (Hash-based Message Authentication Code) authentication provides an additional layer of security for the communication between the covenant-emulator and covenant-signer by ensuring that only authenticated requests are processed.
 
@@ -174,7 +212,7 @@ HMAC (Hash-based Message Authentication Code) authentication provides an additio
 When HMAC authentication is properly configured, all requests between the covenant-emulator and covenant-signer will include an authentication header. If there's a key mismatch or other authentication issues, you'll see error messages in the logs.
 
 
-## 4. Generate key pairs
+## 5. Generate key pairs
 
 The covenant emulator daemon requires the existence of a Babylon keyring that
 signs signatures and interacts with Babylon. Use the following command to generate
@@ -209,7 +247,7 @@ To check your balance, View your account on the
 address.
 
 
-## 5. Start the emulator daemon
+## 6. Start the emulator daemon
 
 You can start the covenant emulator daemon using the following command:
 
@@ -221,3 +259,34 @@ covd start
 
 All the available CLI options can be viewed using the `--help` flag. These
 options can also be set in the configuration file.
+
+## 6. Monitoring and Health Checks
+
+### 6.1. Readiness Check Endpoint
+
+The covenant emulator provides a health check endpoint at `/health` that can be used 
+by monitoring systems, to determine if the service is ready to handle requests.
+
+The endpoint can be accessed through the same address as the Prometheus metrics endpoint, 
+which is configured in `covd.conf`:
+
+```
+http://<prometheusAddr>/health
+```
+
+The endpoint returns:
+- `HTTP 200 OK` with response body "Healthy" when the emulator is running properly
+and can connect to its dependencies
+- `HTTP 503 Service Unavailable` with an error message when the emulator is not ready
+
+The readiness check verifies:
+1. Whether the emulator's main loop is running
+2. Connectivity to the remote signer by calling its PubKey endpoint
+
+#### Example Usage
+
+To check the emulator's readiness:
+
+```bash
+curl -v http://127.0.0.1:2112/health
+```
