@@ -73,8 +73,13 @@ func TestSubmitCovenantSigsWithRetry(t *testing.T) {
 	defer tm.Stop(t)
 
 	delData1 := tm.InsertBTCDelegation(t, btcPks, stakingTime, stakingAmount, false)
+	_ = tm.WaitForNPendingDels(t, 1)
+
 	delData2 := tm.InsertBTCDelegation(t, btcPks, stakingTime, stakingAmount, false)
+	_ = tm.WaitForNPendingDels(t, 2)
+
 	delData3 := tm.InsertBTCDelegation(t, btcPks, stakingTime, stakingAmount, false)
+	_ = tm.WaitForNPendingDels(t, 3)
 
 	activeDels := tm.WaitForNActiveDels(t, 3)
 	require.Len(t, activeDels, 3, "Expected 3 active delegations")
