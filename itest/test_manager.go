@@ -118,6 +118,7 @@ func StartManager(t *testing.T, hmacKey string) *TestManager {
 		covenantConfig.RemoteSigner.HMACKey = hmacKey
 	}
 
+	covenantConfig.MaxRetiresBatchRemovingMsgs = 3
 	covenantConfig.RemoteSigner.URL = fmt.Sprintf("http://%s", url)
 
 	server, err := signerService.New(
