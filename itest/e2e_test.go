@@ -81,12 +81,14 @@ func TestSubmitCovenantSigsWithRetry(t *testing.T) {
 
 	delData2 := tm.InsertBTCDelegation(t, btcPks, stakingTime, stakingAmount, false)
 	_ = tm.WaitForNPendingDels(t, 1)
+	_ = tm.WaitForNActiveDels(t, 2)
 	activeDels2, err := tm.CovBBNClient.QueryActiveDelegations(100)
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, len(activeDels2), 2, "Expected at least 2 active delegations")
 
 	delData3 := tm.InsertBTCDelegation(t, btcPks, stakingTime, stakingAmount, false)
 	_ = tm.WaitForNPendingDels(t, 1)
+	_ = tm.WaitForNActiveDels(t, 3)
 	activeDels3, err := tm.CovBBNClient.QueryActiveDelegations(100)
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, len(activeDels3), 3, "Expected at least 3 active delegations")
