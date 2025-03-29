@@ -2,8 +2,12 @@ package clientcontroller
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
+	"regexp"
+	"strconv"
+	"strings"
 	"time"
 
 	sdkmath "cosmossdk.io/math"
@@ -30,6 +34,7 @@ import (
 var (
 	_                  ClientController = &BabylonController{}
 	MaxPaginationLimit                  = uint64(1000)
+	messageIndexRegex                   = regexp.MustCompile(`message index:\s*(\d+)`)
 )
 
 type BabylonController struct {
@@ -37,14 +42,16 @@ type BabylonController struct {
 	cfg       *config.BBNConfig
 	btcParams *chaincfg.Params
 	logger    *zap.Logger
+
+	MaxRetiresBatchRemovingMsgs uint64
 }
 
 func NewBabylonController(
 	cfg *config.BBNConfig,
 	btcParams *chaincfg.Params,
 	logger *zap.Logger,
+	maxRetiresBatchRemovingMsgs uint64,
 ) (*BabylonController, error) {
-
 	bbnConfig := config.BBNConfigToBabylonConfig(cfg)
 
 	if err := bbnConfig.Validate(); err != nil {
@@ -64,6 +71,7 @@ func NewBabylonController(
 		cfg,
 		btcParams,
 		logger,
+		maxRetiresBatchRemovingMsgs,
 	}, nil
 }
 
@@ -174,16 +182,90 @@ func (bc *BabylonController) SubmitCovenantSigs(covSigs []*types.CovenantSigs) (
 			SlashingUnbondingTxSigs: covSig.SlashingUnbondingSigs,
 		})
 	}
-	res, err := bc.reliablySendMsgs(msgs)
-	if err != nil {
-		return nil, err
+
+	return bc.reliablySendMsgsResendingOnMsgErr(msgs)
+}
+
+// reliablySendMsgsResendingOnMsgErr sends the msgs to the chain, if some msg fails to execute
+// and contains 'message index: %d', it will remove that msg from the batch and send again
+// if there is no more message available, returns the last error.
+func (bc *BabylonController) reliablySendMsgsResendingOnMsgErr(msgs []sdk.Msg) (*types.TxResponse, error) {
+	var err error
+
+	maxRetries := BatchRetries(msgs, bc.MaxRetiresBatchRemovingMsgs)
+	for i := uint64(0); i < maxRetries; i++ {
+		res, errSendMsg := bc.reliablySendMsgs(msgs)
+		if errSendMsg != nil {
+			// concatenate the errors, to throw out if needed
+			err = errors.Join(err, errSendMsg)
+
+			// something failed, check if it is the message index failure
+			if res == nil || len(msgs) <= 1 {
+				return nil, err
+			}
+
+			if strings.Contains(errSendMsg.Error(), "message index: ") {
+				// remove the failed msg from the batch and send again
+				failedIndex, found := FailedMessageIndex(errSendMsg)
+				if !found {
+					return nil, errSendMsg
+				}
+
+				msgs = RemoveMsgAtIndex(msgs, failedIndex)
+				continue
+			}
+
+			return nil, errSendMsg
+		}
+
+		if res == nil { // expected error happened
+			return &types.TxResponse{}, nil
+		}
+
+		return &types.TxResponse{TxHash: res.TxHash, Events: res.Events}, nil
 	}
 
-	if res == nil {
-		return &types.TxResponse{}, nil
+	return nil, fmt.Errorf("failed to send batch of msgs: %w", err)
+}
+
+// BatchRetries returns the max number of retries it should execute based on the
+// amount of messages in the batch
+func BatchRetries(msgs []sdk.Msg, maxRetiresBatchRemovingMsgs uint64) uint64 {
+	maxRetriesByMsgLen := uint64(len(msgs))
+
+	if maxRetiresBatchRemovingMsgs == 0 {
+		return maxRetriesByMsgLen
 	}
 
-	return &types.TxResponse{TxHash: res.TxHash, Events: res.Events}, nil
+	if maxRetiresBatchRemovingMsgs > maxRetriesByMsgLen {
+		return maxRetriesByMsgLen
+	}
+
+	return maxRetiresBatchRemovingMsgs
+}
+
+// RemoveMsgAtIndex removes any msg inside the slice, based on the index is given
+// if the index is out of bounds, it just returns the slice of msgs.
+func RemoveMsgAtIndex(msgs []sdk.Msg, index int) []sdk.Msg {
+	if index < 0 || index >= len(msgs) {
+		return msgs
+	}
+	return append(msgs[:index], msgs[index+1:]...)
+}
+
+// FailedMessageIndex finds the message index which failed in a error which contains
+// the substring 'message index: %d'.
+// ex.:  rpc error: code = Unknown desc = failed to execute message; message index: 1: the covenant signature is already submitted
+func FailedMessageIndex(err error) (int, bool) {
+	matches := messageIndexRegex.FindStringSubmatch(err.Error())
+
+	if len(matches) > 1 {
+		index, errAtoi := strconv.Atoi(matches[1])
+		if errAtoi == nil {
+			return index, true
+		}
+	}
+	return 0, false
 }
 
 func (bc *BabylonController) QueryPendingDelegations(limit uint64, filter FilterFn) ([]*types.Delegation, error) {

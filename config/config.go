@@ -35,11 +35,12 @@ var (
 )
 
 type Config struct {
-	LogLevel        string        `long:"loglevel" description:"Logging level for all subsystems" choice:"trace" choice:"debug" choice:"info" choice:"warn" choice:"error" choice:"fatal"`
-	QueryInterval   time.Duration `long:"queryinterval" description:"The interval between each query for pending BTC delegations"`
-	DelegationLimit uint64        `long:"delegationlimit" description:"The maximum number of delegations that the Covenant processes each time"`
-	SigsBatchSize   uint64        `long:"sigsbatchsize" description:"The maximum number of signatures to send in a single transaction"`
-	BitcoinNetwork  string        `long:"bitcoinnetwork" description:"Bitcoin network to run on" choice:"mainnet" choice:"regtest" choice:"testnet" choice:"simnet" choice:"signet"`
+	LogLevel                    string        `long:"loglevel" description:"Logging level for all subsystems" choice:"trace" choice:"debug" choice:"info" choice:"warn" choice:"error" choice:"fatal"`
+	QueryInterval               time.Duration `long:"queryinterval" description:"The interval between each query for pending BTC delegations"`
+	DelegationLimit             uint64        `long:"delegationlimit" description:"The maximum number of delegations that the Covenant processes each time"`
+	SigsBatchSize               uint64        `long:"sigsbatchsize" description:"The maximum number of signatures to send in a single transaction"`
+	MaxRetiresBatchRemovingMsgs uint64        `long:"maxretriesbatchremovingmsgs" description:"The maximum number of retries to send a batch of covenant signatures messages (if some msg fails, remove the failed msgfrom the batch).\n; If set to zero, it tries to send the whole batch, if set to a value larger than zero, the value or the length of the batch whichever is lower"`
+	BitcoinNetwork              string        `long:"bitcoinnetwork" description:"Bitcoin network to run on" choice:"mainnet" choice:"regtest" choice:"testnet" choice:"simnet" choice:"signet"`
 
 	BTCNetParams chaincfg.Params
 
