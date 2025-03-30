@@ -118,6 +118,7 @@ func StartManager(t *testing.T, hmacKey string) *TestManager {
 		covenantConfig.RemoteSigner.HMACKey = hmacKey
 	}
 
+	covenantConfig.MaxRetiresBatchRemovingMsgs = 3
 	covenantConfig.RemoteSigner.URL = fmt.Sprintf("http://%s", url)
 
 	server, err := signerService.New(
@@ -159,7 +160,7 @@ func StartManager(t *testing.T, hmacKey string) *TestManager {
 
 	// 3. prepare covenant emulator
 	bbnCfg := defaultBBNConfigWithKey("test-spending-key", bh.GetNodeDataDir())
-	covbc, err := covcc.NewBabylonController(bbnCfg, &covenantConfig.BTCNetParams, logger)
+	covbc, err := covcc.NewBabylonController(bbnCfg, &covenantConfig.BTCNetParams, logger, covenantConfig.MaxRetiresBatchRemovingMsgs)
 	require.NoError(t, err)
 
 	require.NoError(t, err)
