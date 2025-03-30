@@ -41,6 +41,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 * [#112](https://github.com/babylonlabs-io/covenant-emulator/pull/112) Send batch of messages again if some msg failed,
 just removing the failed one. Add config `MaxRetiresBatchRemovingMsgs` to limit the retries.
+* [#119](https://github.com/babylonlabs-io/covenant-emulator/pull/119) Make passphrase for Unlock optional.
 * [#116](https://github.com/babylonlabs-io/covenant-emulator/pull/116) Add health check to prometheus server.
 * [#117](https://github.com/babylonlabs-io/covenant-emulator/pull/117) Add health check on startup, increase gas adjustment and update docs.
 
