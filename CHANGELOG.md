@@ -37,13 +37,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## Unreleased
 
+## v0.15.0
+
 ### Improvements
 
 * [#120](https://github.com/babylonlabs-io/covenant-emulator/pull/120) Bump babylon to rc-9.
 * [#119](https://github.com/babylonlabs-io/covenant-emulator/pull/119) Make passphrase for Unlock optional.
 * [#116](https://github.com/babylonlabs-io/covenant-emulator/pull/116) Add health check to prometheus server.
 * [#117](https://github.com/babylonlabs-io/covenant-emulator/pull/117) Add health check on startup, increase gas adjustment and update docs.
-
 
 ## v0.14.0
 
