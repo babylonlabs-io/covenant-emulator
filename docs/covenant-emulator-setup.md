@@ -71,7 +71,7 @@ If you have not yet cloned the repository, run:
 ```shell
 git clone git@github.com:babylonlabs-io/covenant-emulator.git
 cd covenant-emulator
-git checkout <tag>
+git checkout v0.15.1
 ```
 
 Run the following command to build the binaries and
