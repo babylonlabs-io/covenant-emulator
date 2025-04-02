@@ -37,6 +37,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## Unreleased
 
+## v0.15.1
+
+### Improvements
+
+* [#122](https://github.com/babylonlabs-io/covenant-emulator/pull/122) Bump babylon node to v1.0.0
+
 ## v0.15.0
 
 ### Improvements
