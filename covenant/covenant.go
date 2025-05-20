@@ -11,7 +11,6 @@ import (
 	"github.com/babylonlabs-io/babylon/btcstaking"
 	asig "github.com/babylonlabs-io/babylon/crypto/schnorr-adaptor-signature"
 	bbntypes "github.com/babylonlabs-io/babylon/types"
-	bstypes "github.com/babylonlabs-io/babylon/x/btcstaking/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/btcsuite/btcd/btcutil"
@@ -118,76 +117,18 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 			continue
 		}
 
-		// 3. check unbonding time (staking time from unbonding tx) is larger or equal
-		// to the minimum unbonding time in Babylon node parameters
-		unbondingTime := btcDel.UnbondingTime
-		unbondingTimeBlocks := params.UnbondingTimeBlocks
-		if uint32(unbondingTime) != unbondingTimeBlocks {
-			ce.logger.Error("invalid unbonding time",
-				zap.Uint32("expected_unbonding_time", unbondingTimeBlocks),
-				zap.Uint16("got_unbonding_time", unbondingTime),
-			)
-			continue
-		}
-
-		// 4. check whether the:
-		// - staking time is within the min and max staking time
-		// - staking value is within the min and max staking value
-		stakingTime := btcDel.GetStakingTime()
-
-		if stakingTime < params.MinStakingTime || stakingTime > params.MaxStakingTime {
-			ce.logger.Error("invalid staking time",
-				zap.Uint16("min_staking_time", params.MinStakingTime),
-				zap.Uint16("max_staking_time", params.MaxStakingTime),
-				zap.Uint16("got_staking_time", stakingTime),
-			)
-			continue
-		}
-
-		if btcDel.TotalSat < params.MinStakingValue || btcDel.TotalSat > params.MaxStakingValue {
-			ce.logger.Error("invalid staking value",
-				zap.Int64("min_staking_value", int64(params.MinStakingValue)),
-				zap.Int64("max_staking_value", int64(params.MaxStakingValue)),
-				zap.Int64("got_staking_value", int64(btcDel.TotalSat)),
-			)
-			continue
-		}
-
-		// 5. decode staking tx and slashing tx from the delegation
-		stakingTx, slashingTx, err := decodeDelegationTransactions(btcDel, params, &ce.config.BTCNetParams)
+		// 3. Validate the delegation using Babylon validation logic
+		validationResult, err := types.ValidateDelegation(btcDel, params, &ce.config.BTCNetParams)
 		if err != nil {
-			ce.logger.Error("invalid delegation",
+			ce.logger.Error("delegation validation failed",
 				zap.String("staker_pk", stakerPkHex),
 				zap.String("staking_tx_hex", btcDel.StakingTxHex),
-				zap.String("slashing_tx_hex", btcDel.SlashingTxHex),
 				zap.Error(err),
 			)
 			continue
 		}
 
-		// 6. decode unbonding tx and slash unbonding tx from the undelegation
-		unbondingTx, slashUnbondingTx, err := decodeUndelegationTransactions(btcDel, params, &ce.config.BTCNetParams)
-		if err != nil {
-			ce.logger.Error("invalid undelegation",
-				zap.String("staker_pk", stakerPkHex),
-				zap.String("unbonding_tx_hex", btcDel.BtcUndelegation.UnbondingTxHex),
-				zap.String("unbonding_slashing_tx_hex", btcDel.BtcUndelegation.SlashingTxHex),
-				zap.Error(err),
-			)
-			continue
-		}
-
-		// 7. Check unbonding fee
-		unbondingFee := stakingTx.TxOut[btcDel.StakingOutputIdx].Value - unbondingTx.TxOut[0].Value
-		if unbondingFee != int64(params.UnbondingFee) {
-			ce.logger.Error("invalid unbonding fee",
-				zap.Int64("expected_unbonding_fee", int64(params.UnbondingFee)),
-				zap.Int64("got_unbonding_fee", unbondingFee),
-			)
-			continue
-		}
-
-		// 8. Generate Signing Request
+		// 4. Generate Signing Request
 		// Finality providers encryption keys
 		// pk script paths for Slash, unbond and unbonding slashing
 		fpsEncKeys, err := fpEncKeysFromDel(btcDel)
@@ -196,19 +137,19 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 			continue
 		}
 
-		slashingPkScriptPath, stakingTxUnbondingPkScriptPath, unbondingTxSlashingPkScriptPath, err := pkScriptPaths(btcDel, params, &ce.config.BTCNetParams, unbondingTx)
+		slashingPkScriptPath, stakingTxUnbondingPkScriptPath, unbondingTxSlashingPkScriptPath, err := pkScriptPaths(btcDel, params, &ce.config.BTCNetParams, validationResult.UnbondingTx)
 		if err != nil {
 			ce.logger.Error("failed to generate pk script path", zap.Error(err))
 			continue
 		}
 
-		// 9. sign covenant transactions
+		// 5. sign covenant transactions
 		resp, err := ce.SignTransactions(SigningRequest{
-			StakingTx:                       stakingTx,
-			SlashingTx:                      slashingTx,
-			UnbondingTx:                     unbondingTx,
-			SlashUnbondingTx:                slashUnbondingTx,
-			StakingOutputIdx:                btcDel.StakingOutputIdx,
+			StakingTx:                       validationResult.StakingTx,
+			SlashingTx:                      validationResult.SlashingTx,
+			UnbondingTx:                     validationResult.UnbondingTx,
+			SlashUnbondingTx:                validationResult.SlashUnbondingTx,
+			StakingOutputIdx:                validationResult.StakingOutputIdx,
 			SlashingPkScriptPath:            slashingPkScriptPath,
 			StakingTxUnbondingPkScriptPath:  stakingTxUnbondingPkScriptPath,
 			UnbondingTxSlashingPkScriptPath: unbondingTxSlashingPkScriptPath,
@@ -221,14 +162,14 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 
 		covenantSigs = append(covenantSigs, &types.CovenantSigs{
 			PublicKey:             ce.pk,
-			StakingTxHash:         stakingTx.TxHash(),
+			StakingTxHash:         validationResult.StakingTx.TxHash(),
 			SlashingSigs:          resp.SlashSigs,
 			UnbondingSig:          resp.UnbondingSig,
 			SlashingUnbondingSigs: resp.SlashUnbondingSigs,
 		})
 	}
 
-	// 10. submit covenant sigs
+	// 6. submit covenant sigs
 	res, err := ce.cc.SubmitCovenantSigs(covenantSigs)
 	if err != nil {
 		ce.recordMetricsFailedSignDelegations(len(covenantSigs))
@@ -356,71 +297,6 @@ func pkScriptPathSlashAndUnbond(
 	stakingTxUnbondingPkScriptPath = stakingTxUnbondingPathInfo.GetPkScriptPath()
 
 	return slashingPkScriptPath, stakingTxUnbondingPkScriptPath, nil
-}
-
-func decodeDelegationTransactions(del *types.Delegation, params *types.StakingParams, btcNet *chaincfg.Params) (*wire.MsgTx, *wire.MsgTx, error) {
-	// 1. decode staking tx and slashing tx
-	stakingMsgTx, _, err := bbntypes.NewBTCTxFromHex(del.StakingTxHex)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to decode staking tx from hex")
-	}
-
-	slashingTx, err := bstypes.NewBTCSlashingTxFromHex(del.SlashingTxHex)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to decode slashing tx from hex")
-	}
-
-	slashingMsgTx, err := slashingTx.ToMsgTx()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// 2. verify the transactions
-	if err := btcstaking.CheckSlashingTxMatchFundingTx(
-		slashingMsgTx,
-		stakingMsgTx,
-		del.StakingOutputIdx,
-		int64(params.MinSlashingTxFeeSat),
-		params.SlashingRate,
-		params.SlashingPkScript,
-		del.BtcPk,
-		del.UnbondingTime,
-		btcNet,
-	); err != nil {
-		return nil, nil, fmt.Errorf("invalid txs in the delegation: %w", err)
-	}
-
-	return stakingMsgTx, slashingMsgTx, nil
-}
-
-func decodeUndelegationTransactions(del *types.Delegation, params *types.StakingParams, btcNet *chaincfg.Params) (*wire.MsgTx, *wire.MsgTx, error) {
-	// 1. decode unbonding tx and slashing tx
-	unbondingMsgTx, _, err := bbntypes.NewBTCTxFromHex(del.BtcUndelegation.UnbondingTxHex)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to decode unbonding tx from hex: %w", err)
-	}
-
-	unbondingSlashingMsgTx, _, err := bbntypes.NewBTCTxFromHex(del.BtcUndelegation.SlashingTxHex)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to decode unbonding slashing tx from hex: %w", err)
-	}
-
-	// 2. verify transactions
-	if err := btcstaking.CheckSlashingTxMatchFundingTx(
-		unbondingSlashingMsgTx,
-		unbondingMsgTx,
-		0,
-		int64(params.MinSlashingTxFeeSat),
-		params.SlashingRate,
-		params.SlashingPkScript,
-		del.BtcPk,
-		del.UnbondingTime,
-		btcNet,
-	); err != nil {
-		return nil, nil, fmt.Errorf("invalid txs in the undelegation: %w", err)
-	}
-
-	return unbondingMsgTx, unbondingSlashingMsgTx, err
 }
 
 // delegationsToBatches takes a list of delegations and splits them into batches
