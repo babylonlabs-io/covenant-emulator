@@ -244,6 +244,7 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 			SlashingSigs:          resp.SlashSigs,
 			UnbondingSig:          resp.UnbondingSig,
 			SlashingUnbondingSigs: resp.SlashUnbondingSigs,
+			StkExpSig:             resp.StkExtSig,
 		})
 	}
 

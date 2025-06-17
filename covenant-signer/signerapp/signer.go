@@ -28,6 +28,7 @@ type ParsedSigningResponse struct {
 	SlashAdaptorSigs          [][]byte
 	UnbondingSig              *schnorr.Signature
 	SlashUnbondingAdaptorSigs [][]byte
+	StakeExpSig               *schnorr.Signature
 }
 
 type SignerApp struct {
@@ -68,11 +69,21 @@ func (s *SignerApp) SignTransactions(
 		return nil, err
 	}
 
-	return &ParsedSigningResponse{
+	resp := &ParsedSigningResponse{
 		SlashAdaptorSigs:          slashSigs,
 		UnbondingSig:              unbondingSig,
 		SlashUnbondingAdaptorSigs: slashUnbondingSigs,
-	}, nil
+	}
+
+	if req.StakeExpTx != nil {
+		stakeExpSig, err := stkExpSig(privKey, req)
+		if err != nil {
+			return nil, err
+		}
+		resp.StakeExpSig = stakeExpSig
+	}
+
+	return resp, nil
 }
 
 func (s *SignerApp) Unlock(ctx context.Context, passphrase string) error {
