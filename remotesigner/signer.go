@@ -18,6 +18,7 @@ func covenantRequestToSignerRequest(req covenant.SigningRequest) *signerapp.Pars
 		SlashingTx:              req.SlashingTx,
 		UnbondingTx:             req.UnbondingTx,
 		SlashUnbondingTx:        req.SlashUnbondingTx,
+		StakeExpTx:              req.StakeExpTx,
 		StakingOutputIdx:        req.StakingOutputIdx,
 		SlashingScript:          req.SlashingPkScriptPath,
 		UnbondingScript:         req.StakingTxUnbondingPkScriptPath,

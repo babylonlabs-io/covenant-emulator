@@ -10,12 +10,12 @@ import (
 	"github.com/btcsuite/btcd/btcec/v2"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 
-	"github.com/babylonlabs-io/babylon/client/babylonclient"
-	bbnclient "github.com/babylonlabs-io/babylon/client/client"
-	bbntypes "github.com/babylonlabs-io/babylon/types"
-	btcctypes "github.com/babylonlabs-io/babylon/x/btccheckpoint/types"
-	btclctypes "github.com/babylonlabs-io/babylon/x/btclightclient/types"
-	btcstakingtypes "github.com/babylonlabs-io/babylon/x/btcstaking/types"
+	"github.com/babylonlabs-io/babylon/v3/client/babylonclient"
+	bbnclient "github.com/babylonlabs-io/babylon/v3/client/client"
+	bbntypes "github.com/babylonlabs-io/babylon/v3/types"
+	btcctypes "github.com/babylonlabs-io/babylon/v3/x/btccheckpoint/types"
+	btclctypes "github.com/babylonlabs-io/babylon/v3/x/btclightclient/types"
+	btcstakingtypes "github.com/babylonlabs-io/babylon/v3/x/btcstaking/types"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	sdkclient "github.com/cosmos/cosmos-sdk/client"
@@ -198,6 +198,15 @@ func (bc *BabylonController) QueryVerifiedDelegations(limit uint64) ([]*types.De
 	return bc.queryDelegationsWithStatus(btcstakingtypes.BTCDelegationStatus_VERIFIED, limit, nil)
 }
 
+// QueryBTCDelegation queries the BTC delegation by the tx hash
+func (bc *BabylonController) QueryBTCDelegation(stakingTxHashHex string) (*types.Delegation, error) {
+	resp, err := bc.bbnClient.QueryClient.BTCDelegation(stakingTxHashHex)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query BTC delegation %s: %v", stakingTxHashHex, err)
+	}
+	return DelegationRespToDelegation(resp.BtcDelegation)
+}
+
 // queryDelegationsWithStatus queries BTC delegations that need a Covenant signature
 // with the given status (either pending or unbonding)
 // it is only used when the program is running in Covenant mode
@@ -309,19 +318,20 @@ func DelegationRespToDelegation(del *btcstakingtypes.BTCDelegationResponse) (*ty
 	}
 
 	return &types.Delegation{
-		BtcPk:            del.BtcPk.MustToBTCPK(),
-		FpBtcPks:         fpBtcPks,
-		TotalSat:         btcutil.Amount(del.TotalSat),
-		StakingTime:      del.StakingTime,
-		StartHeight:      del.StartHeight,
-		EndHeight:        del.EndHeight,
-		StakingTxHex:     del.StakingTxHex,
-		SlashingTxHex:    del.SlashingTxHex,
-		StakingOutputIdx: del.StakingOutputIdx,
-		CovenantSigs:     covenantSigs,
-		UnbondingTime:    uint16(del.UnbondingTime),
-		BtcUndelegation:  undelegation,
-		ParamsVersion:    del.ParamsVersion,
+		BtcPk:                    del.BtcPk.MustToBTCPK(),
+		FpBtcPks:                 fpBtcPks,
+		TotalSat:                 btcutil.Amount(del.TotalSat),
+		StakingTime:              del.StakingTime,
+		StartHeight:              del.StartHeight,
+		EndHeight:                del.EndHeight,
+		StakingTxHex:             del.StakingTxHex,
+		SlashingTxHex:            del.SlashingTxHex,
+		StakingOutputIdx:         del.StakingOutputIdx,
+		CovenantSigs:             covenantSigs,
+		UnbondingTime:            uint16(del.UnbondingTime),
+		BtcUndelegation:          undelegation,
+		ParamsVersion:            del.ParamsVersion,
+		PreviousStakingTxHashHex: "",
 	}, nil
 }
 

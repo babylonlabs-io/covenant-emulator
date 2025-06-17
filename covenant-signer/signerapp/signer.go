@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/babylonlabs-io/babylon/btcstaking"
-	asig "github.com/babylonlabs-io/babylon/crypto/schnorr-adaptor-signature"
+	"github.com/babylonlabs-io/babylon/v3/btcstaking"
+	asig "github.com/babylonlabs-io/babylon/v3/crypto/schnorr-adaptor-signature"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/btcsuite/btcd/wire"
@@ -16,6 +16,7 @@ type ParsedSigningRequest struct {
 	SlashingTx              *wire.MsgTx
 	UnbondingTx             *wire.MsgTx
 	SlashUnbondingTx        *wire.MsgTx
+	StakeExpTx              *wire.MsgTx
 	StakingOutputIdx        uint32
 	SlashingScript          []byte
 	UnbondingScript         []byte
@@ -137,4 +138,22 @@ func unbondSig(covenantPrivKey *btcec.PrivateKey, signingTxReq *ParsedSigningReq
 		return nil, fmt.Errorf("failed to sign unbonding tx: %w", err)
 	}
 	return unbondingSig, nil
+}
+
+// stkExpSig signs the stake expansion transaction
+func stkExpSig(covenantPrivKey *btcec.PrivateKey, signingTxReq *ParsedSigningRequest) (*schnorr.Signature, error) {
+	stkExpSig, err := btcstaking.SignTxWithOneScriptSpendInputStrict(
+		signingTxReq.StakingTx,
+		signingTxReq.StakeExpTx,
+		signingTxReq.StakingOutputIdx,
+		signingTxReq.UnbondingScript,
+		covenantPrivKey,
+	)
+	// signingTxReq.StakingTx.TxOut
+	if err != nil {
+		return nil, fmt.Errorf("failed to sign unbonding tx: %w", err)
+	}
+
+	// signingTxReq.StakingTx.
+	return stkExpSig, nil
 }

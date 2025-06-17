@@ -5,7 +5,7 @@ import (
 
 	"github.com/btcsuite/btcd/btcutil"
 
-	bbn "github.com/babylonlabs-io/babylon/types"
+	bbn "github.com/babylonlabs-io/babylon/v3/types"
 
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
@@ -46,6 +46,9 @@ type Delegation struct {
 	BtcUndelegation *Undelegation
 	// params version used to validate delegation
 	ParamsVersion uint32
+	// PreviousStakingTxHashHex is the hash of the staking tx that was used as
+	// input to the stake expansion, if empty it is NOT a stake expansion.
+	PreviousStakingTxHashHex string
 }
 
 // HasCovenantQuorum returns whether a delegation has sufficient sigs
@@ -61,6 +64,10 @@ func (d *Delegation) GetStakingTime() uint16 {
 	}
 
 	return uint16(d.StakingTime)
+}
+
+func (d *Delegation) IsStakeExpansion() bool {
+	return len(d.PreviousStakingTxHashHex) > 0
 }
 
 // Undelegation signalizes that the delegation is being undelegated

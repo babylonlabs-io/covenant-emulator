@@ -4,7 +4,7 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	asig "github.com/babylonlabs-io/babylon/crypto/schnorr-adaptor-signature"
+	asig "github.com/babylonlabs-io/babylon/v3/crypto/schnorr-adaptor-signature"
 	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/signerapp"
 	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/utils"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
@@ -96,10 +96,11 @@ func ParseSigningRequest(request *SignTransactionsRequest) (*signerapp.ParsedSig
 	}
 
 	return &signerapp.ParsedSigningRequest{
-		StakingTx:               stakingTx,
-		SlashingTx:              slashingTx,
-		UnbondingTx:             unbondingTx,
-		SlashUnbondingTx:        slashUnbondingTx,
+		StakingTx:        stakingTx,
+		SlashingTx:       slashingTx,
+		UnbondingTx:      unbondingTx,
+		SlashUnbondingTx: slashUnbondingTx,
+		// StakeExpTx: ,
 		StakingOutputIdx:        request.StakingOutputIdx,
 		SlashingScript:          slashingScript,
 		UnbondingScript:         unbondingScript,

@@ -1,7 +1,7 @@
 package covenant
 
 import (
-	asig "github.com/babylonlabs-io/babylon/crypto/schnorr-adaptor-signature"
+	asig "github.com/babylonlabs-io/babylon/v3/crypto/schnorr-adaptor-signature"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/btcsuite/btcd/wire"
 	secp "github.com/decred/dcrd/dcrec/secp256k1/v4"
@@ -21,6 +21,7 @@ type SigningRequest struct {
 	SlashingTx                      *wire.MsgTx
 	UnbondingTx                     *wire.MsgTx
 	SlashUnbondingTx                *wire.MsgTx
+	StakeExpTx                      *wire.MsgTx
 	StakingOutputIdx                uint32
 	SlashingPkScriptPath            []byte
 	StakingTxUnbondingPkScriptPath  []byte
@@ -31,5 +32,6 @@ type SigningRequest struct {
 type SignaturesResponse struct {
 	SlashSigs          [][]byte
 	UnbondingSig       *schnorr.Signature
+	StkExtSig          *schnorr.Signature
 	SlashUnbondingSigs [][]byte
 }

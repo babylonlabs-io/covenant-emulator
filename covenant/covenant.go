@@ -8,10 +8,10 @@ import (
 	"time"
 
 	"github.com/avast/retry-go/v4"
-	"github.com/babylonlabs-io/babylon/btcstaking"
-	asig "github.com/babylonlabs-io/babylon/crypto/schnorr-adaptor-signature"
-	bbntypes "github.com/babylonlabs-io/babylon/types"
-	bstypes "github.com/babylonlabs-io/babylon/x/btcstaking/types"
+	"github.com/babylonlabs-io/babylon/v3/btcstaking"
+	asig "github.com/babylonlabs-io/babylon/v3/crypto/schnorr-adaptor-signature"
+	bbntypes "github.com/babylonlabs-io/babylon/v3/types"
+	bstypes "github.com/babylonlabs-io/babylon/v3/x/btcstaking/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/btcsuite/btcd/btcutil"
@@ -202,8 +202,7 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 			continue
 		}
 
-		// 9. sign covenant transactions
-		resp, err := ce.SignTransactions(SigningRequest{
+		req := SigningRequest{
 			StakingTx:                       stakingTx,
 			SlashingTx:                      slashingTx,
 			UnbondingTx:                     unbondingTx,
@@ -213,7 +212,27 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 			StakingTxUnbondingPkScriptPath:  stakingTxUnbondingPkScriptPath,
 			UnbondingTxSlashingPkScriptPath: unbondingTxSlashingPkScriptPath,
 			FpEncKeys:                       fpsEncKeys,
-		})
+		}
+
+		// 9. handle if it is stake expansion
+		if btcDel.IsStakeExpansion() {
+			stkExpDel, err := ce.cc.QueryBTCDelegation(btcDel.PreviousStakingTxHashHex)
+			if err != nil {
+				ce.logger.Error("failed to query stake expansion", zap.Error(err), zap.String("stk_exp_tx_hash_hex", btcDel.PreviousStakingTxHashHex))
+				continue
+			}
+
+			stakingMsgTx, _, err := bbntypes.NewBTCTxFromHex(stkExpDel.StakingTxHex)
+			if err != nil {
+				ce.logger.Error("failed to decode stake expansion tx", zap.Error(err), zap.String("stk_exp_tx_hash_hex", btcDel.PreviousStakingTxHashHex))
+				continue
+			}
+
+			req.StakeExpTx = stakingMsgTx
+		}
+
+		// 10. sign covenant transactions
+		resp, err := ce.SignTransactions(req)
 		if err != nil {
 			ce.logger.Error("failed to sign transactions", zap.Error(err))
 			continue
