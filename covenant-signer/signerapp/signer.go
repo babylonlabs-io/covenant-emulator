@@ -167,7 +167,7 @@ func stkExpSig(covenantPrivKey *btcec.PrivateKey, signingTxReq *ParsedSigningReq
 		signingTxReq.StakingTx.TxOut[0].PkScript,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to sign spend of previous stake with stake expansion tx: %w", err)
+		return nil, fmt.Errorf("failed to sign spend of previous stake %s with stake expansion tx %s: %w", signingTxReq.StakeExp.PreviousActiveStakeTx.TxHash().String(), signingTxReq.StakingTx.TxHash().String(), err)
 	}
 
 	return stkExpSig, nil
