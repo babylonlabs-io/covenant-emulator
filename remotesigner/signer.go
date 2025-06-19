@@ -43,6 +43,7 @@ func signerResponseToCovenantResponse(resp *signerapp.ParsedSigningResponse) *co
 		SlashSigs:          resp.SlashAdaptorSigs,
 		UnbondingSig:       resp.UnbondingSig,
 		SlashUnbondingSigs: resp.SlashUnbondingAdaptorSigs,
+		StkExtSig:          resp.StakeExpSig,
 	}
 }
 

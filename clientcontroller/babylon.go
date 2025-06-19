@@ -165,14 +165,22 @@ func (bc *BabylonController) SubmitCovenantSigs(covSigs []*types.CovenantSigs) (
 	msgs := make([]sdk.Msg, 0, len(covSigs))
 	for _, covSig := range covSigs {
 		bip340UnbondingSig := bbntypes.NewBIP340SignatureFromBTCSig(covSig.UnbondingSig)
-		msgs = append(msgs, &btcstakingtypes.MsgAddCovenantSigs{
+		msg := &btcstakingtypes.MsgAddCovenantSigs{
 			Signer:                  bc.mustGetTxSigner(),
 			Pk:                      bbntypes.NewBIP340PubKeyFromBTCPK(covSig.PublicKey),
 			StakingTxHash:           covSig.StakingTxHash.String(),
 			SlashingTxSigs:          covSig.SlashingSigs,
 			UnbondingTxSig:          bip340UnbondingSig,
 			SlashingUnbondingTxSigs: covSig.SlashingUnbondingSigs,
-		})
+			StakeExpansionTxSig:     nil,
+		}
+
+		if covSig.StkExpSig != nil {
+			stkExpSig := bbntypes.NewBIP340SignatureFromBTCSig(covSig.StkExpSig)
+			msg.StakeExpansionTxSig = stkExpSig
+		}
+
+		msgs = append(msgs, msg)
 	}
 	res, err := bc.reliablySendMsgs(msgs)
 	if err != nil {

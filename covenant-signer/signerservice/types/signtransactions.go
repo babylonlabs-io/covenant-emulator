@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"fmt"
 
+	"github.com/babylonlabs-io/babylon/v3/btcstaking"
 	asig "github.com/babylonlabs-io/babylon/v3/crypto/schnorr-adaptor-signature"
 	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/signerapp"
 	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/utils"
@@ -20,34 +21,41 @@ type SignTransactionsRequest struct {
 	UnbondingScriptHex         string   `json:"unbonding_script_hex"`
 	UnbondingSlashingScriptHex string   `json:"unbonding_slashing_script_hex"`
 	FpEncKeys                  []string `json:"fp_enc_keys"`
+	// Stake Expansion Fields
+
+	// PreviousActiveStakeTxHex the hex of the entire previous active BTC delegation.
+	PreviousActiveStakeTxHex string `json:"previous_active_stake_tx_hex"`
+	// OtherFundingOutputHex the hex of the wire.TxOut that is the other funding
+	// output that will pay for the fees and possibly increase the amount staked.
+	OtherFundingOutputHex string `json:"other_funding_output_hex"`
 }
 
-func ParseSigningRequest(request *SignTransactionsRequest) (*signerapp.ParsedSigningRequest, error) {
-	stakingTx, _, err := utils.NewBTCTxFromHex(request.StakingTxHex)
+func ParseSigningRequest(req *SignTransactionsRequest) (*signerapp.ParsedSigningRequest, error) {
+	stakingTx, _, err := utils.NewBTCTxFromHex(req.StakingTxHex)
 
 	if err != nil {
 		return nil, fmt.Errorf("invalid staking transaction in request: %w", err)
 	}
 
-	slashingTx, _, err := utils.NewBTCTxFromHex(request.SlashingTxHex)
+	slashingTx, _, err := utils.NewBTCTxFromHex(req.SlashingTxHex)
 
 	if err != nil {
 		return nil, fmt.Errorf("invalid slashing transaction in request: %w", err)
 	}
 
-	unbondingTx, _, err := utils.NewBTCTxFromHex(request.UnbondingTxHex)
+	unbondingTx, _, err := utils.NewBTCTxFromHex(req.UnbondingTxHex)
 
 	if err != nil {
 		return nil, fmt.Errorf("invalid unbonding transaction in request: %w", err)
 	}
 
-	slashUnbondingTx, _, err := utils.NewBTCTxFromHex(request.SlashUnbondingTxHex)
+	slashUnbondingTx, _, err := utils.NewBTCTxFromHex(req.SlashUnbondingTxHex)
 
 	if err != nil {
 		return nil, fmt.Errorf("invalid slash unbonding transaction in request: %w", err)
 	}
 
-	slashingScript, err := hex.DecodeString(request.SlashingScriptHex)
+	slashingScript, err := hex.DecodeString(req.SlashingScriptHex)
 
 	if err != nil {
 		return nil, fmt.Errorf("invalid slashing script in request: %w", err)
@@ -57,7 +65,7 @@ func ParseSigningRequest(request *SignTransactionsRequest) (*signerapp.ParsedSig
 		return nil, fmt.Errorf("slashing script is empty")
 	}
 
-	unbondingScript, err := hex.DecodeString(request.UnbondingScriptHex)
+	unbondingScript, err := hex.DecodeString(req.UnbondingScriptHex)
 
 	if err != nil {
 		return nil, fmt.Errorf("invalid unbonding script in request: %w", err)
@@ -67,7 +75,7 @@ func ParseSigningRequest(request *SignTransactionsRequest) (*signerapp.ParsedSig
 		return nil, fmt.Errorf("unbonding script is empty")
 	}
 
-	unbondingSlashingScript, err := hex.DecodeString(request.UnbondingSlashingScriptHex)
+	unbondingSlashingScript, err := hex.DecodeString(req.UnbondingSlashingScriptHex)
 
 	if err != nil {
 		return nil, fmt.Errorf("invalid unbonding slashing script in request: %w", err)
@@ -77,9 +85,9 @@ func ParseSigningRequest(request *SignTransactionsRequest) (*signerapp.ParsedSig
 		return nil, fmt.Errorf("unbonding slashing script is empty")
 	}
 
-	fpEncKeys := make([]*asig.EncryptionKey, len(request.FpEncKeys))
+	fpEncKeys := make([]*asig.EncryptionKey, len(req.FpEncKeys))
 
-	for i, key := range request.FpEncKeys {
+	for i, key := range req.FpEncKeys {
 		encKeyBytes, err := hex.DecodeString(key)
 
 		if err != nil {
@@ -95,18 +103,42 @@ func ParseSigningRequest(request *SignTransactionsRequest) (*signerapp.ParsedSig
 		fpEncKeys[i] = fpEncKey
 	}
 
-	return &signerapp.ParsedSigningRequest{
-		StakingTx:        stakingTx,
-		SlashingTx:       slashingTx,
-		UnbondingTx:      unbondingTx,
-		SlashUnbondingTx: slashUnbondingTx,
-		// StakeExpTx: ,
-		StakingOutputIdx:        request.StakingOutputIdx,
+	parsedReq := &signerapp.ParsedSigningRequest{
+		StakingTx:               stakingTx,
+		SlashingTx:              slashingTx,
+		UnbondingTx:             unbondingTx,
+		SlashUnbondingTx:        slashUnbondingTx,
+		StakingOutputIdx:        req.StakingOutputIdx,
 		SlashingScript:          slashingScript,
 		UnbondingScript:         unbondingScript,
 		UnbondingSlashingScript: unbondingSlashingScript,
 		FpEncKeys:               fpEncKeys,
-	}, nil
+		StakeExp:                nil,
+	}
+
+	if len(req.PreviousActiveStakeTxHex) > 0 {
+		previousActiveStakeTx, _, err := utils.NewBTCTxFromHex(req.PreviousActiveStakeTxHex)
+		if err != nil {
+			return nil, fmt.Errorf("invalid previous active staking transaction %s in request: %w", req.PreviousActiveStakeTxHex, err)
+		}
+
+		otherFundingTxOutBz, err := hex.DecodeString(req.OtherFundingOutputHex)
+		if err != nil {
+			return nil, err
+		}
+
+		otherFundingTxOut, err := btcstaking.DeserializeTxOut(otherFundingTxOutBz)
+		if err != nil {
+			return nil, err
+		}
+
+		parsedReq.StakeExp = &signerapp.ParsedSigningRequestStkExp{
+			PreviousActiveStakeTx: previousActiveStakeTx,
+			OtherFundingOutput:    otherFundingTxOut,
+		}
+	}
+
+	return parsedReq, nil
 }
 
 func ToSignTransactionRequest(parsedRequest *signerapp.ParsedSigningRequest) (*SignTransactionsRequest, error) {
@@ -157,7 +189,9 @@ type SignTransactionsResponse struct {
 	SlashingTransactionsAdaptorSignatures       []string `json:"slashing_transactions_signatures"`
 	UnbondingTransactionSignature               string   `json:"unbonding_transaction_signature"`
 	SlashUnbondingTransactionsAdaptorSignatures []string `json:"slash_unbonding_transactions_signatures"`
-	StakeExpansionTransactionSignature          string   `json:"stake_expansion_transaction_signature"`
+	// StakeExpansionTransactionSignature is the signature to allow the spent of the previous active
+	// staking transaction into a new BTC delegation
+	StakeExpansionTransactionSignature string `json:"stake_expansion_transaction_signature"`
 }
 
 func ToResponse(response *signerapp.ParsedSigningResponse) *SignTransactionsResponse {
@@ -175,11 +209,18 @@ func ToResponse(response *signerapp.ParsedSigningResponse) *SignTransactionsResp
 		slashUnbondingAdaptorSigs[i] = hex.EncodeToString(sig)
 	}
 
-	return &SignTransactionsResponse{
+	resp := &SignTransactionsResponse{
 		SlashingTransactionsAdaptorSignatures:       slashAdaptorSigs,
 		UnbondingTransactionSignature:               unbondingSig,
 		SlashUnbondingTransactionsAdaptorSignatures: slashUnbondingAdaptorSigs,
 	}
+
+	if response.StakeExpSig != nil {
+		stakeExpSig := hex.EncodeToString(response.StakeExpSig.Serialize())
+		resp.StakeExpansionTransactionSignature = stakeExpSig
+	}
+
+	return resp
 }
 
 func ToParsedSigningResponse(response *SignTransactionsResponse) (*signerapp.ParsedSigningResponse, error) {
@@ -227,9 +268,26 @@ func ToParsedSigningResponse(response *SignTransactionsResponse) (*signerapp.Par
 		slashUnbondingAdaptorSigs[i] = adaptorSigBytes
 	}
 
-	return &signerapp.ParsedSigningResponse{
+	resp := &signerapp.ParsedSigningResponse{
 		SlashAdaptorSigs:          slashAdaptorSigs,
 		UnbondingSig:              unbondingSig,
 		SlashUnbondingAdaptorSigs: slashUnbondingAdaptorSigs,
-	}, nil
+		StakeExpSig:               nil,
+	}
+
+	if len(response.StakeExpansionTransactionSignature) > 0 {
+		stakeExpSigBytes, err := hex.DecodeString(response.StakeExpansionTransactionSignature)
+		if err != nil {
+			return nil, fmt.Errorf("invalid stake expansion signature %s in response: %w", response.StakeExpansionTransactionSignature, err)
+		}
+
+		stakeExpSig, err := schnorr.ParseSignature(stakeExpSigBytes)
+		if err != nil {
+			return nil, fmt.Errorf("invalid parse of stake expansion signature %s in response: %w", response.StakeExpansionTransactionSignature, err)
+		}
+
+		resp.StakeExpSig = stakeExpSig
+	}
+
+	return resp, nil
 }
