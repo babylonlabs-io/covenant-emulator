@@ -528,6 +528,7 @@ func AcceptDelegationToSign(
 	if !isInCommittee {
 		return false, nil
 	}
+	// TODO(rafilx): stk-expansion verify if the covenant is in the committee of the previous active delegation
 
 	return true, nil
 }
