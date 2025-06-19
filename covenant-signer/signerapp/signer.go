@@ -16,12 +16,17 @@ type ParsedSigningRequest struct {
 	SlashingTx              *wire.MsgTx
 	UnbondingTx             *wire.MsgTx
 	SlashUnbondingTx        *wire.MsgTx
-	StakeExpTx              *wire.MsgTx
+	StakeExp                *ParsedSigningRequestStkExp
 	StakingOutputIdx        uint32
 	SlashingScript          []byte
 	UnbondingScript         []byte
 	UnbondingSlashingScript []byte
 	FpEncKeys               []*asig.EncryptionKey
+}
+
+type ParsedSigningRequestStkExp struct {
+	PreviousActiveStakeTx *wire.MsgTx
+	OtherFundingOutput    *wire.TxOut
 }
 
 type ParsedSigningResponse struct {
@@ -73,9 +78,10 @@ func (s *SignerApp) SignTransactions(
 		SlashAdaptorSigs:          slashSigs,
 		UnbondingSig:              unbondingSig,
 		SlashUnbondingAdaptorSigs: slashUnbondingSigs,
+		StakeExpSig:               nil,
 	}
 
-	if req.StakeExpTx != nil {
+	if req.StakeExp != nil {
 		stakeExpSig, err := stkExpSig(privKey, req)
 		if err != nil {
 			return nil, err
@@ -153,18 +159,16 @@ func unbondSig(covenantPrivKey *btcec.PrivateKey, signingTxReq *ParsedSigningReq
 
 // stkExpSig signs the stake expansion transaction
 func stkExpSig(covenantPrivKey *btcec.PrivateKey, signingTxReq *ParsedSigningRequest) (*schnorr.Signature, error) {
-	stkExpSig, err := btcstaking.SignTxWithOneScriptSpendInputStrict(
+	stkExpSig, err := btcstaking.GetSignatureForFirstScriptSpendWithTwoInputsFromScript(
 		signingTxReq.StakingTx,
-		signingTxReq.StakeExpTx,
-		signingTxReq.StakingOutputIdx,
-		signingTxReq.UnbondingScript,
+		signingTxReq.StakeExp.PreviousActiveStakeTx.TxOut[0],
+		signingTxReq.StakeExp.OtherFundingOutput,
 		covenantPrivKey,
+		signingTxReq.StakingTx.TxOut[0].PkScript,
 	)
-	// signingTxReq.StakingTx.TxOut
 	if err != nil {
-		return nil, fmt.Errorf("failed to sign unbonding tx: %w", err)
+		return nil, fmt.Errorf("failed to sign spend of previous stake with stake expansion tx: %w", err)
 	}
 
-	// signingTxReq.StakingTx.
 	return stkExpSig, nil
 }

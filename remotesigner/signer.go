@@ -13,17 +13,28 @@ import (
 var _ covenant.Signer = RemoteSigner{}
 
 func covenantRequestToSignerRequest(req covenant.SigningRequest) *signerapp.ParsedSigningRequest {
-	return &signerapp.ParsedSigningRequest{
+	parsedReq := &signerapp.ParsedSigningRequest{
 		StakingTx:               req.StakingTx,
 		SlashingTx:              req.SlashingTx,
 		UnbondingTx:             req.UnbondingTx,
 		SlashUnbondingTx:        req.SlashUnbondingTx,
-		StakeExpTx:              req.StakeExpTx,
 		StakingOutputIdx:        req.StakingOutputIdx,
 		SlashingScript:          req.SlashingPkScriptPath,
 		UnbondingScript:         req.StakingTxUnbondingPkScriptPath,
 		UnbondingSlashingScript: req.UnbondingTxSlashingPkScriptPath,
 		FpEncKeys:               req.FpEncKeys,
+	}
+
+	if req.StakeExp != nil {
+		parsedReq.StakeExp = covenantRequestToSignerRequestStkExp(*req.StakeExp)
+	}
+	return parsedReq
+}
+
+func covenantRequestToSignerRequestStkExp(req covenant.SigningRequestStkExp) *signerapp.ParsedSigningRequestStkExp {
+	return &signerapp.ParsedSigningRequestStkExp{
+		PreviousActiveStakeTx: req.PreviousActiveStakeTx,
+		OtherFundingOutput:    req.OtherFundingOutput,
 	}
 }
 

@@ -216,19 +216,28 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 
 		// 9. handle if it is stake expansion
 		if btcDel.IsStakeExpansion() {
-			stkExpDel, err := ce.cc.QueryBTCDelegation(btcDel.PreviousStakingTxHashHex)
+			stkExpDel, err := ce.cc.QueryBTCDelegation(btcDel.StakeExpansion.PreviousStakingTxHashHex)
 			if err != nil {
-				ce.logger.Error("failed to query stake expansion", zap.Error(err), zap.String("stk_exp_tx_hash_hex", btcDel.PreviousStakingTxHashHex))
+				ce.logger.Error("failed to query stake expansion", zap.Error(err), zap.String("stk_exp_tx_hash_hex", btcDel.StakeExpansion.PreviousStakingTxHashHex))
 				continue
 			}
 
-			stakingMsgTx, _, err := bbntypes.NewBTCTxFromHex(stkExpDel.StakingTxHex)
+			previousActiveStkTx, _, err := bbntypes.NewBTCTxFromHex(stkExpDel.StakingTxHex)
 			if err != nil {
-				ce.logger.Error("failed to decode stake expansion tx", zap.Error(err), zap.String("stk_exp_tx_hash_hex", btcDel.PreviousStakingTxHashHex))
+				ce.logger.Error("failed to decode stake expansion tx", zap.Error(err), zap.String("stk_exp_tx_hash_hex", btcDel.StakeExpansion.PreviousStakingTxHashHex))
 				continue
 			}
 
-			req.StakeExpTx = stakingMsgTx
+			fundingTxOut, err := btcDel.StakeExpansion.OtherFundingTxOut()
+			if err != nil {
+				ce.logger.Error("failed to decode the funding tx out in expansion tx", zap.Error(err), zap.String("stk_exp_tx_hash_hex", btcDel.StakeExpansion.PreviousStakingTxHashHex))
+				continue
+			}
+
+			req.StakeExp = &SigningRequestStkExp{
+				PreviousActiveStakeTx: previousActiveStkTx,
+				OtherFundingOutput:    fundingTxOut,
+			}
 		}
 
 		// 10. sign covenant transactions

@@ -21,12 +21,17 @@ type SigningRequest struct {
 	SlashingTx                      *wire.MsgTx
 	UnbondingTx                     *wire.MsgTx
 	SlashUnbondingTx                *wire.MsgTx
-	StakeExpTx                      *wire.MsgTx
+	StakeExp                        *SigningRequestStkExp
 	StakingOutputIdx                uint32
 	SlashingPkScriptPath            []byte
 	StakingTxUnbondingPkScriptPath  []byte
 	UnbondingTxSlashingPkScriptPath []byte
 	FpEncKeys                       []*asig.EncryptionKey
+}
+
+type SigningRequestStkExp struct {
+	PreviousActiveStakeTx *wire.MsgTx
+	OtherFundingOutput    *wire.TxOut
 }
 
 type SignaturesResponse struct {

@@ -49,6 +49,21 @@ func (mr *MockClientControllerMockRecorder) Close() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockClientController)(nil).Close))
 }
 
+// QueryBTCDelegation mocks base method.
+func (m *MockClientController) QueryBTCDelegation(stakingTxHashHex string) (*types.Delegation, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "QueryBTCDelegation", stakingTxHashHex)
+	ret0, _ := ret[0].(*types.Delegation)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// QueryBTCDelegation indicates an expected call of QueryBTCDelegation.
+func (mr *MockClientControllerMockRecorder) QueryBTCDelegation(stakingTxHashHex interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryBTCDelegation", reflect.TypeOf((*MockClientController)(nil).QueryBTCDelegation), stakingTxHashHex)
+}
+
 // QueryPendingDelegations mocks base method.
 func (m *MockClientController) QueryPendingDelegations(limit uint64, filter clientcontroller.FilterFn) ([]*types.Delegation, error) {
 	m.ctrl.T.Helper()

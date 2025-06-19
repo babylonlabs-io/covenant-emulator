@@ -317,22 +317,31 @@ func DelegationRespToDelegation(del *btcstakingtypes.BTCDelegationResponse) (*ty
 		return nil, fmt.Errorf("total sat (%d) is larger than the maximum int64", del.TotalSat)
 	}
 
-	return &types.Delegation{
-		BtcPk:                    del.BtcPk.MustToBTCPK(),
-		FpBtcPks:                 fpBtcPks,
-		TotalSat:                 btcutil.Amount(del.TotalSat),
-		StakingTime:              del.StakingTime,
-		StartHeight:              del.StartHeight,
-		EndHeight:                del.EndHeight,
-		StakingTxHex:             del.StakingTxHex,
-		SlashingTxHex:            del.SlashingTxHex,
-		StakingOutputIdx:         del.StakingOutputIdx,
-		CovenantSigs:             covenantSigs,
-		UnbondingTime:            uint16(del.UnbondingTime),
-		BtcUndelegation:          undelegation,
-		ParamsVersion:            del.ParamsVersion,
-		PreviousStakingTxHashHex: "",
-	}, nil
+	respDel := &types.Delegation{
+		BtcPk:            del.BtcPk.MustToBTCPK(),
+		FpBtcPks:         fpBtcPks,
+		TotalSat:         btcutil.Amount(del.TotalSat),
+		StakingTime:      del.StakingTime,
+		StartHeight:      del.StartHeight,
+		EndHeight:        del.EndHeight,
+		StakingTxHex:     del.StakingTxHex,
+		SlashingTxHex:    del.SlashingTxHex,
+		StakingOutputIdx: del.StakingOutputIdx,
+		CovenantSigs:     covenantSigs,
+		UnbondingTime:    uint16(del.UnbondingTime),
+		BtcUndelegation:  undelegation,
+		ParamsVersion:    del.ParamsVersion,
+		StakeExpansion:   nil,
+	}
+
+	if del.StkExp != nil {
+		respDel.StakeExpansion = &types.DelegationStakeExpansion{
+			PreviousStakingTxHashHex: del.StkExp.PreviousStakingTxHashHex,
+			OtherFundingTxOutHex:     del.StkExp.OtherFundingTxOutHex,
+		}
+	}
+
+	return respDel, nil
 }
 
 func UndelegationRespToUndelegation(undel *btcstakingtypes.BTCUndelegationResponse) (*types.Undelegation, error) {

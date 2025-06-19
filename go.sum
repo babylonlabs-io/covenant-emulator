@@ -297,6 +297,10 @@ github.com/aws/aws-sdk-go v1.44.312/go.mod h1:aVsgQcEevwlmQ7qHE9I3h+dtQgpqhFB+i8
 github.com/aws/aws-sdk-go-v2 v0.18.0/go.mod h1:JWVYvqSMppoMJC0x5wdwiImzgXTI9FuZwxzkQq9wy+g=
 github.com/babylonlabs-io/babylon/v3 v3.0.0-20250617125629-77c0d61aa980 h1:0ooYr7QFokN3Dg2GL1zEA8CupzxYpa6KBEajme9dUTk=
 github.com/babylonlabs-io/babylon/v3 v3.0.0-20250617125629-77c0d61aa980/go.mod h1:UQTLqppRx2BhpEJAajBZ/Z6KvmbIMCbHW/zUL7+grR8=
+github.com/babylonlabs-io/babylon/v3 v3.0.0-20250619105824-93cb25aabe34 h1:Y6Px0ieU0xsSNH06NTqMT4MIexbdrctj1W5xWdSAzSI=
+github.com/babylonlabs-io/babylon/v3 v3.0.0-20250619105824-93cb25aabe34/go.mod h1:UQTLqppRx2BhpEJAajBZ/Z6KvmbIMCbHW/zUL7+grR8=
+github.com/babylonlabs-io/babylon/v3 v3.0.0-20250619122705-37e10d829175 h1:9687s+UxkNXn0Bh3JU9/OuvyNlKngu/pz87RQWbPRbw=
+github.com/babylonlabs-io/babylon/v3 v3.0.0-20250619122705-37e10d829175/go.mod h1:UQTLqppRx2BhpEJAajBZ/Z6KvmbIMCbHW/zUL7+grR8=
 github.com/babylonlabs-io/btcd/btcec/v2 v2.3.4-babylon.rc.0 h1:BVqjtFpXKYnaPMTfrWgt0sg03jZMywNzz142ZV9ck+g=
 github.com/babylonlabs-io/btcd/btcec/v2 v2.3.4-babylon.rc.0/go.mod h1:zYzJ8etWJQIv1Ogk7OzpWjowwOdXY1W/17j2MW85J04=
 github.com/babylonlabs-io/tokenfactory v0.50.6-wasmvm2 h1:7wtBLjwncBsYgc+LlW4eir/bGcycrhpbz7PkUVADzBc=

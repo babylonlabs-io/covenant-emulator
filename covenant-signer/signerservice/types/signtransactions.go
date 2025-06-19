@@ -157,6 +157,7 @@ type SignTransactionsResponse struct {
 	SlashingTransactionsAdaptorSignatures       []string `json:"slashing_transactions_signatures"`
 	UnbondingTransactionSignature               string   `json:"unbonding_transaction_signature"`
 	SlashUnbondingTransactionsAdaptorSignatures []string `json:"slash_unbonding_transactions_signatures"`
+	StakeExpansionTransactionSignature          string   `json:"stake_expansion_transaction_signature"`
 }
 
 func ToResponse(response *signerapp.ParsedSigningResponse) *SignTransactionsResponse {
