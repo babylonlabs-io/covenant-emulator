@@ -1,4 +1,4 @@
-FROM golang:1.23 AS builder
+FROM golang:1.23.10 AS builder
 
 # hadolint ignore=DL3008
 RUN apt-get update && apt-get install --no-install-recommends -y ca-certificates make git bash gcc curl jq && rm -rf /var/lib/apt/lists/*
