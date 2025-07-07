@@ -307,11 +307,11 @@ func TestDeduplicationWithOddKey(t *testing.T) {
 	})
 
 	// 4. After removing the already signed delegation, the list should have only one element
-	accept, err := covenant.AcceptDelegationToSign(oddKeyPub, paramsGet, delAlreadySigned)
+	accept, err := covenant.AcceptDelegationToSign(oddKeyPub, paramsGet, delAlreadySigned, nil)
 	require.NoError(t, err)
 	require.False(t, accept)
 
-	accept, err = covenant.AcceptDelegationToSign(oddKeyPub, paramsGet, delNotSigned)
+	accept, err = covenant.AcceptDelegationToSign(oddKeyPub, paramsGet, delNotSigned, nil)
 	require.NoError(t, err)
 	require.True(t, accept)
 }
@@ -361,7 +361,7 @@ func TestIsKeyInCommittee(t *testing.T) {
 	require.False(t, actual)
 	require.NoError(t, err)
 
-	accept, err := covenant.AcceptDelegationToSign(covKeyPair.PublicKey, paramsGet, delNoCovenant)
+	accept, err := covenant.AcceptDelegationToSign(covKeyPair.PublicKey, paramsGet, delNoCovenant, nil)
 	require.NoError(t, err)
 	require.False(t, accept)
 
@@ -370,12 +370,12 @@ func TestIsKeyInCommittee(t *testing.T) {
 	require.True(t, actual)
 	require.NoError(t, err)
 
-	accept, err = covenant.AcceptDelegationToSign(covKeyPair.PublicKey, paramsGet, delWithCovenant)
+	accept, err = covenant.AcceptDelegationToSign(covKeyPair.PublicKey, paramsGet, delWithCovenant, nil)
 	require.NoError(t, err)
 	require.True(t, accept)
 
 	errParamGet := fmt.Errorf("dumbErr")
-	accept, err = covenant.AcceptDelegationToSign(covKeyPair.PublicKey, NewMockParamError(errParamGet), delWithCovenant)
+	accept, err = covenant.AcceptDelegationToSign(covKeyPair.PublicKey, NewMockParamError(errParamGet), delWithCovenant, nil)
 	require.False(t, accept)
 
 	errKeyIsInCommittee := fmt.Errorf("unable to get the param version: %d, reason: %s", pVersionWithCovenant, errParamGet.Error())

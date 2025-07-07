@@ -502,7 +502,14 @@ func CovenantAlreadySigned(covenantSerializedPk []byte, del *types.Delegation) b
 
 // acceptDelegationToSign verifies if the delegation should be accepted to sign.
 func (ce *CovenantEmulator) acceptDelegationToSign(del *types.Delegation) (accept bool, err error) {
-	return AcceptDelegationToSign(ce.pk, ce.paramCache, del)
+	var prevDel *types.Delegation
+	if del.IsStakeExpansion() {
+		prevDel, err = ce.cc.QueryBTCDelegation(del.StakeExpansion.PreviousStakingTxHashHex)
+		if err != nil {
+			return false, fmt.Errorf("failed to query previous delegation for stake expansion: %w", err)
+		}
+	}
+	return AcceptDelegationToSign(ce.pk, ce.paramCache, del, prevDel)
 }
 
 // AcceptDelegationToSign returns true if the delegation should be accepted to be signed.
@@ -512,6 +519,7 @@ func AcceptDelegationToSign(
 	pk *btcec.PublicKey,
 	paramCache ParamsGetter,
 	del *types.Delegation,
+	prevDel *types.Delegation, // for stake expansion, previous delegation
 ) (accept bool, err error) {
 	covenantSerializedPk := schnorr.SerializePubKey(pk)
 	// 1. Check if the delegation does not need the covenant's signature because
@@ -528,7 +536,33 @@ func AcceptDelegationToSign(
 	if !isInCommittee {
 		return false, nil
 	}
-	// TODO(rafilx): stk-expansion verify if the covenant is in the committee of the previous active delegation
+	// 3. For stake expansion, verify if the covenant is in the committee of the previous active delegation
+	if del.IsStakeExpansion() {
+		if prevDel == nil {
+			return false, fmt.Errorf("previous delegation is nil for stake expansion delegation: %s", del.StakeExpansion.PreviousStakingTxHashHex)
+		}
+
+		// Validate that the previous delegation's staking transaction hash matches the expected one
+		prevStakingTx, _, err := bbntypes.NewBTCTxFromHex(prevDel.StakingTxHex)
+		if err != nil {
+			return false, fmt.Errorf("failed to decode previous delegation staking tx: %w", err)
+		}
+		prevStakingTxHash := prevStakingTx.TxHash().String()
+
+		if prevStakingTxHash != del.StakeExpansion.PreviousStakingTxHashHex {
+			return false, fmt.Errorf("previous delegation staking tx hash mismatch: expected %s, got %s",
+				del.StakeExpansion.PreviousStakingTxHashHex, prevStakingTxHash)
+		}
+
+		// Verify that the current covenant was in the committee for the previous delegation
+		isPreviousCommittee, err := IsKeyInCommittee(paramCache, covenantSerializedPk, prevDel)
+		if err != nil {
+			return false, fmt.Errorf("unable to verify if covenant was in previous delegation committee: %w", err)
+		}
+		if !isPreviousCommittee {
+			return false, nil
+		}
+	}
 
 	return true, nil
 }
