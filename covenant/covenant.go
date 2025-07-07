@@ -538,33 +538,45 @@ func AcceptDelegationToSign(
 	}
 	// 3. For stake expansion, verify if the covenant is in the committee of the previous active delegation
 	if del.IsStakeExpansion() {
-		if prevDel == nil {
-			return false, fmt.Errorf("previous delegation is nil for stake expansion delegation: %s", del.StakeExpansion.PreviousStakingTxHashHex)
-		}
-
-		// Validate that the previous delegation's staking transaction hash matches the expected one
-		prevStakingTx, _, err := bbntypes.NewBTCTxFromHex(prevDel.StakingTxHex)
+		valid, err := validateStakeExpansion(paramCache, pk, del, prevDel)
 		if err != nil {
-			return false, fmt.Errorf("failed to decode previous delegation staking tx: %w", err)
+			return false, err
 		}
-		prevStakingTxHash := prevStakingTx.TxHash().String()
-
-		if prevStakingTxHash != del.StakeExpansion.PreviousStakingTxHashHex {
-			return false, fmt.Errorf("previous delegation staking tx hash mismatch: expected %s, got %s",
-				del.StakeExpansion.PreviousStakingTxHashHex, prevStakingTxHash)
-		}
-
-		// Verify that the current covenant was in the committee for the previous delegation
-		isPreviousCommittee, err := IsKeyInCommittee(paramCache, covenantSerializedPk, prevDel)
-		if err != nil {
-			return false, fmt.Errorf("unable to verify if covenant was in previous delegation committee: %w", err)
-		}
-		if !isPreviousCommittee {
-			return false, nil
+		if !valid {
+			return false, fmt.Errorf("covenant %s is not in the committee of the previous delegation %s",
+				hex.EncodeToString(covenantSerializedPk), del.StakeExpansion.PreviousStakingTxHashHex)
 		}
 	}
 
 	return true, nil
+}
+
+// validateStakeExpansion validates that a stake expansion delegation is properly configured
+// and that the covenant was in the committee for the previous delegation.
+func validateStakeExpansion(
+	paramCache ParamsGetter,
+	pk *btcec.PublicKey,
+	del *types.Delegation,
+	prevDel *types.Delegation,
+) (bool, error) {
+	if prevDel == nil {
+		return false, fmt.Errorf("previous delegation is nil for stake expansion delegation: %s", del.StakeExpansion.PreviousStakingTxHashHex)
+	}
+
+	// Validate that the previous delegation's staking transaction hash matches the expected one
+	prevStakingTx, _, err := bbntypes.NewBTCTxFromHex(prevDel.StakingTxHex)
+	if err != nil {
+		return false, fmt.Errorf("failed to decode previous delegation staking tx: %w", err)
+	}
+	prevStakingTxHash := prevStakingTx.TxHash().String()
+
+	if prevStakingTxHash != del.StakeExpansion.PreviousStakingTxHashHex {
+		return false, fmt.Errorf("previous delegation staking tx hash mismatch: expected %s, got %s",
+			del.StakeExpansion.PreviousStakingTxHashHex, prevStakingTxHash)
+	}
+
+	// Verify that the current covenant was in the committee for the previous delegation
+	return AcceptDelegationToSign(pk, paramCache, prevDel, nil)
 }
 
 // covenantSigSubmissionLoop is the reactor to submit Covenant signature for BTC delegations
