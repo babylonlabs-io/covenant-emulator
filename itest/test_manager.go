@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	appparams "github.com/babylonlabs-io/babylon/v3/app/params"
+	"github.com/babylonlabs-io/babylon/v3/app/signingcontext"
 	"github.com/babylonlabs-io/babylon/v3/testutil/datagen"
 	bbntypes "github.com/babylonlabs-io/babylon/v3/types"
 	btcctypes "github.com/babylonlabs-io/babylon/v3/x/btccheckpoint/types"
@@ -251,9 +253,10 @@ func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*btc
 }
 
 func genTestFinalityProviderData(t *testing.T, babylonAddr sdk.AccAddress) *testFinalityProviderData {
+	stakerPopContext := signingcontext.StakerPopContextV0(chainID, appparams.AccBTCStaking.String())
 	finalityProviderEOTSPrivKey, err := btcec.NewPrivateKey()
 	require.NoError(t, err)
-	pop, err := datagen.NewPoPBTC(babylonAddr, finalityProviderEOTSPrivKey)
+	pop, err := datagen.NewPoPBTC(stakerPopContext, babylonAddr, finalityProviderEOTSPrivKey)
 	require.NoError(t, err)
 
 	return &testFinalityProviderData{
@@ -366,7 +369,8 @@ func (tm *TestManager) InsertBTCDelegation(
 	)
 
 	// proof-of-possession
-	pop, err := datagen.NewPoPBTC(tm.CovBBNClient.GetKeyAddress(), delBtcPrivKey)
+	stakerPopContext := signingcontext.StakerPopContextV0(chainID, appparams.AccBTCStaking.String())
+	pop, err := datagen.NewPoPBTC(stakerPopContext, tm.CovBBNClient.GetKeyAddress(), delBtcPrivKey)
 	require.NoError(t, err)
 
 	// create and insert BTC headers which include the staking tx to get staking tx info

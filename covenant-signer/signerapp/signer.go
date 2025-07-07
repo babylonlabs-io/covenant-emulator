@@ -159,7 +159,7 @@ func unbondSig(covenantPrivKey *btcec.PrivateKey, signingTxReq *ParsedSigningReq
 
 // stkExpSig signs the stake expansion transaction
 func stkExpSig(covenantPrivKey *btcec.PrivateKey, signingTxReq *ParsedSigningRequest) (*schnorr.Signature, error) {
-	stkExpSig, err := btcstaking.GetSignatureForFirstScriptSpendWithTwoInputsFromScript(
+	stkExpSig, err := btcstaking.SignTxForFirstScriptSpendWithTwoInputsFromScript(
 		signingTxReq.StakingTx,
 		signingTxReq.StakeExp.PreviousActiveStakeTx.TxOut[0],
 		signingTxReq.StakeExp.OtherFundingOutput,
