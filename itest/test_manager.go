@@ -218,6 +218,9 @@ func (tm *TestManager) SendToAddr(t *testing.T, toAddr, amount string) {
 
 func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*btcec.PublicKey) {
 	tm := StartManager(t, "")
+	// fund the finality provider operator account
+	// to submit the registration tx
+	tm.SendToAddr(t, tm.CovBBNClient.GetKeyAddress().String(), "100000ubbn")
 
 	var btcPks []*btcec.PublicKey
 	for i := 0; i < n; i++ {
@@ -257,10 +260,10 @@ func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*btc
 }
 
 func genTestFinalityProviderData(t *testing.T, chainID string, babylonAddr sdk.AccAddress) *testFinalityProviderData {
-	stakerPopContext := signingcontext.StakerPopContextV0(chainID, appparams.AccBTCStaking.String())
+	fpPopContext := signingcontext.FpPopContextV0(chainID, appparams.AccBTCStaking.String())
 	finalityProviderEOTSPrivKey, err := btcec.NewPrivateKey()
 	require.NoError(t, err)
-	pop, err := datagen.NewPoPBTC(stakerPopContext, babylonAddr, finalityProviderEOTSPrivKey)
+	pop, err := datagen.NewPoPBTC(fpPopContext, babylonAddr, finalityProviderEOTSPrivKey)
 	require.NoError(t, err)
 
 	return &testFinalityProviderData{
