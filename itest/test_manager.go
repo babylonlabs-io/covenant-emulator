@@ -221,7 +221,11 @@ func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*btc
 
 	var btcPks []*btcec.PublicKey
 	for i := 0; i < n; i++ {
-		fpData := genTestFinalityProviderData(t, tm.CovBBNClient.GetKeyAddress())
+		fpData := genTestFinalityProviderData(
+			t,
+			tm.CovenanConfig.BabylonConfig.ChainID,
+			tm.CovBBNClient.GetKeyAddress(),
+		)
 		btcPubKey := bbntypes.NewBIP340PubKeyFromBTCPK(fpData.BtcKey)
 		_, err := tm.CovBBNClient.RegisterFinalityProvider(
 			btcPubKey,
@@ -252,7 +256,7 @@ func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*btc
 	return tm, btcPks
 }
 
-func genTestFinalityProviderData(t *testing.T, babylonAddr sdk.AccAddress) *testFinalityProviderData {
+func genTestFinalityProviderData(t *testing.T, chainID string, babylonAddr sdk.AccAddress) *testFinalityProviderData {
 	stakerPopContext := signingcontext.StakerPopContextV0(chainID, appparams.AccBTCStaking.String())
 	finalityProviderEOTSPrivKey, err := btcec.NewPrivateKey()
 	require.NoError(t, err)
@@ -369,7 +373,7 @@ func (tm *TestManager) InsertBTCDelegation(
 	)
 
 	// proof-of-possession
-	stakerPopContext := signingcontext.StakerPopContextV0(chainID, appparams.AccBTCStaking.String())
+	stakerPopContext := signingcontext.StakerPopContextV0(tm.CovenanConfig.BabylonConfig.ChainID, appparams.AccBTCStaking.String())
 	pop, err := datagen.NewPoPBTC(stakerPopContext, tm.CovBBNClient.GetKeyAddress(), delBtcPrivKey)
 	require.NoError(t, err)
 
