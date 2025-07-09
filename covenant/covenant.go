@@ -16,6 +16,7 @@ import (
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
 	"go.uber.org/zap"
 
@@ -216,6 +217,17 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 
 		// 9. handle if it is stake expansion
 		if btcDel.IsStakeExpansion() {
+
+			if err := stakeExpValidateBasic(btcDel); err != nil {
+				ce.logger.Error("invalid stake expansion delegation",
+					zap.String("staker_pk", stakerPkHex),
+					zap.String("staking_tx_hex", btcDel.StakingTxHex),
+					zap.String("stake_exp_tx_hash_hex", btcDel.StakeExpansion.PreviousStakingTxHashHex),
+					zap.Error(err),
+				)
+				continue
+			}
+
 			stkExpDel, err := ce.cc.QueryBTCDelegation(btcDel.StakeExpansion.PreviousStakingTxHashHex)
 			if err != nil {
 				ce.logger.Error("failed to query stake expansion", zap.Error(err), zap.String("stk_exp_tx_hash_hex", btcDel.StakeExpansion.PreviousStakingTxHashHex))
@@ -289,6 +301,57 @@ func (ce *CovenantEmulator) SignTransactions(signingReq SigningRequest) (*Signat
 	timedSignDelegationLag.Observe(time.Since(startSignTime).Seconds())
 
 	return resp, nil
+}
+
+// stakeExpValidateBasic validates the stake expansion in the delegation
+// It checks that the stake expansion has the correct inputs, the previous staking tx hash
+// and the funding tx hash, and that the funding output has a valid value.
+func stakeExpValidateBasic(btcDel *types.Delegation) error {
+	if btcDel == nil || btcDel.StakeExpansion == nil {
+		return fmt.Errorf("stake expansion is nil in the delegation")
+	}
+
+	stkExpandTx, _, err := bbntypes.NewBTCTxFromHex(btcDel.StakingTxHex)
+	if err != nil {
+		return err
+	}
+
+	fundingTx, _, err := bbntypes.NewBTCTxFromHex(btcDel.StakeExpansion.OtherFundingTxOutHex)
+	if err != nil {
+		return err
+	}
+
+	if len(stkExpandTx.TxIn) != 2 {
+		return fmt.Errorf("stake expansion must have 2 inputs (TxIn)")
+	}
+
+	previousActiveStkTxHash, err := chainhash.NewHashFromStr(btcDel.StakeExpansion.PreviousStakingTxHashHex)
+	if err != nil {
+		return err
+	}
+	if !stkExpandTx.TxIn[0].PreviousOutPoint.Hash.IsEqual(previousActiveStkTxHash) {
+		return fmt.Errorf("stake expansion first input must be the previous staking transaction hash %s", btcDel.StakeExpansion.PreviousStakingTxHashHex)
+	}
+
+	fundingTxHash := fundingTx.TxHash()
+	if !stkExpandTx.TxIn[1].PreviousOutPoint.Hash.IsEqual(&fundingTxHash) {
+		return fmt.Errorf("stake expansion second input must be the given funding tx hash %s", fundingTxHash.String())
+	}
+	idxOtherInput := stkExpandTx.TxIn[1].PreviousOutPoint.Index
+
+	if len(fundingTx.TxOut) <= int(idxOtherInput) {
+		return fmt.Errorf("the given funding tx doesn't have the expected output index %d (has %d outputs)",
+			idxOtherInput, len(fundingTx.TxOut))
+	}
+
+	otherOutput := fundingTx.TxOut[idxOtherInput]
+
+	// Validate funding output value
+	if otherOutput.Value <= 0 {
+		return fmt.Errorf("funding output has invalid value %d", otherOutput.Value)
+	}
+
+	return nil
 }
 
 func fpEncKeysFromDel(btcDel *types.Delegation) ([]*asig.EncryptionKey, error) {
