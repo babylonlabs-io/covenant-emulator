@@ -161,10 +161,10 @@ func unbondSig(covenantPrivKey *btcec.PrivateKey, signingTxReq *ParsedSigningReq
 func stkExpSig(covenantPrivKey *btcec.PrivateKey, signingTxReq *ParsedSigningRequest) (*schnorr.Signature, error) {
 	stkExpSig, err := btcstaking.SignTxForFirstScriptSpendWithTwoInputsFromScript(
 		signingTxReq.StakingTx,
-		signingTxReq.StakeExp.PreviousActiveStakeTx.TxOut[0],
+		signingTxReq.StakeExp.PreviousActiveStakeTx.TxOut[signingTxReq.StakingOutputIdx],
 		signingTxReq.StakeExp.OtherFundingOutput,
 		covenantPrivKey,
-		signingTxReq.StakingTx.TxOut[0].PkScript,
+		signingTxReq.UnbondingScript,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign spend of previous stake %s with stake expansion tx %s: %w", signingTxReq.StakeExp.PreviousActiveStakeTx.TxHash().String(), signingTxReq.StakingTx.TxHash().String(), err)
