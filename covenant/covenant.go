@@ -217,39 +217,15 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 
 		// 9. handle if it is stake expansion
 		if btcDel.IsStakeExpansion() {
-
-			if err := stakeExpValidateBasic(btcDel); err != nil {
-				ce.logger.Error("invalid stake expansion delegation",
-					zap.String("staker_pk", stakerPkHex),
-					zap.String("staking_tx_hex", btcDel.StakingTxHex),
-					zap.String("stake_exp_tx_hash_hex", btcDel.StakeExpansion.PreviousStakingTxHashHex),
+			stkExpReq, err := ce.buildStkExpSigningRequest(stakerPkHex, btcDel)
+			if err != nil {
+				ce.logger.Error("error building stake expansion request",
 					zap.Error(err),
 				)
 				continue
 			}
 
-			stkExpDel, err := ce.cc.QueryBTCDelegation(btcDel.StakeExpansion.PreviousStakingTxHashHex)
-			if err != nil {
-				ce.logger.Error("failed to query stake expansion", zap.Error(err), zap.String("stk_exp_tx_hash_hex", btcDel.StakeExpansion.PreviousStakingTxHashHex))
-				continue
-			}
-
-			previousActiveStkTx, _, err := bbntypes.NewBTCTxFromHex(stkExpDel.StakingTxHex)
-			if err != nil {
-				ce.logger.Error("failed to decode stake expansion tx", zap.Error(err), zap.String("stk_exp_tx_hash_hex", btcDel.StakeExpansion.PreviousStakingTxHashHex))
-				continue
-			}
-
-			fundingTxOut, err := btcDel.StakeExpansion.OtherFundingTxOut()
-			if err != nil {
-				ce.logger.Error("failed to decode the funding tx out in expansion tx", zap.Error(err), zap.String("stk_exp_tx_hash_hex", btcDel.StakeExpansion.PreviousStakingTxHashHex))
-				continue
-			}
-
-			req.StakeExp = &SigningRequestStkExp{
-				PreviousActiveStakeTx: previousActiveStkTx,
-				OtherFundingOutput:    fundingTxOut,
-			}
+			req.StakeExp = stkExpReq
 		}
 
 		// 10. sign covenant transactions
@@ -284,6 +260,55 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 	return res, nil
 }
 
+func (ce *CovenantEmulator) buildStkExpSigningRequest(
+	stakerPkHex string,
+	btcDel *types.Delegation,
+) (*SigningRequestStkExp, error) {
+	if btcDel == nil || btcDel.StakeExpansion == nil {
+		return nil, fmt.Errorf("stake expansion is nil in the delegation")
+	}
+
+	fundingTxOut, err := stakeExpValidateBasic(btcDel)
+	if err != nil {
+		ce.logger.Error("invalid stake expansion delegation",
+			zap.String("staker_pk", stakerPkHex),
+			zap.String("staking_tx_hex", btcDel.StakingTxHex),
+			zap.String("stake_exp_tx_hash_hex", btcDel.StakeExpansion.PreviousStakingTxHashHex),
+			zap.Error(err),
+		)
+		return nil, err
+	}
+
+	prevDel, err := ce.cc.QueryBTCDelegation(btcDel.StakeExpansion.PreviousStakingTxHashHex)
+	if err != nil {
+		ce.logger.Error("failed to query stake expansion", zap.Error(err), zap.String("stk_exp_tx_hash_hex", btcDel.StakeExpansion.PreviousStakingTxHashHex))
+		return nil, err
+	}
+
+	previousActiveStkTx, _, err := bbntypes.NewBTCTxFromHex(prevDel.StakingTxHex)
+	if err != nil {
+		ce.logger.Error("failed to decode stake expansion tx", zap.Error(err), zap.String("stk_exp_tx_hash_hex", btcDel.StakeExpansion.PreviousStakingTxHashHex))
+		return nil, err
+	}
+
+	prevDelParams, err := ce.paramCache.Get(prevDel.ParamsVersion)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get staking params with version %d: %w", btcDel.ParamsVersion, err)
+	}
+
+	_, prevStakingTxUnbondingPkScriptPath, err := pkScriptPathSlashAndUnbond(prevDel, prevDelParams, &ce.config.BTCNetParams)
+	if err != nil {
+		return nil, err
+	}
+
+	return &SigningRequestStkExp{
+		PreviousActiveStakeTx:                    previousActiveStkTx,
+		OtherFundingOutput:                       fundingTxOut,
+		PreviousStakingOutputIdx:                 prevDel.StakingOutputIdx,
+		PreviousActiveStakeUnbondingPkScriptPath: prevStakingTxUnbondingPkScriptPath,
+	}, nil
+}
+
 // SignTransactions calls the signer and record metrics about signing
 func (ce *CovenantEmulator) SignTransactions(signingReq SigningRequest) (*SignaturesResponse, error) {
 	// record metrics
@@ -306,52 +331,38 @@ func (ce *CovenantEmulator) SignTransactions(signingReq SigningRequest) (*Signat
 // stakeExpValidateBasic validates the stake expansion in the delegation
 // It checks that the stake expansion has the correct inputs, the previous staking tx hash
 // and the funding tx hash, and that the funding output has a valid value.
-func stakeExpValidateBasic(btcDel *types.Delegation) error {
+func stakeExpValidateBasic(btcDel *types.Delegation) (*wire.TxOut, error) {
 	if btcDel == nil || btcDel.StakeExpansion == nil {
-		return fmt.Errorf("stake expansion is nil in the delegation")
+		return nil, fmt.Errorf("stake expansion is nil in the delegation")
 	}
 
 	stkExpandTx, _, err := bbntypes.NewBTCTxFromHex(btcDel.StakingTxHex)
 	if err != nil {
-		return err
+		return nil, err
 	}
-
-	fundingTx, _, err := bbntypes.NewBTCTxFromHex(btcDel.StakeExpansion.OtherFundingTxOutHex)
-	if err != nil {
-		return err
-	}
-
 	if len(stkExpandTx.TxIn) != 2 {
-		return fmt.Errorf("stake expansion must have 2 inputs (TxIn)")
+		return nil, fmt.Errorf("stake expansion must have 2 inputs (TxIn)")
 	}
 
 	previousActiveStkTxHash, err := chainhash.NewHashFromStr(btcDel.StakeExpansion.PreviousStakingTxHashHex)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if !stkExpandTx.TxIn[0].PreviousOutPoint.Hash.IsEqual(previousActiveStkTxHash) {
-		return fmt.Errorf("stake expansion first input must be the previous staking transaction hash %s", btcDel.StakeExpansion.PreviousStakingTxHashHex)
+		return nil, fmt.Errorf("stake expansion first input must be the previous staking transaction hash %s", btcDel.StakeExpansion.PreviousStakingTxHashHex)
 	}
 
-	fundingTxHash := fundingTx.TxHash()
-	if !stkExpandTx.TxIn[1].PreviousOutPoint.Hash.IsEqual(&fundingTxHash) {
-		return fmt.Errorf("stake expansion second input must be the given funding tx hash %s", fundingTxHash.String())
+	otherOutput, err := btcDel.StakeExpansion.OtherFundingTxOut()
+	if err != nil {
+		return nil, err
 	}
-	idxOtherInput := stkExpandTx.TxIn[1].PreviousOutPoint.Index
-
-	if len(fundingTx.TxOut) <= int(idxOtherInput) {
-		return fmt.Errorf("the given funding tx doesn't have the expected output index %d (has %d outputs)",
-			idxOtherInput, len(fundingTx.TxOut))
-	}
-
-	otherOutput := fundingTx.TxOut[idxOtherInput]
 
 	// Validate funding output value
 	if otherOutput.Value <= 0 {
-		return fmt.Errorf("funding output has invalid value %d", otherOutput.Value)
+		return nil, fmt.Errorf("funding output has invalid value %d", otherOutput.Value)
 	}
 
-	return nil
+	return otherOutput, nil
 }
 
 func fpEncKeysFromDel(btcDel *types.Delegation) ([]*asig.EncryptionKey, error) {
@@ -601,7 +612,7 @@ func AcceptDelegationToSign(
 	}
 	// 3. For stake expansion, verify if the covenant is in the committee of the previous active delegation
 	if del.IsStakeExpansion() {
-		valid, err := validateStakeExpansion(paramCache, pk, del, prevDel)
+		valid, err := validateStakeExpansion(paramCache, covenantSerializedPk, del, prevDel)
 		if err != nil {
 			return false, err
 		}
@@ -618,7 +629,7 @@ func AcceptDelegationToSign(
 // and that the covenant was in the committee for the previous delegation.
 func validateStakeExpansion(
 	paramCache ParamsGetter,
-	pk *btcec.PublicKey,
+	covenantSerializedPk []byte,
 	del *types.Delegation,
 	prevDel *types.Delegation,
 ) (bool, error) {
@@ -638,8 +649,23 @@ func validateStakeExpansion(
 			del.StakeExpansion.PreviousStakingTxHashHex, prevStakingTxHash)
 	}
 
-	// Verify that the current covenant was in the committee for the previous delegation
-	return AcceptDelegationToSign(pk, paramCache, prevDel, nil)
+	// Verifications on the previous delegation
+	// 1. Verify that the current covenant was in the committee for the previous delegation
+	isInCommittee, err := IsKeyInCommittee(paramCache, covenantSerializedPk, prevDel)
+	if err != nil {
+		return false, fmt.Errorf("unable to verify if covenant key is in committee: %w", err)
+	}
+	if !isInCommittee {
+		return false, nil
+	}
+
+	// 2. The previous delegation should already have a covenant signature
+	if !CovenantAlreadySigned(covenantSerializedPk, prevDel) {
+		return false, fmt.Errorf("covenant %s did not sign the previous delegation %s of a stake expansion",
+			hex.EncodeToString(covenantSerializedPk), del.StakeExpansion.PreviousStakingTxHashHex)
+	}
+
+	return true, nil
 }
 
 // covenantSigSubmissionLoop is the reactor to submit Covenant signature for BTC delegations

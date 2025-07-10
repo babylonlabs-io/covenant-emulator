@@ -28,6 +28,14 @@ type SignTransactionsRequest struct {
 	// OtherFundingOutputHex the hex of the wire.TxOut that is the other funding
 	// output that will pay for the fees and possibly increase the amount staked.
 	OtherFundingOutputHex string `json:"other_funding_output_hex"`
+	// PrevStakingOutputIdx the index of the previous active stake output in the
+	// previous active stake transaction. This is used to sign the spend of the
+	// previous active stake transaction into BTC delegation expansion.
+	PrevStakingOutputIdx uint32 `json:"previous_staking_output_idx"`
+	// PreviousActiveStakeUnbondingScriptHex the hex of the unbonding script of the
+	// previous active stake transaction. This is used to sign the spend of the
+	// previous active stake transaction into BTC delegation expansion.
+	PreviousActiveStakeUnbondingScriptHex string `json:"previous_active_stake_unbonding_script_hex"`
 }
 
 func ParseSigningRequest(req *SignTransactionsRequest) (*signerapp.ParsedSigningRequest, error) {
@@ -124,17 +132,24 @@ func ParseSigningRequest(req *SignTransactionsRequest) (*signerapp.ParsedSigning
 
 		otherFundingTxOutBz, err := hex.DecodeString(req.OtherFundingOutputHex)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("invalid other funding output hex %s in request: %w", req.OtherFundingOutputHex, err)
 		}
 
 		otherFundingTxOut, err := btcstaking.DeserializeTxOut(otherFundingTxOutBz)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to deserialize other funding output from hex %s in request: %w", req.OtherFundingOutputHex, err)
+		}
+
+		prevStakeUnbondScriptBz, err := hex.DecodeString(req.PreviousActiveStakeUnbondingScriptHex)
+		if err != nil {
+			return nil, fmt.Errorf("invalid previous active stake unbonding script hex %s in request: %w", req.PreviousActiveStakeUnbondingScriptHex, err)
 		}
 
 		parsedReq.StakeExp = &signerapp.ParsedSigningRequestStkExp{
-			PreviousActiveStakeTx: previousActiveStakeTx,
-			OtherFundingOutput:    otherFundingTxOut,
+			PreviousActiveStakeTx:              previousActiveStakeTx,
+			OtherFundingOutput:                 otherFundingTxOut,
+			PreviousStakingOutputIdx:           req.PrevStakingOutputIdx,
+			PreviousActiveStakeUnbondingScript: prevStakeUnbondScriptBz,
 		}
 	}
 
@@ -172,7 +187,7 @@ func ToSignTransactionRequest(parsedRequest *signerapp.ParsedSigningRequest) (*S
 		fpEncKeys[i] = hex.EncodeToString(key.ToBytes())
 	}
 
-	return &SignTransactionsRequest{
+	req := &SignTransactionsRequest{
 		StakingTxHex:               stakingTxHex,
 		SlashingTxHex:              slashingTxHex,
 		UnbondingTxHex:             unbondingTxHex,
@@ -182,7 +197,25 @@ func ToSignTransactionRequest(parsedRequest *signerapp.ParsedSigningRequest) (*S
 		UnbondingScriptHex:         hex.EncodeToString(parsedRequest.UnbondingScript),
 		UnbondingSlashingScriptHex: hex.EncodeToString(parsedRequest.UnbondingSlashingScript),
 		FpEncKeys:                  fpEncKeys,
-	}, nil
+	}
+
+	if parsedRequest.StakeExp != nil {
+		pasTxHex, err := utils.SerializeBTCTxToHex(parsedRequest.StakeExp.PreviousActiveStakeTx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to serialize previous active stake transaction: %w", err)
+		}
+		ofoBz, err := btcstaking.SerializeTxOut(parsedRequest.StakeExp.OtherFundingOutput)
+		if err != nil {
+			return nil, fmt.Errorf("failed to serialize other funding output: %w", err)
+		}
+
+		req.PreviousActiveStakeTxHex = pasTxHex
+		req.OtherFundingOutputHex = hex.EncodeToString(ofoBz)
+		req.PrevStakingOutputIdx = parsedRequest.StakeExp.PreviousStakingOutputIdx
+		req.PreviousActiveStakeUnbondingScriptHex = hex.EncodeToString(parsedRequest.StakeExp.PreviousActiveStakeUnbondingScript)
+	}
+
+	return req, nil
 }
 
 type SignTransactionsResponse struct {

@@ -30,8 +30,10 @@ type SigningRequest struct {
 }
 
 type SigningRequestStkExp struct {
-	PreviousActiveStakeTx *wire.MsgTx
-	OtherFundingOutput    *wire.TxOut
+	PreviousActiveStakeTx                    *wire.MsgTx
+	OtherFundingOutput                       *wire.TxOut
+	PreviousStakingOutputIdx                 uint32
+	PreviousActiveStakeUnbondingPkScriptPath []byte
 }
 
 type SignaturesResponse struct {

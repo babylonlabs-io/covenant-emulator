@@ -33,8 +33,10 @@ func covenantRequestToSignerRequest(req covenant.SigningRequest) *signerapp.Pars
 
 func covenantRequestToSignerRequestStkExp(req covenant.SigningRequestStkExp) *signerapp.ParsedSigningRequestStkExp {
 	return &signerapp.ParsedSigningRequestStkExp{
-		PreviousActiveStakeTx: req.PreviousActiveStakeTx,
-		OtherFundingOutput:    req.OtherFundingOutput,
+		PreviousActiveStakeTx:              req.PreviousActiveStakeTx,
+		PreviousStakingOutputIdx:           req.PreviousStakingOutputIdx,
+		OtherFundingOutput:                 req.OtherFundingOutput,
+		PreviousActiveStakeUnbondingScript: req.PreviousActiveStakeUnbondingPkScriptPath,
 	}
 }
 
