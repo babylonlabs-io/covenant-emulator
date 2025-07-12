@@ -4,7 +4,7 @@ go 1.23.8
 
 toolchain go1.23.10
 
-require github.com/babylonlabs-io/babylon/v3 v3.0.0-snapshot.250712
+require github.com/babylonlabs-io/babylon/v3 v3.0.0-snapshot.250711
 
 require (
 	cel.dev/expr v0.20.0 // indirect
