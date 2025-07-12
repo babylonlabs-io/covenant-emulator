@@ -8,12 +8,12 @@ require (
 	cosmossdk.io/errors v1.0.2
 	cosmossdk.io/math v1.5.3
 	github.com/avast/retry-go/v4 v4.5.1
-	github.com/babylonlabs-io/babylon/v3 v3.0.0-snapshot.250711
+	github.com/babylonlabs-io/babylon/v3 v3.0.0-snapshot.250712
 	github.com/btcsuite/btcd v0.24.2
 	github.com/btcsuite/btcd/btcec/v2 v2.3.4
 	github.com/btcsuite/btcd/btcutil v1.1.6
 	github.com/btcsuite/btcd/chaincfg/chainhash v1.1.0
-	github.com/cosmos/cosmos-sdk v0.53.2
+	github.com/cosmos/cosmos-sdk v0.53.3
 	github.com/cosmos/go-bip39 v1.0.0
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.0
 	github.com/go-chi/chi/v5 v5.0.12
