@@ -2,6 +2,7 @@ package e2etest
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"math/rand"
 	"os"
@@ -10,11 +11,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/babylonlabs-io/babylon/testutil/datagen"
-	bbntypes "github.com/babylonlabs-io/babylon/types"
-	btcctypes "github.com/babylonlabs-io/babylon/x/btccheckpoint/types"
-	btclctypes "github.com/babylonlabs-io/babylon/x/btclightclient/types"
-	bstypes "github.com/babylonlabs-io/babylon/x/btcstaking/types"
+	appparams "github.com/babylonlabs-io/babylon/v3/app/params"
+	"github.com/babylonlabs-io/babylon/v3/app/signingcontext"
+	"github.com/babylonlabs-io/babylon/v3/testutil/datagen"
+	bbntypes "github.com/babylonlabs-io/babylon/v3/types"
+	btcctypes "github.com/babylonlabs-io/babylon/v3/x/btccheckpoint/types"
+	btclctypes "github.com/babylonlabs-io/babylon/v3/x/btclightclient/types"
+	bstypes "github.com/babylonlabs-io/babylon/v3/x/btcstaking/types"
 	covcc "github.com/babylonlabs-io/covenant-emulator/clientcontroller"
 	covcfg "github.com/babylonlabs-io/covenant-emulator/config"
 	"github.com/babylonlabs-io/covenant-emulator/covenant"
@@ -25,10 +28,10 @@ import (
 	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/signerservice"
 	signerService "github.com/babylonlabs-io/covenant-emulator/covenant-signer/signerservice"
 	"github.com/babylonlabs-io/covenant-emulator/remotesigner"
-	"github.com/babylonlabs-io/covenant-emulator/testutil"
 	"github.com/babylonlabs-io/covenant-emulator/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
@@ -216,10 +219,17 @@ func (tm *TestManager) SendToAddr(t *testing.T, toAddr, amount string) {
 
 func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*btcec.PublicKey) {
 	tm := StartManager(t, "")
+	// fund the finality provider operator account
+	// to submit the registration tx
+	tm.SendToAddr(t, tm.CovBBNClient.GetKeyAddress().String(), "100000ubbn")
 
 	var btcPks []*btcec.PublicKey
 	for i := 0; i < n; i++ {
-		fpData := genTestFinalityProviderData(t, tm.CovBBNClient.GetKeyAddress())
+		fpData := genTestFinalityProviderData(
+			t,
+			tm.CovenanConfig.BabylonConfig.ChainID,
+			tm.CovBBNClient.GetKeyAddress(),
+		)
 		btcPubKey := bbntypes.NewBIP340PubKeyFromBTCPK(fpData.BtcKey)
 		_, err := tm.CovBBNClient.RegisterFinalityProvider(
 			btcPubKey,
@@ -250,10 +260,11 @@ func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*btc
 	return tm, btcPks
 }
 
-func genTestFinalityProviderData(t *testing.T, babylonAddr sdk.AccAddress) *testFinalityProviderData {
+func genTestFinalityProviderData(t *testing.T, chainID string, babylonAddr sdk.AccAddress) *testFinalityProviderData {
+	fpPopContext := signingcontext.FpPopContextV0(chainID, appparams.AccBTCStaking.String())
 	finalityProviderEOTSPrivKey, err := btcec.NewPrivateKey()
 	require.NoError(t, err)
-	pop, err := datagen.NewPoPBTC(babylonAddr, finalityProviderEOTSPrivKey)
+	pop, err := datagen.NewPoPBTC(fpPopContext, babylonAddr, finalityProviderEOTSPrivKey)
 	require.NoError(t, err)
 
 	return &testFinalityProviderData{
@@ -294,44 +305,31 @@ func (tm *TestManager) WaitForNPendingDels(t *testing.T, n int) []*types.Delegat
 	return dels
 }
 
-func (tm *TestManager) WaitForNActiveDels(t *testing.T, n int) []*types.Delegation {
+// waitForNDelsWithStatus is a generic method for waiting for delegations with a specific status
+func (tm *TestManager) waitForNDelsWithStatus(t *testing.T, n int, queryFunc func(uint64) ([]*types.Delegation, error), statusName string) []*types.Delegation {
 	var (
 		dels []*types.Delegation
 		err  error
 	)
 	require.Eventually(t, func() bool {
-		dels, err = tm.CovBBNClient.QueryActiveDelegations(
-			tm.CovenanConfig.DelegationLimit,
-		)
+		dels, err = queryFunc(tm.CovenanConfig.DelegationLimit)
 		if err != nil {
 			return false
 		}
 		return len(dels) == n
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
-	t.Logf("delegations are active")
+	t.Logf("delegations are %s", statusName)
 
 	return dels
 }
 
+func (tm *TestManager) WaitForNActiveDels(t *testing.T, n int) []*types.Delegation {
+	return tm.waitForNDelsWithStatus(t, n, tm.CovBBNClient.QueryActiveDelegations, "active")
+}
+
 func (tm *TestManager) WaitForNVerifiedDels(t *testing.T, n int) []*types.Delegation {
-	var (
-		dels []*types.Delegation
-		err  error
-	)
-	require.Eventually(t, func() bool {
-		dels, err = tm.CovBBNClient.QueryVerifiedDelegations(
-			tm.CovenanConfig.DelegationLimit,
-		)
-		if err != nil {
-			return false
-		}
-		return len(dels) == n
-	}, eventuallyWaitTimeOut, eventuallyPollTime)
-
-	t.Logf("delegations are verified")
-
-	return dels
+	return tm.waitForNDelsWithStatus(t, n, tm.CovBBNClient.QueryVerifiedDelegations, "verified")
 }
 
 // InsertBTCDelegation inserts a BTC delegation to Babylon
@@ -350,7 +348,7 @@ func (tm *TestManager) InsertBTCDelegation(
 	require.NoError(t, err)
 
 	unbondingTime := uint16(tm.StakingParams.UnbondingTimeBlocks)
-	testStakingInfo := testutil.GenBTCStakingSlashingInfo(
+	testStakingInfo := datagen.GenBTCStakingSlashingInfo(
 		r,
 		t,
 		btcNetworkParams,
@@ -366,7 +364,8 @@ func (tm *TestManager) InsertBTCDelegation(
 	)
 
 	// proof-of-possession
-	pop, err := datagen.NewPoPBTC(tm.CovBBNClient.GetKeyAddress(), delBtcPrivKey)
+	stakerPopContext := signingcontext.StakerPopContextV0(tm.CovenanConfig.BabylonConfig.ChainID, appparams.AccBTCStaking.String())
+	pop, err := datagen.NewPoPBTC(stakerPopContext, tm.CovBBNClient.GetKeyAddress(), delBtcPrivKey)
 	require.NoError(t, err)
 
 	// create and insert BTC headers which include the staking tx to get staking tx info
@@ -403,7 +402,7 @@ func (tm *TestManager) InsertBTCDelegation(
 	// delegator sig
 	delegatorSig, err := testStakingInfo.SlashingTx.Sign(
 		testStakingInfo.StakingTx,
-		1,
+		datagen.StakingOutIdx,
 		slashingSpendInfo.GetPkScriptPath(),
 		delBtcPrivKey,
 	)
@@ -420,7 +419,7 @@ func (tm *TestManager) InsertBTCDelegation(
 		fpPks,
 		params.CovenantPks,
 		params.CovenantQuorum,
-		wire.NewOutPoint(&stakingTxHash, 1),
+		wire.NewOutPoint(&stakingTxHash, datagen.StakingOutIdx),
 		unbondingTime,
 		unbondingValue,
 		params.SlashingPkScript,
@@ -435,7 +434,7 @@ func (tm *TestManager) InsertBTCDelegation(
 
 	unbondingSig, err := testUnbondingInfo.SlashingTx.Sign(
 		unbondingTxMsg,
-		0,
+		datagen.StakingOutIdx,
 		unbondingSlashingPathInfo.GetPkScriptPath(),
 		delBtcPrivKey,
 	)
@@ -463,6 +462,193 @@ func (tm *TestManager) InsertBTCDelegation(
 	require.NoError(t, err)
 
 	t.Log("successfully submitted a BTC delegation")
+
+	return &TestDelegationData{
+		DelegatorPrivKey: delBtcPrivKey,
+		DelegatorKey:     delBtcPubKey,
+		FpPks:            fpPks,
+		StakingTx:        testStakingInfo.StakingTx,
+		SlashingTx:       testStakingInfo.SlashingTx,
+		StakingTxInfo:    txInfo,
+		DelegatorSig:     delegatorSig,
+		SlashingPkScript: params.SlashingPkScript,
+		StakingTime:      stakingTime,
+		StakingAmount:    stakingAmount,
+	}
+}
+
+// InsertStakeExpansionDelegation inserts a BTC stake expansion delegation to Babylon
+func (tm *TestManager) InsertStakeExpansionDelegation(
+	t *testing.T,
+	fpPks []*btcec.PublicKey,
+	stakingTime uint16,
+	stakingAmount int64,
+	prevStakingTx *wire.MsgTx,
+	isPreApproval bool,
+) *TestDelegationData {
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	params := tm.StakingParams
+
+	// delegator BTC key pairs, staking tx and slashing tx
+	delBtcPrivKey, delBtcPubKey, err := datagen.GenRandomBTCKeyPair(r)
+	require.NoError(t, err)
+
+	unbondingTime := uint16(tm.StakingParams.UnbondingTimeBlocks)
+
+	// Convert previousStakingTxHash string to OutPoint
+	previousStakingTxHash := prevStakingTx.TxHash().String()
+	prevHash, err := chainhash.NewHashFromStr(previousStakingTxHash)
+	require.NoError(t, err)
+	prevStakingOutPoint := wire.NewOutPoint(prevHash, datagen.StakingOutIdx)
+
+	// Generate a simple funding transaction for the stake expansion
+	stakingOutput := prevStakingTx.TxOut[0]
+
+	// Create a fake outPoint for funding
+	dummyData := sha256.Sum256([]byte("dummy funding tx"))
+	dummyOutPoint := &wire.OutPoint{
+		Hash:  chainhash.Hash(dummyData),
+		Index: 0,
+	}
+
+	// Generate funding tx for stake expansion
+	fundingTx := datagen.GenFundingTx(
+		t,
+		r,
+		btcNetworkParams,
+		dummyOutPoint,
+		stakingAmount,
+		stakingOutput,
+	)
+
+	// Convert fundingTxHash to OutPoint
+	fundingTxHash := fundingTx.TxHash()
+	fundingOutPoint := wire.NewOutPoint(&fundingTxHash, 0)
+	outPoints := []*wire.OutPoint{prevStakingOutPoint, fundingOutPoint}
+
+	// Generate staking slashing info using the previous staking outpoint
+	// For stake expansion, we create a transaction with multiple inputs
+	testStakingInfo := datagen.GenBTCStakingSlashingInfoWithInputs(
+		r,
+		t,
+		btcNetworkParams,
+		outPoints,
+		delBtcPrivKey,
+		fpPks,
+		params.CovenantPks,
+		params.CovenantQuorum,
+		stakingTime,
+		stakingAmount,
+		params.SlashingPkScript,
+		params.SlashingRate,
+		unbondingTime,
+	)
+
+	// proof-of-possession
+	stakerPopContext := signingcontext.StakerPopContextV0(tm.CovenanConfig.BabylonConfig.ChainID, appparams.AccBTCStaking.String())
+	pop, err := datagen.NewPoPBTC(stakerPopContext, tm.CovBBNClient.GetKeyAddress(), delBtcPrivKey)
+	require.NoError(t, err)
+
+	// create and insert BTC headers which include the staking tx to get staking tx info
+	currentBtcTipResp, err := tm.CovBBNClient.QueryBtcLightClientTip()
+	require.NoError(t, err)
+	tipHeader, err := bbntypes.NewBTCHeaderBytesFromHex(currentBtcTipResp.HeaderHex)
+	require.NoError(t, err)
+	blockWithStakingTx := datagen.CreateBlockWithTransaction(r, tipHeader.ToBlockHeader(), testStakingInfo.StakingTx)
+	accumulatedWork := btclctypes.CalcWork(&blockWithStakingTx.HeaderBytes)
+	accumulatedWork = btclctypes.CumulativeWork(accumulatedWork, currentBtcTipResp.Work)
+	parentBlockHeaderInfo := &btclctypes.BTCHeaderInfo{
+		Header: &blockWithStakingTx.HeaderBytes,
+		Hash:   blockWithStakingTx.HeaderBytes.Hash(),
+		Height: currentBtcTipResp.Height + 1,
+		Work:   &accumulatedWork,
+	}
+	headers := make([]bbntypes.BTCHeaderBytes, 0)
+	headers = append(headers, blockWithStakingTx.HeaderBytes)
+	for i := 0; i < int(params.ComfirmationTimeBlocks); i++ {
+		headerInfo := datagen.GenRandomValidBTCHeaderInfoWithParent(r, *parentBlockHeaderInfo)
+		headers = append(headers, *headerInfo.Header)
+		parentBlockHeaderInfo = headerInfo
+	}
+	_, err = tm.CovBBNClient.InsertBtcBlockHeaders(headers)
+	require.NoError(t, err)
+	btcHeader := blockWithStakingTx.HeaderBytes
+	serializedStakingTx, err := bbntypes.SerializeBTCTx(testStakingInfo.StakingTx)
+	require.NoError(t, err)
+	txInfo := btcctypes.NewTransactionInfo(&btcctypes.TransactionKey{Index: 1, Hash: btcHeader.Hash()}, serializedStakingTx, blockWithStakingTx.SpvProof.MerkleNodes)
+
+	slashingSpendInfo, err := testStakingInfo.StakingInfo.SlashingPathSpendInfo()
+	require.NoError(t, err)
+
+	// delegator sig
+	delegatorSig, err := testStakingInfo.SlashingTx.Sign(
+		testStakingInfo.StakingTx,
+		datagen.StakingOutIdx,
+		slashingSpendInfo.GetPkScriptPath(),
+		delBtcPrivKey,
+	)
+	require.NoError(t, err)
+
+	unbondingValue := stakingAmount - 1000
+	stakingTxHash := testStakingInfo.StakingTx.TxHash()
+
+	testUnbondingInfo := datagen.GenBTCUnbondingSlashingInfo(
+		r,
+		t,
+		btcNetworkParams,
+		delBtcPrivKey,
+		fpPks,
+		params.CovenantPks,
+		params.CovenantQuorum,
+		wire.NewOutPoint(&stakingTxHash, datagen.StakingOutIdx),
+		unbondingTime,
+		unbondingValue,
+		params.SlashingPkScript,
+		params.SlashingRate,
+		unbondingTime,
+	)
+
+	unbondingTxMsg := testUnbondingInfo.UnbondingTx
+
+	unbondingSlashingPathInfo, err := testUnbondingInfo.UnbondingInfo.SlashingPathSpendInfo()
+	require.NoError(t, err)
+
+	unbondingSig, err := testUnbondingInfo.SlashingTx.Sign(
+		unbondingTxMsg,
+		datagen.StakingOutIdx,
+		unbondingSlashingPathInfo.GetPkScriptPath(),
+		delBtcPrivKey,
+	)
+	require.NoError(t, err)
+
+	serializedUnbondingTx, err := bbntypes.SerializeBTCTx(testUnbondingInfo.UnbondingTx)
+	require.NoError(t, err)
+
+	// Serialize the funding transaction for the stake expansion
+	serializedFundingTx, err := bbntypes.SerializeBTCTx(fundingTx)
+	require.NoError(t, err)
+
+	// submit the BTC stake expansion delegation to Babylon
+	_, err = tm.CovBBNClient.CreateStakeExpansionDelegation(
+		bbntypes.NewBIP340PubKeyFromBTCPK(delBtcPubKey),
+		fpPks,
+		pop,
+		uint32(stakingTime),
+		stakingAmount,
+		txInfo,
+		testStakingInfo.SlashingTx,
+		delegatorSig,
+		serializedUnbondingTx,
+		uint32(unbondingTime),
+		unbondingValue,
+		testUnbondingInfo.SlashingTx,
+		unbondingSig,
+		previousStakingTxHash,
+		serializedFundingTx,
+	)
+	require.NoError(t, err)
+
+	t.Log("successfully submitted a BTC stake expansion delegation")
 
 	return &TestDelegationData{
 		DelegatorPrivKey: delBtcPrivKey,

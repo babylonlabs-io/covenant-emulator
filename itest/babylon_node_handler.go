@@ -11,7 +11,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/babylonlabs-io/babylon/types"
+	"github.com/babylonlabs-io/babylon/v3/types"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/txscript"
@@ -163,12 +163,10 @@ func NewBabylonNodeHandler(t *testing.T, covenantPk *types.BIP340PubKey) *Babylo
 	f, err := os.Create(filepath.Join(testDir, "babylon.log"))
 	require.NoError(t, err)
 
-	startCmd := exec.Command(
-		"babylond",
-		"start",
-		fmt.Sprintf("--home=%s", nodeHome),
-		"--log_level=debug",
-	)
+	startCmd := exec.Command("babylond", "start", 
+		fmt.Sprintf("--home=%s", nodeHome), 
+		"--log_level=debug")
+	startCmd.Env = append(os.Environ(), "BABYLON_BLS_PASSWORD=password")
 
 	startCmd.Stdout = f
 

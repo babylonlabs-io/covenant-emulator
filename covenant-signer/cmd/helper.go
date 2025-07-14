@@ -3,8 +3,8 @@ package cmd
 import (
 	"os"
 
-	"github.com/babylonlabs-io/babylon/app/params"
-	bstypes "github.com/babylonlabs-io/babylon/x/btcstaking/types"
+	"github.com/babylonlabs-io/babylon/v3/app/params"
+	bstypes "github.com/babylonlabs-io/babylon/v3/x/btcstaking/types"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/std"
 	"github.com/spf13/cobra"

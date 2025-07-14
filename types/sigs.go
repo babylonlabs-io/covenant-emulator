@@ -12,4 +12,5 @@ type CovenantSigs struct {
 	SlashingSigs          [][]byte
 	UnbondingSig          *schnorr.Signature
 	SlashingUnbondingSigs [][]byte
+	StkExpSig             *schnorr.Signature
 }

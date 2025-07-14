@@ -66,3 +66,29 @@ func TestQueryPendingDelegations(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, dels, numDels)
 }
+
+func TestStakeExpansionDelegation(t *testing.T) {
+	tm, btcPks := StartManagerWithFinalityProvider(t, 1)
+	defer tm.Stop(t)
+
+	// First, create a regular BTC delegation that will be used as the base for expansion
+	baseDel := tm.InsertBTCDelegation(t, btcPks, stakingTime, stakingAmount, false)
+
+	// Wait for the base delegation to become active
+	activeDels := tm.WaitForNActiveDels(t, 1)
+	require.Len(t, activeDels, 1)
+
+	// Create a stake expansion delegation using the base delegation's staking tx hash
+	_ = tm.InsertStakeExpansionDelegation(t, btcPks, stakingTime, stakingAmount, baseDel.StakingTx, true)
+
+	// Wait for the stake expansion delegation to become pending
+	pendingDels := tm.WaitForNPendingDels(t, 1)
+	require.Len(t, pendingDels, 1)
+
+	// Wait for the stake expansion delegation to become verified after getting covenant signatures
+	verifiedDels := tm.WaitForNVerifiedDels(t, 1)
+	require.Len(t, verifiedDels, 1)
+	require.NotNil(t, verifiedDels[0].StakeExpansion)
+
+	t.Log("stake expansion delegation test completed successfully")
+}
