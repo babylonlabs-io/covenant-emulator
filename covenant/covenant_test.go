@@ -458,63 +458,75 @@ func TestValidateStakeExpansion(t *testing.T) {
 	stakingMsgTx, _, err := bbntypes.NewBTCTxFromHex(stkTxHex)
 	require.NoError(t, err)
 
-	prevStakingTxHex := stakingMsgTx.TxHash().String()
-	prevDel := &types.Delegation{
+	prevStakingTxHashHex := stakingMsgTx.TxHash().String()
+	prevStk := types.Delegation{
 		StakingTxHex:  stkTxHex,
 		ParamsVersion: pVersionWithCovenant,
 		CovenantSigs:  []*types.CovenantAdaptorSigInfo{},
 	}
-	stkExp := &types.Delegation{
+	stkExp := types.Delegation{
 		StakingTxHex:  testutil.GenRandomHexStr(r, 100),
 		ParamsVersion: pVersionWithCovenant,
 		CovenantSigs:  []*types.CovenantAdaptorSigInfo{},
 		StakeExpansion: &types.DelegationStakeExpansion{
-			PreviousStakingTxHashHex: prevStakingTxHex,
+			PreviousStakingTxHashHex: prevStakingTxHashHex,
 		},
 	}
 
 	t.Run("successful validation - covenant in previous committee and didn't sign", func(t *testing.T) {
-		valid, err := covenant.ValidateStakeExpansion(paramsGet, covKeyInCommittee, stkExp, prevDel)
+		valid, err := covenant.ValidateStakeExpansion(paramsGet, covKeyInCommittee, &stkExp, &prevStk)
 		require.NoError(t, err)
 		require.True(t, valid, "should be valid when covenant was in previous committee, even if it didn't sign")
 	})
 
-	prevDel.CovenantSigs = append(prevDel.CovenantSigs, &types.CovenantAdaptorSigInfo{
-		Pk: pubKeyFromSchnorr,
-	})
 	t.Run("successful validation - covenant in previous committee and signed old del", func(t *testing.T) {
-		valid, err := covenant.ValidateStakeExpansion(paramsGet, covKeyInCommittee, stkExp, prevDel)
+		prevDel := prevStk
+		prevDel.CovenantSigs = append(prevDel.CovenantSigs, &types.CovenantAdaptorSigInfo{
+			Pk: pubKeyFromSchnorr,
+		})
+
+		valid, err := covenant.ValidateStakeExpansion(paramsGet, covKeyInCommittee, &stkExp, &prevDel)
 		require.NoError(t, err)
 		require.True(t, valid, "should be valid when covenant was in previous committee even if it did sign the previous")
 	})
 
+	t.Run("fails when param cache returns error", func(t *testing.T) {
+		cacheErr := fmt.Errorf("param cache connection error")
+		errorParamCache := NewMockParamError(cacheErr)
+
+		valid, errParamCache := covenant.ValidateStakeExpansion(errorParamCache, covKeyInCommittee, &stkExp, &prevStk)
+		require.False(t, valid)
+		require.EqualError(t, errParamCache, fmt.Sprintf("unable to verify if covenant key is in committee: unable to get the param version: %d, reason: %s", prevStk.ParamsVersion, cacheErr.Error()))
+	})
+
 	t.Run("fails when covenant never in previous committee", func(t *testing.T) {
-		valid, err := covenant.ValidateStakeExpansion(paramsGet, covKeyNotInCommittee, stkExp, prevDel)
+		valid, err := covenant.ValidateStakeExpansion(paramsGet, covKeyNotInCommittee, &stkExp, &prevStk)
 		require.NoError(t, err)
 		require.False(t, valid, "should fail when covenant was never in previous committee")
 	})
 
-	prevDel.ParamsVersion = pVersionWithoutCovenant
 	t.Run("fails when covenant not in previous committee", func(t *testing.T) {
-		valid, err := covenant.ValidateStakeExpansion(paramsGet, covKeyInCommittee, stkExp, prevDel)
+		prevDelWithoutCov := prevStk
+		prevDelWithoutCov.ParamsVersion = pVersionWithoutCovenant
+		valid, err := covenant.ValidateStakeExpansion(paramsGet, covKeyInCommittee, &stkExp, &prevDelWithoutCov)
 		require.NoError(t, err)
 		require.False(t, valid, "should fail when covenant was not in previous committee")
 	})
 
 	t.Run("fails when previous delegation is nil", func(t *testing.T) {
-		valid, err := covenant.ValidateStakeExpansion(paramsGet, covKeyInCommittee, stkExp, nil)
+		valid, err := covenant.ValidateStakeExpansion(paramsGet, covKeyInCommittee, &stkExp, nil)
 		require.False(t, valid)
-		require.EqualError(t, err, fmt.Sprintf("previous delegation is nil for stake expansion delegation: %s", prevStakingTxHex))
+		require.EqualError(t, err, fmt.Sprintf("previous delegation is nil for stake expansion delegation: %s", prevStakingTxHashHex))
 	})
 
 	t.Run("fails when transaction hash mismatch", func(t *testing.T) {
 		wrongHash := datagen.GenRandomHexStr(r, 10)
-		mismatchedStkExp := *stkExp
+		mismatchedStkExp := stkExp
 		mismatchedStkExp.StakeExpansion.PreviousStakingTxHashHex = wrongHash
 
-		valid, err := covenant.ValidateStakeExpansion(paramsGet, covKeyInCommittee, &mismatchedStkExp, prevDel)
+		valid, err := covenant.ValidateStakeExpansion(paramsGet, covKeyInCommittee, &mismatchedStkExp, &prevStk)
 		require.False(t, valid)
-		require.EqualError(t, err, fmt.Sprintf("previous delegation staking tx hash mismatch: expected %s, got %s", wrongHash, prevStakingTxHex))
+		require.EqualError(t, err, fmt.Sprintf("previous delegation staking tx hash mismatch: expected %s, got %s", wrongHash, prevStakingTxHashHex))
 	})
 
 	t.Run("fails when previous delegation has invalid staking tx", func(t *testing.T) {
@@ -523,17 +535,9 @@ func TestValidateStakeExpansion(t *testing.T) {
 			ParamsVersion: pVersionWithCovenant,
 		}
 
-		valid, err := covenant.ValidateStakeExpansion(paramsGet, covKeyInCommittee, stkExp, invalidPrevDel)
+		valid, err := covenant.ValidateStakeExpansion(paramsGet, covKeyInCommittee, &stkExp, invalidPrevDel)
 		require.False(t, valid)
 		require.EqualError(t, err, "failed to decode previous delegation staking tx: encoding/hex: invalid byte: U+0069 'i'")
 	})
 
-	t.Run("fails when param cache returns error", func(t *testing.T) {
-		cacheErr := fmt.Errorf("param cache connection error")
-		errorParamCache := NewMockParamError(cacheErr)
-
-		valid, err := covenant.ValidateStakeExpansion(errorParamCache, covKeyInCommittee, stkExp, prevDel)
-		require.False(t, valid)
-		require.EqualError(t, err, fmt.Sprintf("unable to verify if covenant key is in committee: unable to get the param version: %d, reason: %s", pVersionWithoutCovenant, cacheErr.Error()))
-	})
 }
