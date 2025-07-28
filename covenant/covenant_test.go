@@ -350,7 +350,6 @@ func TestIsKeyInCommittee(t *testing.T) {
 		ParamsVersion: pVersionWithCovenant,
 	}
 
-	// simple mock with the parameter versions
 	paramsGet := NewMockParam(map[uint32]*types.StakingParams{
 		pVersionWithoutCovenant: paramsWithoutCovenant,
 		pVersionWithCovenant:    paramsWithCovenant,
@@ -410,4 +409,131 @@ func NewMockParamError(err error) *MockParamError {
 
 func (m *MockParamError) Get(version uint32) (*types.StakingParams, error) {
 	return nil, m.err
+}
+
+func TestValidateStakeExpansion(t *testing.T) {
+	r := rand.New(rand.NewSource(time.Now().Unix()))
+
+	covenantConfig := covcfg.DefaultConfig()
+	covenantConfig.BabylonConfig.KeyDirectory = t.TempDir()
+
+	covKeyPairInCommittee, err := keyring.CreateCovenantKey(
+		covenantConfig.BabylonConfig.KeyDirectory,
+		covenantConfig.BabylonConfig.ChainID,
+		covenantConfig.BabylonConfig.Key,
+		covenantConfig.BabylonConfig.KeyringBackend,
+		passphrase,
+		hdPath,
+	)
+	require.NoError(t, err)
+
+	covKeyInCommittee := schnorr.SerializePubKey(covKeyPairInCommittee.PublicKey)
+	pubKeyFromSchnorr, err := schnorr.ParsePubKey(covKeyInCommittee)
+	require.NoError(t, err)
+
+	badCovKey, err := keyring.CreateCovenantKey(
+		covenantConfig.BabylonConfig.KeyDirectory,
+		covenantConfig.BabylonConfig.ChainID,
+		"other-covenant-key",
+		covenantConfig.BabylonConfig.KeyringBackend,
+		passphrase,
+		hdPath,
+	)
+	require.NoError(t, err)
+	covKeyNotInCommittee := schnorr.SerializePubKey(badCovKey.PublicKey)
+
+	pVersionWithoutCovenant := uint32(datagen.RandomInRange(r, 1, 10))
+	pVersionWithCovenant := pVersionWithoutCovenant + 1
+
+	paramsWithoutCovenant := testutil.GenRandomParams(r, t)
+	paramsWithCovenant := testutil.GenRandomParams(r, t)
+	paramsWithCovenant.CovenantPks = append(paramsWithCovenant.CovenantPks, covKeyPairInCommittee.PublicKey)
+
+	paramsGet := NewMockParam(map[uint32]*types.StakingParams{
+		pVersionWithoutCovenant: paramsWithoutCovenant,
+		pVersionWithCovenant:    paramsWithCovenant,
+	})
+
+	stkTxHex := "02000000012c1ca601b81bf5bdd97081d1bf17241d4d688f51ccbe8be3d3f3174d0e4e4aa40100000000ffffffff0250c3000000000000225120d0d55103aa70a12162f733805c3a2f5ff8e857d5fc92381c3d6f22a791165ac115400f00000000002251206f5ec73002ee8b5b2bb942f26e169354821e6ec06f9b3a1d3cf355d6f276c5d800000000"
+	stakingMsgTx, _, err := bbntypes.NewBTCTxFromHex(stkTxHex)
+	require.NoError(t, err)
+
+	prevStakingTxHex := stakingMsgTx.TxHash().String()
+	prevDel := &types.Delegation{
+		StakingTxHex:  stkTxHex,
+		ParamsVersion: pVersionWithCovenant,
+		CovenantSigs:  []*types.CovenantAdaptorSigInfo{},
+	}
+	stkExp := &types.Delegation{
+		StakingTxHex:  testutil.GenRandomHexStr(r, 100),
+		ParamsVersion: pVersionWithCovenant,
+		CovenantSigs:  []*types.CovenantAdaptorSigInfo{},
+		StakeExpansion: &types.DelegationStakeExpansion{
+			PreviousStakingTxHashHex: prevStakingTxHex,
+		},
+	}
+
+	t.Run("successful validation - covenant in previous committee and didn't sign", func(t *testing.T) {
+		valid, err := covenant.ValidateStakeExpansion(paramsGet, covKeyInCommittee, stkExp, prevDel)
+		require.NoError(t, err)
+		require.True(t, valid, "should be valid when covenant was in previous committee, even if it didn't sign")
+	})
+
+	prevDel.CovenantSigs = append(prevDel.CovenantSigs, &types.CovenantAdaptorSigInfo{
+		Pk: pubKeyFromSchnorr,
+	})
+	t.Run("successful validation - covenant in previous committee and signed old del", func(t *testing.T) {
+		valid, err := covenant.ValidateStakeExpansion(paramsGet, covKeyInCommittee, stkExp, prevDel)
+		require.NoError(t, err)
+		require.True(t, valid, "should be valid when covenant was in previous committee even if it did sign the previous")
+	})
+
+	t.Run("fails when covenant never in previous committee", func(t *testing.T) {
+		valid, err := covenant.ValidateStakeExpansion(paramsGet, covKeyNotInCommittee, stkExp, prevDel)
+		require.NoError(t, err)
+		require.False(t, valid, "should fail when covenant was never in previous committee")
+	})
+
+	prevDel.ParamsVersion = pVersionWithoutCovenant
+	t.Run("fails when covenant not in previous committee", func(t *testing.T) {
+		valid, err := covenant.ValidateStakeExpansion(paramsGet, covKeyInCommittee, stkExp, prevDel)
+		require.NoError(t, err)
+		require.False(t, valid, "should fail when covenant was not in previous committee")
+	})
+
+	t.Run("fails when previous delegation is nil", func(t *testing.T) {
+		valid, err := covenant.ValidateStakeExpansion(paramsGet, covKeyInCommittee, stkExp, nil)
+		require.False(t, valid)
+		require.EqualError(t, err, fmt.Sprintf("previous delegation is nil for stake expansion delegation: %s", prevStakingTxHex))
+	})
+
+	t.Run("fails when transaction hash mismatch", func(t *testing.T) {
+		wrongHash := datagen.GenRandomHexStr(r, 10)
+		mismatchedStkExp := *stkExp
+		mismatchedStkExp.StakeExpansion.PreviousStakingTxHashHex = wrongHash
+
+		valid, err := covenant.ValidateStakeExpansion(paramsGet, covKeyInCommittee, &mismatchedStkExp, prevDel)
+		require.False(t, valid)
+		require.EqualError(t, err, fmt.Sprintf("previous delegation staking tx hash mismatch: expected %s, got %s", wrongHash, prevStakingTxHex))
+	})
+
+	t.Run("fails when previous delegation has invalid staking tx", func(t *testing.T) {
+		invalidPrevDel := &types.Delegation{
+			StakingTxHex:  "invalid-hex-string",
+			ParamsVersion: pVersionWithCovenant,
+		}
+
+		valid, err := covenant.ValidateStakeExpansion(paramsGet, covKeyInCommittee, stkExp, invalidPrevDel)
+		require.False(t, valid)
+		require.EqualError(t, err, "failed to decode previous delegation staking tx: encoding/hex: invalid byte: U+0069 'i'")
+	})
+
+	t.Run("fails when param cache returns error", func(t *testing.T) {
+		cacheErr := fmt.Errorf("param cache connection error")
+		errorParamCache := NewMockParamError(cacheErr)
+
+		valid, err := covenant.ValidateStakeExpansion(errorParamCache, covKeyInCommittee, stkExp, prevDel)
+		require.False(t, valid)
+		require.EqualError(t, err, fmt.Sprintf("unable to verify if covenant key is in committee: unable to get the param version: %d, reason: %s", pVersionWithoutCovenant, cacheErr.Error()))
+	})
 }
