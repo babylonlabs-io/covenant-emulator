@@ -43,6 +43,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 * [#127](https://github.com/babylonlabs-io/covenant-emulator/pull/127) Add Stake Expansion support
 * [#128](https://github.com/babylonlabs-io/covenant-emulator/pull/128) Removed check where the covenant needs to have signed the
 previous staking transaction to sign the stake expansion tx.
+* [#129](https://github.com/babylonlabs-io/covenant-emulator/pull/129) bump Babylon to
+v3.0.0-rc.0
 
 ## v0.15.1
 

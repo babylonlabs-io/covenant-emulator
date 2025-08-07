@@ -500,17 +500,6 @@ func (tm *TestManager) InsertStakeExpansionDelegation(
 	require.NoError(t, err)
 	prevStakingOutPoint := wire.NewOutPoint(prevHash, datagen.StakingOutIdx)
 
-	// Generate a simple funding transaction for the stake expansion
-	// stakingOutput := prevStakingTx.TxOut[0]
-
-	// Create a fake outPoint for funding
-	// dummyData := sha256.Sum256([]byte("dummy funding tx"))
-	// dummyOutPoint := &wire.OutPoint{
-	// 	Hash:  chainhash.Hash(dummyData),
-	// 	Index: 0,
-	// }
-
-	// Generate funding tx for stake expansion
 	fundingTx := datagen.GenRandomTxWithOutputValue(r, stakingAmount)
 
 	// Convert fundingTxHash to OutPoint
