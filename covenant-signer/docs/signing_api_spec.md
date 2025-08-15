@@ -47,7 +47,7 @@ The request body is a JSON object with the following structure:
 | `fp_enc_keys` | `[]string` | An array of hexadecimal representations of the finality provider encryption keys. |
 | `stake_expansion` | `StakeExpansionRequest` | An optional object containing information about the stake expansion. |
 
-#### `StakeExpansionResponse` description
+#### `StakeExpansionRequest` description
 
 | Field | Type | Description |
 | --- | --- | --- |
