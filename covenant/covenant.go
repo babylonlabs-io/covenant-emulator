@@ -33,7 +33,7 @@ var (
 	RtyErr    = retry.LastErrorOnly(true)
 )
 
-type CovenantEmulator struct {
+type Emulator struct {
 	startOnce sync.Once
 	stopOnce  sync.Once
 
@@ -51,18 +51,18 @@ type CovenantEmulator struct {
 	paramCache ParamsGetter
 }
 
-func NewCovenantEmulator(
+func NewEmulator(
 	config *covcfg.Config,
 	cc clientcontroller.ClientController,
 	logger *zap.Logger,
 	signer Signer,
-) (*CovenantEmulator, error) {
+) (*Emulator, error) {
 	pk, err := signer.PubKey()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get signer pub key: %w", err)
 	}
 
-	return &CovenantEmulator{
+	return &Emulator{
 		cc:         cc,
 		signer:     signer,
 		config:     config,
@@ -73,18 +73,18 @@ func NewCovenantEmulator(
 	}, nil
 }
 
-func (ce *CovenantEmulator) Config() *covcfg.Config {
+func (ce *Emulator) Config() *covcfg.Config {
 	return ce.config
 }
 
-func (ce *CovenantEmulator) PublicKeyStr() string {
+func (ce *Emulator) PublicKeyStr() string {
 	return hex.EncodeToString(schnorr.SerializePubKey(ce.pk))
 }
 
 // AddCovenantSignatures adds Covenant signatures on every given Bitcoin delegations and submits them
 // in a batch to Babylon. Invalid delegations will be skipped with error log error will be returned if
 // the batch submission fails
-func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (*types.TxResponse, error) {
+func (ce *Emulator) AddCovenantSignatures(btcDels []*types.Delegation) (*types.TxResponse, error) {
 	if len(btcDels) == 0 {
 		return nil, fmt.Errorf("no delegations")
 	}
@@ -94,12 +94,14 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 		// 0. nil checks
 		if btcDel == nil {
 			ce.logger.Error("empty delegation")
+
 			continue
 		}
 
 		if btcDel.BtcUndelegation == nil {
 			ce.logger.Error("empty undelegation",
 				zap.String("staking_tx_hex", btcDel.StakingTxHex))
+
 			continue
 		}
 
@@ -116,6 +118,7 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 				zap.String("staker_pk", stakerPkHex),
 				zap.String("staking_tx_hex", btcDel.StakingTxHex),
 			)
+
 			continue
 		}
 
@@ -128,6 +131,7 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 				zap.Uint32("expected_unbonding_time", unbondingTimeBlocks),
 				zap.Uint16("got_unbonding_time", unbondingTime),
 			)
+
 			continue
 		}
 
@@ -142,6 +146,7 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 				zap.Uint16("max_staking_time", params.MaxStakingTime),
 				zap.Uint16("got_staking_time", stakingTime),
 			)
+
 			continue
 		}
 
@@ -151,6 +156,7 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 				zap.Int64("max_staking_value", int64(params.MaxStakingValue)),
 				zap.Int64("got_staking_value", int64(btcDel.TotalSat)),
 			)
+
 			continue
 		}
 
@@ -163,6 +169,7 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 				zap.String("slashing_tx_hex", btcDel.SlashingTxHex),
 				zap.Error(err),
 			)
+
 			continue
 		}
 
@@ -175,6 +182,7 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 				zap.String("unbonding_slashing_tx_hex", btcDel.BtcUndelegation.SlashingTxHex),
 				zap.Error(err),
 			)
+
 			continue
 		}
 
@@ -185,6 +193,7 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 				zap.Int64("expected_unbonding_fee", int64(params.UnbondingFee)),
 				zap.Int64("got_unbonding_fee", unbondingFee),
 			)
+
 			continue
 		}
 
@@ -194,12 +203,14 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 		fpsEncKeys, err := fpEncKeysFromDel(btcDel)
 		if err != nil {
 			ce.logger.Error("failed to encript the finality provider keys of the btc delegation", zap.String("staker_pk", stakerPkHex), zap.Error(err))
+
 			continue
 		}
 
 		slashingPkScriptPath, stakingTxUnbondingPkScriptPath, unbondingTxSlashingPkScriptPath, err := pkScriptPaths(btcDel, params, &ce.config.BTCNetParams, unbondingTx)
 		if err != nil {
 			ce.logger.Error("failed to generate pk script path", zap.Error(err))
+
 			continue
 		}
 
@@ -222,6 +233,7 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 				ce.logger.Error("error building stake expansion request",
 					zap.Error(err),
 				)
+
 				continue
 			}
 
@@ -232,6 +244,7 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 		resp, err := ce.SignTransactions(req)
 		if err != nil {
 			ce.logger.Error("failed to sign transactions", zap.Error(err))
+
 			continue
 		}
 
@@ -249,6 +262,7 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 	res, err := ce.cc.SubmitCovenantSigs(covenantSigs)
 	if err != nil {
 		ce.recordMetricsFailedSignDelegations(len(covenantSigs))
+
 		return nil, err
 	}
 
@@ -260,7 +274,7 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 	return res, nil
 }
 
-func (ce *CovenantEmulator) buildStkExpSigningRequest(
+func (ce *Emulator) buildStkExpSigningRequest(
 	stakerPkHex string,
 	btcDel *types.Delegation,
 ) (*SigningRequestStkExp, error) {
@@ -276,18 +290,21 @@ func (ce *CovenantEmulator) buildStkExpSigningRequest(
 			zap.String("stake_exp_tx_hash_hex", btcDel.StakeExpansion.PreviousStakingTxHashHex),
 			zap.Error(err),
 		)
+
 		return nil, err
 	}
 
 	prevDel, err := ce.cc.QueryBTCDelegation(btcDel.StakeExpansion.PreviousStakingTxHashHex)
 	if err != nil {
 		ce.logger.Error("failed to query stake expansion", zap.Error(err), zap.String("stk_exp_tx_hash_hex", btcDel.StakeExpansion.PreviousStakingTxHashHex))
+
 		return nil, err
 	}
 
 	previousActiveStkTx, _, err := bbntypes.NewBTCTxFromHex(prevDel.StakingTxHex)
 	if err != nil {
 		ce.logger.Error("failed to decode stake expansion tx", zap.Error(err), zap.String("stk_exp_tx_hash_hex", btcDel.StakeExpansion.PreviousStakingTxHashHex))
+
 		return nil, err
 	}
 
@@ -310,7 +327,7 @@ func (ce *CovenantEmulator) buildStkExpSigningRequest(
 }
 
 // SignTransactions calls the signer and record metrics about signing
-func (ce *CovenantEmulator) SignTransactions(signingReq SigningRequest) (*SignaturesResponse, error) {
+func (ce *Emulator) SignTransactions(signingReq SigningRequest) (*SignaturesResponse, error) {
 	// record metrics
 	startSignTime := time.Now()
 	metricsTimeKeeper.SetPreviousSignStart(&startSignTime)
@@ -371,6 +388,7 @@ func fpEncKeysFromDel(btcDel *types.Delegation) ([]*asig.EncryptionKey, error) {
 		encKey, err := asig.NewEncryptionKeyFromBTCPK(fpPk)
 		if err != nil {
 			fpPkHex := bbntypes.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex()
+
 			return nil, fmt.Errorf("failed to get encryption key from finality provider public key %s: %w", fpPkHex, err)
 		}
 		fpsEncKeys = append(fpsEncKeys, encKey)
@@ -384,7 +402,7 @@ func pkScriptPathUnbondingSlash(
 	unbondingTx *wire.MsgTx,
 	params *types.StakingParams,
 	btcNet *chaincfg.Params,
-) (unbondingTxSlashingScriptPath []byte, err error) {
+) ([]byte, error) {
 	unbondingInfo, err := btcstaking.BuildUnbondingInfo(
 		del.BtcPk,
 		del.FpBtcPks,
@@ -402,7 +420,7 @@ func pkScriptPathUnbondingSlash(
 	if err != nil {
 		return nil, err
 	}
-	unbondingTxSlashingScriptPath = unbondingTxSlashingPathInfo.GetPkScriptPath()
+	unbondingTxSlashingScriptPath := unbondingTxSlashingPathInfo.GetPkScriptPath()
 
 	return unbondingTxSlashingScriptPath, nil
 }
@@ -412,13 +430,13 @@ func pkScriptPaths(
 	params *types.StakingParams,
 	btcNet *chaincfg.Params,
 	unbondingTx *wire.MsgTx,
-) (slash, unbond, unbondSlash []byte, err error) {
-	slash, unbond, err = pkScriptPathSlashAndUnbond(del, params, btcNet)
+) ([]byte, []byte, []byte, error) {
+	slash, unbond, err := pkScriptPathSlashAndUnbond(del, params, btcNet)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	unbondSlash, err = pkScriptPathUnbondingSlash(del, unbondingTx, params, btcNet)
+	unbondSlash, err := pkScriptPathUnbondingSlash(del, unbondingTx, params, btcNet)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -430,7 +448,7 @@ func pkScriptPathSlashAndUnbond(
 	del *types.Delegation,
 	params *types.StakingParams,
 	btcNet *chaincfg.Params,
-) (slashingPkScriptPath, stakingTxUnbondingPkScriptPath []byte, err error) {
+) ([]byte, []byte, error) {
 	// sign slash signatures with every finality providers
 	stakingInfo, err := btcstaking.BuildStakingInfo(
 		del.BtcPk,
@@ -449,14 +467,14 @@ func pkScriptPathSlashAndUnbond(
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get slashing path info: %w", err)
 	}
-	slashingPkScriptPath = slashingPathInfo.GetPkScriptPath()
+	slashingPkScriptPath := slashingPathInfo.GetPkScriptPath()
 
 	// sign unbonding sig
 	stakingTxUnbondingPathInfo, err := stakingInfo.UnbondingPathSpendInfo()
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get unbonding path spend info")
 	}
-	stakingTxUnbondingPkScriptPath = stakingTxUnbondingPathInfo.GetPkScriptPath()
+	stakingTxUnbondingPkScriptPath := stakingTxUnbondingPathInfo.GetPkScriptPath()
 
 	return slashingPkScriptPath, stakingTxUnbondingPkScriptPath, nil
 }
@@ -527,7 +545,7 @@ func decodeUndelegationTransactions(del *types.Delegation, params *types.Staking
 }
 
 // delegationsToBatches takes a list of delegations and splits them into batches
-func (ce *CovenantEmulator) delegationsToBatches(dels []*types.Delegation) [][]*types.Delegation {
+func (ce *Emulator) delegationsToBatches(dels []*types.Delegation) [][]*types.Delegation {
 	batchSize := ce.config.SigsBatchSize
 	batches := make([][]*types.Delegation, 0)
 
@@ -555,6 +573,7 @@ func IsKeyInCommittee(paramCache ParamsGetter, covenantSerializedPk []byte, del 
 		if !bytes.Equal(remoteKey, covenantSerializedPk) {
 			continue
 		}
+
 		return true, nil
 	}
 
@@ -562,7 +581,7 @@ func IsKeyInCommittee(paramCache ParamsGetter, covenantSerializedPk []byte, del 
 }
 
 // CovenantAlreadySigned returns true if the covenant already signed the BTC Delegation
-func CovenantAlreadySigned(covenantSerializedPk []byte, del *types.Delegation) bool {
+func AlreadySigned(covenantSerializedPk []byte, del *types.Delegation) bool {
 	for _, covSig := range del.CovenantSigs {
 		remoteKey := schnorr.SerializePubKey(covSig.Pk)
 		if !bytes.Equal(remoteKey, covenantSerializedPk) {
@@ -576,7 +595,7 @@ func CovenantAlreadySigned(covenantSerializedPk []byte, del *types.Delegation) b
 }
 
 // acceptDelegationToSign verifies if the delegation should be accepted to sign.
-func (ce *CovenantEmulator) acceptDelegationToSign(del *types.Delegation) (bool, error) {
+func (ce *Emulator) acceptDelegationToSign(del *types.Delegation) (bool, error) {
 	var prevDel *types.Delegation
 	var err error
 	if del.IsStakeExpansion() {
@@ -601,7 +620,7 @@ func AcceptDelegationToSign(
 	covenantSerializedPk := schnorr.SerializePubKey(pk)
 	// 1. Check if the delegation does not need the covenant's signature because
 	// this covenant already signed
-	if CovenantAlreadySigned(covenantSerializedPk, del) {
+	if AlreadySigned(covenantSerializedPk, del) {
 		return false, nil
 	}
 
@@ -665,7 +684,7 @@ func ValidateStakeExpansion(
 }
 
 // covenantSigSubmissionLoop is the reactor to submit Covenant signature for BTC delegations
-func (ce *CovenantEmulator) covenantSigSubmissionLoop() {
+func (ce *Emulator) covenantSigSubmissionLoop() {
 	defer ce.wg.Done()
 
 	interval := ce.config.QueryInterval
@@ -716,7 +735,7 @@ func (ce *CovenantEmulator) covenantSigSubmissionLoop() {
 	}
 }
 
-func (ce *CovenantEmulator) metricsUpdateLoop() {
+func (ce *Emulator) metricsUpdateLoop() {
 	defer ce.wg.Done()
 
 	interval := ce.config.Metrics.UpdateInterval
@@ -737,19 +756,19 @@ func (ce *CovenantEmulator) metricsUpdateLoop() {
 	}
 }
 
-func (ce *CovenantEmulator) recordMetricsFailedSignDelegations(n int) {
+func (ce *Emulator) recordMetricsFailedSignDelegations(n int) {
 	failedSignDelegations.WithLabelValues(ce.PublicKeyStr()).Add(float64(n))
 }
 
-func (ce *CovenantEmulator) recordMetricsTotalSignDelegationsSubmitted(n int) {
+func (ce *Emulator) recordMetricsTotalSignDelegationsSubmitted(n int) {
 	totalSignDelegationsSubmitted.WithLabelValues(ce.PublicKeyStr()).Add(float64(n))
 }
 
-func (ce *CovenantEmulator) recordMetricsCurrentPendingDelegations(n int) {
+func (ce *Emulator) recordMetricsCurrentPendingDelegations(n int) {
 	currentPendingDelegations.WithLabelValues(ce.PublicKeyStr()).Set(float64(n))
 }
 
-func (ce *CovenantEmulator) Start() error {
+func (ce *Emulator) Start() error {
 	var startErr error
 	ce.startOnce.Do(func() {
 		ce.logger.Info("Starting Covenant Emulator")
@@ -762,7 +781,7 @@ func (ce *CovenantEmulator) Start() error {
 	return startErr
 }
 
-func (ce *CovenantEmulator) Stop() error {
+func (ce *Emulator) Stop() error {
 	var stopErr error
 	ce.stopOnce.Do(func() {
 		ce.logger.Info("Stopping Covenant Emulator")
@@ -779,7 +798,7 @@ func (ce *CovenantEmulator) Stop() error {
 // CheckReadiness checks if the covenant emulator is ready to serve requests.
 // It verifies internal state (if the main loop is running) and connectivity to
 // dependencies (remote signer).
-func (ce *CovenantEmulator) CheckReadiness() error {
+func (ce *Emulator) CheckReadiness() error {
 	select {
 	case <-ce.quit:
 		return fmt.Errorf("emulator is not running")

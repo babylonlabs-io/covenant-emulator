@@ -113,7 +113,7 @@ func FuzzAddCovenantSig(f *testing.F) {
 		mockClientController := testutil.PrepareMockedClientController(t, params)
 
 		// create and start covenant emulator
-		ce, err := covenant.NewCovenantEmulator(&covenantConfig, mockClientController, zap.NewNop(), signer)
+		ce, err := covenant.NewEmulator(&covenantConfig, mockClientController, zap.NewNop(), signer)
 		require.NoError(t, err)
 
 		numDels := datagen.RandomInt(r, 3) + 1
@@ -394,6 +394,7 @@ func NewMockParam(p map[uint32]*types.StakingParams) *MockParamGetter {
 
 func (m *MockParamGetter) Get(version uint32) (*types.StakingParams, error) {
 	p := m.paramsByVersion[version]
+
 	return p, nil
 }
 

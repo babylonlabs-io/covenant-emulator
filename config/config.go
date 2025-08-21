@@ -61,7 +61,7 @@ type Config struct {
 func LoadConfig(homePath string) (*Config, error) {
 	// The home directory is required to have a configuration file with a specific name
 	// under it.
-	cfgFile := ConfigFile(homePath)
+	cfgFile := File(homePath)
 	if !util.FileExists(cfgFile) {
 		return nil, fmt.Errorf("specified config file does "+
 			"not exist in %s", cfgFile)
@@ -113,7 +113,7 @@ func (cfg *Config) Validate() error {
 	return nil
 }
 
-func ConfigFile(homePath string) string {
+func File(homePath string) string {
 	return filepath.Join(homePath, defaultConfigFileName)
 }
 

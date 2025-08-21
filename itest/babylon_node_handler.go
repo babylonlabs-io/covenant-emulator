@@ -109,6 +109,7 @@ func (n *babylonNode) shutdown() error {
 	if err := n.cleanup(); err != nil {
 		return err
 	}
+
 	return nil
 }
 

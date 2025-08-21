@@ -38,6 +38,7 @@ func AllocateUniquePort(t *testing.T) (int, string) {
 		if _, exists := allocatedPorts[port]; exists {
 			// Port already allocated, try another one
 			portMutex.Unlock()
+
 			continue
 		}
 
@@ -45,6 +46,7 @@ func AllocateUniquePort(t *testing.T) (int, string) {
 		listener, err := net.Listen("tcp", url)
 		if err != nil {
 			portMutex.Unlock()
+
 			continue
 		}
 

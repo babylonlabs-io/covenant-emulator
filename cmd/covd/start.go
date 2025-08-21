@@ -67,7 +67,7 @@ func start(ctx *cli.Context) error {
 	}
 	logger.Info("Remote signer health check passed")
 
-	ce, err := covenant.NewCovenantEmulator(cfg, bbnClient, logger, signer)
+	ce, err := covenant.NewEmulator(cfg, bbnClient, logger, signer)
 	if err != nil {
 		return fmt.Errorf("failed to start the covenant emulator: %w", err)
 	}

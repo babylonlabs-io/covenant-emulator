@@ -50,7 +50,7 @@ var (
 type TestManager struct {
 	Wg               sync.WaitGroup
 	BabylonHandler   *BabylonNodeHandler
-	CovenantEmulator *covenant.CovenantEmulator
+	CovenantEmulator *covenant.Emulator
 	CovenanConfig    *covcfg.Config
 	CovBBNClient     *covcc.BabylonController
 	StakingParams    *types.StakingParams
@@ -165,7 +165,7 @@ func StartManager(t *testing.T, hmacKey string) *TestManager {
 
 	require.NoError(t, err)
 
-	ce, err := covenant.NewCovenantEmulator(covenantConfig, covbc, logger, signer)
+	ce, err := covenant.NewEmulator(covenantConfig, covbc, logger, signer)
 	require.NoError(t, err)
 	err = ce.Start()
 	require.NoError(t, err)

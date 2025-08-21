@@ -71,7 +71,7 @@ func createKey(ctx *cli.Context) error {
 	// check the config file exists
 	cfg, err := covcfg.LoadConfig(homePath)
 	if err != nil {
-		return fmt.Errorf("failed to load the config from %s: %w", covcfg.ConfigFile(homePath), err)
+		return fmt.Errorf("failed to load the config from %s: %w", covcfg.File(homePath), err)
 	}
 
 	keyPair, err := keyring.CreateCovenantKey(
@@ -100,7 +100,7 @@ func createKey(ctx *cli.Context) error {
 	cfg.BabylonConfig.KeyringBackend = keyBackend
 	fileParser := flags.NewParser(cfg, flags.Default)
 
-	return flags.NewIniParser(fileParser).WriteFile(covcfg.ConfigFile(homePath), flags.IniIncludeComments|flags.IniIncludeDefaults)
+	return flags.NewIniParser(fileParser).WriteFile(covcfg.File(homePath), flags.IniIncludeComments|flags.IniIncludeDefaults)
 }
 
 var showKeyCommand = cli.Command{
@@ -178,6 +178,7 @@ func showKey(ctx *cli.Context) error {
 			BabylonAddr: babylonAddr.String(),
 		},
 	)
+
 	return nil
 }
 
@@ -185,6 +186,7 @@ func printRespJSON(resp interface{}) {
 	jsonBytes, err := json.MarshalIndent(resp, "", "    ")
 	if err != nil {
 		fmt.Println("unable to decode response: ", err)
+
 		return
 	}
 
