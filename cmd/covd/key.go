@@ -26,7 +26,7 @@ var createKeyCommand = cli.Command{
 	Usage:     "Create a Covenant account in the keyring.",
 	Flags: []cli.Flag{
 		cli.StringFlag{
-			Name:  chainIdFlag,
+			Name:  chainIDFlag,
 			Usage: "The chainID of the consumer chain",
 			Value: defaultChainID,
 		},
@@ -61,7 +61,7 @@ var createKeyCommand = cli.Command{
 
 func createKey(ctx *cli.Context) error {
 	homePath := ctx.String(homeFlag)
-	chainID := ctx.String(chainIdFlag)
+	chainID := ctx.String(chainIDFlag)
 	keyName := ctx.String(keyNameFlag)
 	backend := ctx.String(keyringBackendFlag)
 	passphrase := ctx.String(passphraseFlag)
@@ -109,7 +109,7 @@ var showKeyCommand = cli.Command{
 	Usage:     "Show a Covenant account in the keyring.",
 	Flags: []cli.Flag{
 		cli.StringFlag{
-			Name:  chainIdFlag,
+			Name:  chainIDFlag,
 			Usage: "The chainID of the consumer chain",
 			Value: defaultChainID,
 		},
@@ -139,7 +139,7 @@ var showKeyCommand = cli.Command{
 
 func showKey(ctx *cli.Context) error {
 	homePath := ctx.String(homeFlag)
-	chainID := ctx.String(chainIdFlag)
+	chainID := ctx.String(chainIDFlag)
 	keyName := ctx.String(keyNameFlag)
 	backend := ctx.String(keyringBackendFlag)
 	passphrase := ctx.String(passphraseFlag)

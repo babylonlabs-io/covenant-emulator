@@ -58,10 +58,7 @@ func start(ctx *cli.Context) error {
 		return fmt.Errorf("failed to create rpc client for the consumer chain: %w", err)
 	}
 
-	signer, err := newRemoteSignerFromConfig(cfg)
-	if err != nil {
-		return fmt.Errorf("failed to create remote signer from config: %w", err)
-	}
+	signer := newRemoteSignerFromConfig(cfg)
 
 	// Perform health check on the remote signer
 	logger.Info("Performing health check on remote signer...")
@@ -82,13 +79,10 @@ func start(ctx *cli.Context) error {
 	}
 
 	srv := covsrv.NewCovenantServer(logger, ce, shutdownInterceptor)
-	if err != nil {
-		return fmt.Errorf("failed to create covenant server: %w", err)
-	}
 
 	return srv.RunUntilShutdown()
 }
 
-func newRemoteSignerFromConfig(cfg *covcfg.Config) (covenant.Signer, error) {
-	return remotesigner.NewRemoteSigner(cfg.RemoteSigner), nil
+func newRemoteSignerFromConfig(cfg *covcfg.Config) covenant.Signer {
+	return remotesigner.NewRemoteSigner(cfg.RemoteSigner)
 }

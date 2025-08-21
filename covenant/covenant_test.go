@@ -407,7 +407,7 @@ func NewMockParamError(err error) *MockParamError {
 	}
 }
 
-func (m *MockParamError) Get(version uint32) (*types.StakingParams, error) {
+func (m *MockParamError) Get(_ uint32) (*types.StakingParams, error) {
 	return nil, m.err
 }
 
@@ -539,5 +539,4 @@ func TestValidateStakeExpansion(t *testing.T) {
 		require.False(t, valid)
 		require.EqualError(t, err, "failed to decode previous delegation staking tx: encoding/hex: invalid byte: U+0069 'i'")
 	})
-
 }

@@ -568,6 +568,7 @@ func CovenantAlreadySigned(covenantSerializedPk []byte, del *types.Delegation) b
 		if !bytes.Equal(remoteKey, covenantSerializedPk) {
 			continue
 		}
+
 		return true
 	}
 
@@ -575,14 +576,16 @@ func CovenantAlreadySigned(covenantSerializedPk []byte, del *types.Delegation) b
 }
 
 // acceptDelegationToSign verifies if the delegation should be accepted to sign.
-func (ce *CovenantEmulator) acceptDelegationToSign(del *types.Delegation) (accept bool, err error) {
+func (ce *CovenantEmulator) acceptDelegationToSign(del *types.Delegation) (bool, error) {
 	var prevDel *types.Delegation
+	var err error
 	if del.IsStakeExpansion() {
 		prevDel, err = ce.cc.QueryBTCDelegation(del.StakeExpansion.PreviousStakingTxHashHex)
 		if err != nil {
 			return false, fmt.Errorf("failed to query previous delegation for stake expansion: %w", err)
 		}
 	}
+
 	return AcceptDelegationToSign(ce.pk, ce.paramCache, del, prevDel)
 }
 
@@ -594,7 +597,7 @@ func AcceptDelegationToSign(
 	paramCache ParamsGetter,
 	del *types.Delegation,
 	prevDel *types.Delegation, // for stake expansion, previous delegation
-) (accept bool, err error) {
+) (bool, error) {
 	covenantSerializedPk := schnorr.SerializePubKey(pk)
 	// 1. Check if the delegation does not need the covenant's signature because
 	// this covenant already signed
@@ -679,6 +682,7 @@ func (ce *CovenantEmulator) covenantSigSubmissionLoop() {
 			dels, err := ce.cc.QueryPendingDelegations(limit, ce.acceptDelegationToSign)
 			if err != nil {
 				ce.logger.Debug("failed to get pending delegations", zap.Error(err))
+
 				continue
 			}
 
@@ -688,6 +692,7 @@ func (ce *CovenantEmulator) covenantSigSubmissionLoop() {
 
 			if pendingDels == 0 {
 				ce.logger.Debug("no pending delegations are found")
+
 				continue
 			}
 
@@ -705,10 +710,10 @@ func (ce *CovenantEmulator) covenantSigSubmissionLoop() {
 
 		case <-ce.quit:
 			ce.logger.Debug("exiting covenant signature submission loop")
+
 			return
 		}
 	}
-
 }
 
 func (ce *CovenantEmulator) metricsUpdateLoop() {
@@ -726,6 +731,7 @@ func (ce *CovenantEmulator) metricsUpdateLoop() {
 		case <-ce.quit:
 			updateTicker.Stop()
 			ce.logger.Info("exiting metrics update loop")
+
 			return
 		}
 	}
@@ -766,6 +772,7 @@ func (ce *CovenantEmulator) Stop() error {
 
 		ce.logger.Debug("Covenant Emulator successfully stopped")
 	})
+
 	return stopErr
 }
 

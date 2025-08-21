@@ -24,7 +24,6 @@ import (
 	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/keystore/cosmos"
 	signerMetrics "github.com/babylonlabs-io/covenant-emulator/covenant-signer/observability/metrics"
 	signerApp "github.com/babylonlabs-io/covenant-emulator/covenant-signer/signerapp"
-	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/signerservice"
 	signerService "github.com/babylonlabs-io/covenant-emulator/covenant-signer/signerservice"
 	"github.com/babylonlabs-io/covenant-emulator/remotesigner"
 	"github.com/babylonlabs-io/covenant-emulator/types"
@@ -141,7 +140,7 @@ func StartManager(t *testing.T, hmacKey string) *TestManager {
 	time.Sleep(3 * time.Second)
 
 	// unlock the signer before usage
-	err = signerservice.Unlock(
+	err = signerService.Unlock(
 		context.Background(),
 		covenantConfig.RemoteSigner.URL,
 		covenantConfig.RemoteSigner.Timeout,
@@ -193,6 +192,7 @@ func (tm *TestManager) WaitForServicesStart(t *testing.T) {
 			return false
 		}
 		tm.StakingParams = params
+
 		return true
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
@@ -248,6 +248,7 @@ func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*btc
 		fps, err := tm.CovBBNClient.QueryFinalityProviders()
 		if err != nil {
 			t.Logf("failed to query finality providers from Babylon %s", err.Error())
+
 			return false
 		}
 
@@ -296,6 +297,7 @@ func (tm *TestManager) WaitForNPendingDels(t *testing.T, n int) []*types.Delegat
 		if err != nil {
 			return false
 		}
+
 		return len(dels) == n
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
@@ -315,6 +317,7 @@ func (tm *TestManager) waitForNDelsWithStatus(t *testing.T, n int, queryFunc fun
 		if err != nil {
 			return false
 		}
+
 		return len(dels) == n
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
@@ -483,7 +486,7 @@ func (tm *TestManager) InsertStakeExpansionDelegation(
 	stakingTime uint16,
 	stakingAmount int64,
 	prevStakingTx *wire.MsgTx,
-	isPreApproval bool,
+	_ bool,
 ) *TestDelegationData {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	params := tm.StakingParams

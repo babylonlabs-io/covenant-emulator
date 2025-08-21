@@ -60,6 +60,7 @@ func AllocateUniquePort(t *testing.T) (int, string) {
 
 	// If no available port was found, fail the test
 	t.Fatalf("failed to find an available port in range %d-%d", basePort, basePort+portRange)
+
 	return 0, ""
 }
 
