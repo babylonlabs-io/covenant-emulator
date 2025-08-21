@@ -36,17 +36,17 @@ func addHMACHeader(req *http.Request, hmacKey string, body []byte) error {
 	if hmacValue != "" {
 		req.Header.Set(middlewares.HeaderCovenantHMAC, hmacValue)
 	}
+
 	return nil
 }
 
 func RequestCovenantSignaure(
 	ctx context.Context,
-	signerUrl string,
+	signerURL string,
 	timeout time.Duration,
 	preq *signerapp.ParsedSigningRequest,
 	hmacKey string,
 ) (*signerapp.ParsedSigningResponse, error) {
-
 	req, err := types.ToSignTransactionRequest(preq)
 
 	if err != nil {
@@ -59,9 +59,9 @@ func RequestCovenantSignaure(
 		return nil, err
 	}
 
-	route := fmt.Sprintf("%s/v1/sign-transactions", signerUrl)
+	route := fmt.Sprintf("%s/v1/sign-transactions", signerURL)
 
-	httpRequest, err := http.NewRequestWithContext(ctx, "POST", route, bytes.NewReader(marshalled))
+	httpRequest, err := http.NewRequestWithContext(ctx, http.MethodPost, route, bytes.NewReader(marshalled))
 
 	if err != nil {
 		return nil, err
@@ -105,10 +105,10 @@ func RequestCovenantSignaure(
 	return types.ToParsedSigningResponse(&response.Data)
 }
 
-func GetPublicKey(ctx context.Context, signerUrl string, timeout time.Duration, hmacKey string) (*btcec.PublicKey, error) {
-	route := fmt.Sprintf("%s/v1/public-key", signerUrl)
+func GetPublicKey(ctx context.Context, signerURL string, timeout time.Duration, hmacKey string) (*btcec.PublicKey, error) {
+	route := fmt.Sprintf("%s/v1/public-key", signerURL)
 
-	httpRequest, err := http.NewRequestWithContext(ctx, "GET", route, nil)
+	httpRequest, err := http.NewRequestWithContext(ctx, http.MethodGet, route, nil)
 
 	if err != nil {
 		return nil, err
@@ -152,8 +152,8 @@ func GetPublicKey(ctx context.Context, signerUrl string, timeout time.Duration, 
 	return btcec.ParsePubKey(pubKey)
 }
 
-func Unlock(ctx context.Context, signerUrl string, timeout time.Duration, passphrase string, hmacKey string) error {
-	route := fmt.Sprintf("%s/v1/unlock", signerUrl)
+func Unlock(ctx context.Context, signerURL string, timeout time.Duration, passphrase string, hmacKey string) error {
+	route := fmt.Sprintf("%s/v1/unlock", signerURL)
 
 	req := &types.UnlockRequest{
 		Passphrase: passphrase,
@@ -164,7 +164,7 @@ func Unlock(ctx context.Context, signerUrl string, timeout time.Duration, passph
 		return err
 	}
 
-	httpRequest, err := http.NewRequestWithContext(ctx, "POST", route, bytes.NewReader(marshalled))
+	httpRequest, err := http.NewRequestWithContext(ctx, http.MethodPost, route, bytes.NewReader(marshalled))
 
 	if err != nil {
 		return err
@@ -203,10 +203,10 @@ func Unlock(ctx context.Context, signerUrl string, timeout time.Duration, passph
 	return nil
 }
 
-func Lock(ctx context.Context, signerUrl string, timeout time.Duration, hmacKey string) error {
-	route := fmt.Sprintf("%s/v1/lock", signerUrl)
+func Lock(ctx context.Context, signerURL string, timeout time.Duration, hmacKey string) error {
+	route := fmt.Sprintf("%s/v1/lock", signerURL)
 	var emptyBody []byte
-	httpRequest, err := http.NewRequestWithContext(ctx, "POST", route, bytes.NewReader(emptyBody))
+	httpRequest, err := http.NewRequestWithContext(ctx, http.MethodPost, route, bytes.NewReader(emptyBody))
 
 	if err != nil {
 		return err

@@ -25,6 +25,7 @@ func HMACAuthMiddleware(hmacKey string) func(next http.Handler) http.Handler {
 			// Skip HMAC verification if no key is configured
 			if hmacKey == "" {
 				next.ServeHTTP(w, r)
+
 				return
 			}
 
@@ -32,6 +33,7 @@ func HMACAuthMiddleware(hmacKey string) func(next http.Handler) http.Handler {
 			if receivedHMAC == "" {
 				log.Debug().Msg("Request rejected: Missing HMAC header")
 				RespondWithError(w, types.NewUnauthorizedError("missing HMAC authentication header"))
+
 				return
 			}
 
@@ -39,6 +41,7 @@ func HMACAuthMiddleware(hmacKey string) func(next http.Handler) http.Handler {
 			if err != nil {
 				log.Error().Err(err).Msg("Failed to read request body for HMAC verification")
 				RespondWithError(w, types.NewInternalServiceError(err))
+
 				return
 			}
 
@@ -48,12 +51,14 @@ func HMACAuthMiddleware(hmacKey string) func(next http.Handler) http.Handler {
 			if err != nil {
 				log.Error().Err(err).Msg("Error validating HMAC")
 				RespondWithError(w, types.NewInternalServiceError(err))
+
 				return
 			}
 
 			if !valid {
 				log.Debug().Msg("Request rejected: Invalid HMAC")
 				RespondWithError(w, types.NewUnauthorizedError("invalid HMAC authentication"))
+
 				return
 			}
 

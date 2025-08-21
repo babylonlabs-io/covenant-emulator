@@ -21,19 +21,23 @@ var parsePathTests = []struct {
 }
 
 func TestParsePath(t *testing.T) {
+	t.Parallel()
+
 	for _, tt := range parsePathTests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			got, err := ParsePath(tt.path)
 
 			if tt.wantErr {
 				require.Error(t, err)
+
 				return
-			} else {
-				require.NoError(t, err)
 			}
+			require.NoError(t, err)
 
 			if len(got) != len(tt.expected) {
 				t.Errorf("ParsePath() got length = %v, want length = %v", len(got), len(tt.expected))
+
 				return
 			}
 			for i := range got {
@@ -72,8 +76,11 @@ var deriveKeyTests = []struct {
 }
 
 func TestDeriveKey(t *testing.T) {
+	t.Parallel()
+
 	for _, tt := range deriveKeyTests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			got, err := DeriveChildKey(tt.masterPrivKey, tt.derivationPath)
 			require.NoError(t, err)
 			require.Equal(t, tt.expectedPublicKey, got.PublicKey)

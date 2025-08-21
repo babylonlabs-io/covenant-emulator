@@ -19,6 +19,6 @@ func NewImageConfig() ImageConfig {
 		BitcoindRepository: dockerBitcoindRepository,
 		BitcoindVersion:    dockerBitcoindVersionTag,
 	}
-	return config
 
+	return config
 }

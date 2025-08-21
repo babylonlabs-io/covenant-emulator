@@ -84,7 +84,6 @@ func ParsePath(path string) ([]uint32, error) {
 	}
 
 	return []uint32{h1, h2, h3, n4, n5}, nil
-
 }
 
 type DerivationResult struct {
