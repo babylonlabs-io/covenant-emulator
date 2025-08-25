@@ -29,15 +29,17 @@ type Manager struct {
 
 // NewManager creates a new Manager instance and initializes
 // all Docker specific utilities. Returns an error if initialization fails.
-func NewManager() (docker *Manager, err error) {
-	docker = &Manager{
+func NewManager() (*Manager, error) {
+	docker := &Manager{
 		cfg:       NewImageConfig(),
 		resources: make(map[string]*dockertest.Resource),
 	}
+	var err error
 	docker.pool, err = dockertest.NewPool("")
 	if err != nil {
 		return nil, err
 	}
+
 	return docker, nil
 }
 
@@ -45,6 +47,7 @@ func (m *Manager) ExecBitcoindCliCmd(t *testing.T, command []string) (bytes.Buff
 	// this is currently hardcoded, as it will be the same for all tests
 	cmd := []string{"bitcoin-cli", "-chain=regtest", "-rpcuser=user", "-rpcpassword=pass"}
 	cmd = append(cmd, command...)
+
 	return m.ExecCmd(t, bitcoindContainerName, cmd)
 }
 
@@ -55,7 +58,7 @@ func (m *Manager) ExecCmd(t *testing.T, containerName string, command []string) 
 	if _, ok := m.resources[containerName]; !ok {
 		return bytes.Buffer{}, bytes.Buffer{}, fmt.Errorf("no resource %s found", containerName)
 	}
-	containerId := m.resources[containerName].Container.ID
+	containerID := m.resources[containerName].Container.ID
 
 	var (
 		outBuf bytes.Buffer
@@ -77,13 +80,14 @@ func (m *Manager) ExecCmd(t *testing.T, containerName string, command []string) 
 				Context:      ctx,
 				AttachStdout: true,
 				AttachStderr: true,
-				Container:    containerId,
+				Container:    containerID,
 				User:         "root",
 				Cmd:          command,
 			})
 
 			if err != nil {
 				t.Logf("failed to create exec: %v", err)
+
 				return false
 			}
 
@@ -95,6 +99,7 @@ func (m *Manager) ExecCmd(t *testing.T, containerName string, command []string) 
 			})
 			if err != nil {
 				t.Logf("failed to start exec: %v", err)
+
 				return false
 			}
 
@@ -108,6 +113,7 @@ func (m *Manager) ExecCmd(t *testing.T, containerName string, command []string) 
 
 				t.Log("\nstdout:")
 				t.Log(outBuf.String())
+
 				return false
 			}
 
@@ -164,6 +170,7 @@ func (m *Manager) RunBitcoindResource(
 		return nil, err
 	}
 	m.resources[bitcoindContainerName] = bitcoindResource
+
 	return bitcoindResource, nil
 }
 

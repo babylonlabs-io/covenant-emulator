@@ -44,7 +44,6 @@ func NewBabylonController(
 	btcParams *chaincfg.Params,
 	logger *zap.Logger,
 ) (*BabylonController, error) {
-
 	bbnConfig := config.BBNConfigToBabylonConfig(cfg)
 
 	if err := bbnConfig.Validate(); err != nil {
@@ -70,6 +69,7 @@ func NewBabylonController(
 func (bc *BabylonController) mustGetTxSigner() string {
 	signer := bc.GetKeyAddress()
 	prefix := bc.cfg.AccountPrefix
+
 	return sdk.MustBech32ifyAddressBytes(prefix, signer)
 }
 
@@ -98,13 +98,13 @@ func (bc *BabylonController) QueryStakingParamsByVersion(version uint32) (*types
 	// query btc checkpoint params
 	ckptParamRes, err := bc.bbnClient.QueryClient.BTCCheckpointParams()
 	if err != nil {
-		return nil, fmt.Errorf("failed to query params of the btccheckpoint module: %v", err)
+		return nil, fmt.Errorf("failed to query params of the btccheckpoint module: %w", err)
 	}
 
 	// query btc staking params
 	stakingParamRes, err := bc.bbnClient.QueryClient.BTCStakingParamsByVersion(version)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query staking params with version %d: %v", version, err)
+		return nil, fmt.Errorf("failed to query staking params with version %d: %w", version, err)
 	}
 
 	covenantPks := make([]*btcec.PublicKey, 0, len(stakingParamRes.Params.CovenantPks))
@@ -210,8 +210,9 @@ func (bc *BabylonController) QueryVerifiedDelegations(limit uint64) ([]*types.De
 func (bc *BabylonController) QueryBTCDelegation(stakingTxHashHex string) (*types.Delegation, error) {
 	resp, err := bc.bbnClient.QueryClient.BTCDelegation(stakingTxHashHex)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query BTC delegation %s: %v", stakingTxHashHex, err)
+		return nil, fmt.Errorf("failed to query BTC delegation %s: %w", stakingTxHashHex, err)
 	}
+
 	return DelegationRespToDelegation(resp.BtcDelegation)
 }
 
@@ -230,7 +231,7 @@ func (bc *BabylonController) queryDelegationsWithStatus(status btcstakingtypes.B
 	for indexDels < delsLimit {
 		res, err := bc.bbnClient.QueryClient.BTCDelegations(status, pagination)
 		if err != nil {
-			return nil, fmt.Errorf("failed to query BTC delegations: %v", err)
+			return nil, fmt.Errorf("failed to query BTC delegations: %w", err)
 		}
 
 		for _, delResp := range res.BtcDelegations {
@@ -271,6 +272,7 @@ func (bc *BabylonController) queryDelegationsWithStatus(status btcstakingtypes.B
 
 func getContextWithCancel(timeout time.Duration) (context.Context, context.CancelFunc) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+
 	return ctx, cancel
 }
 
@@ -557,7 +559,7 @@ func (bc *BabylonController) QueryFinalityProviders() ([]*btcstakingtypes.Finali
 		}
 		res, err := queryClient.FinalityProviders(ctx, queryRequest)
 		if err != nil {
-			return nil, fmt.Errorf("failed to query finality providers: %v", err)
+			return nil, fmt.Errorf("failed to query finality providers: %w", err)
 		}
 		fps = append(fps, res.FinalityProviders...)
 		if res.Pagination == nil || res.Pagination.NextKey == nil {
@@ -582,7 +584,7 @@ func (bc *BabylonController) QueryBtcLightClientTip() (*btclctypes.BTCHeaderInfo
 	queryRequest := &btclctypes.QueryTipRequest{}
 	res, err := queryClient.Tip(ctx, queryRequest)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query BTC tip: %v", err)
+		return nil, fmt.Errorf("failed to query BTC tip: %w", err)
 	}
 
 	return res.Header, nil

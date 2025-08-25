@@ -19,7 +19,7 @@ func init() {
 var runSignerCmd = &cobra.Command{
 	Use:   "start",
 	Short: "starts the signer service",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		configPath, err := cmd.Flags().GetString(configPathKey)
 		if err != nil {
 			return err
@@ -67,7 +67,7 @@ var runSignerCmd = &cobra.Command{
 
 		m.Start(metricsAddress, metrics.Registry)
 
-		// TODO: Add signal handling and gracefull shutdown
+		// TODO: Add signal handling and graceful shutdown
 		return srv.Start()
 	},
 }

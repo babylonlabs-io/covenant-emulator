@@ -1,5 +1,4 @@
 //go:build e2e
-// +build e2e
 
 package e2etest
 
@@ -65,7 +64,7 @@ func StartManager(
 		appConfig.Server.HMACKey = hmacKey
 	}
 
-	var retriever *cosmos.CosmosKeyringRetriever
+	var retriever *cosmos.KeyringRetriever
 
 	if useEncryptedFileKeyRing {
 		appConfig.KeyStore.KeyStoreType = "cosmos"

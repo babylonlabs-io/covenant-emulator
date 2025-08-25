@@ -65,6 +65,7 @@ func (h *Handler) Unlock(request *http.Request) (*Result, *types.Error) {
 	err = h.s.Unlock(request.Context(), payload.Passphrase)
 	if err != nil {
 		h.m.IncFailedUnlockRequests()
+
 		return nil, types.NewErrorWithMsg(http.StatusBadRequest, types.BadRequest, err.Error())
 	}
 

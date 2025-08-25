@@ -20,8 +20,8 @@ type SigningServer struct {
 	handler    *handlers.Handler
 }
 
-func (a *SigningServer) SetupRoutes(r *chi.Mux) {
-	handler := a.handler
+func (s *SigningServer) SetupRoutes(r *chi.Mux) {
+	handler := s.handler
 	r.Post("/v1/sign-transactions", registerHandler(handler.SignTransactions))
 	r.Post("/v1/unlock", registerHandler(handler.Unlock))
 	r.Post("/v1/lock", registerHandler(handler.Lock))
@@ -71,11 +71,13 @@ func New(
 		handler:    h,
 	}
 	server.SetupRoutes(r)
+
 	return server, nil
 }
 
 func (s *SigningServer) Start() error {
 	log.Info().Msgf("Starting server on %s", s.httpServer.Addr)
+
 	return s.httpServer.ListenAndServe()
 }
 

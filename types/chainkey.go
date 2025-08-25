@@ -22,6 +22,7 @@ func NewChainKeyInfo(
 	if err != nil {
 		return nil, err
 	}
+
 	return &ChainKeyInfo{
 		KeyOutput:  keyOut,
 		PublicKey:  pk,

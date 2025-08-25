@@ -64,12 +64,14 @@ func (ps *PrometheusServer) readinessHandler(w http.ResponseWriter, r *http.Requ
 	if ps.readinessChecker == nil {
 		ps.logger.Error("Readiness checker not configured")
 		http.Error(w, "Readiness checker not configured", http.StatusInternalServerError)
+
 		return
 	}
 
 	if err := ps.readinessChecker.CheckReadiness(); err != nil {
 		ps.logger.Error("Readiness check failed", zap.Error(err))
 		http.Error(w, err.Error(), http.StatusServiceUnavailable)
+
 		return
 	}
 

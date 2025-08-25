@@ -55,6 +55,7 @@ func (h *BitcoindTestHandler) Start() {
 	require.Eventually(h.t, func() bool {
 		_, err := h.GetBlockCount()
 		h.t.Logf("failed to get block count: %v", err)
+
 		return err == nil
 	}, startTimeout, 500*time.Millisecond, "bitcoind did not start")
 }
