@@ -28,6 +28,7 @@ func covenantRequestToSignerRequest(req covenant.SigningRequest) *signerapp.Pars
 	if req.StakeExp != nil {
 		parsedReq.StakeExp = covenantRequestToSignerRequestStkExp(*req.StakeExp)
 	}
+
 	return parsedReq
 }
 

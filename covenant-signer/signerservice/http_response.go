@@ -9,19 +9,19 @@ import (
 	logger "github.com/rs/zerolog"
 )
 
-type ErrorResponse struct {
+type HTTPResponseError struct {
 	ErrorCode string `json:"errorCode"`
 	Message   string `json:"message"`
 }
 
-func newInternalServiceError() *ErrorResponse {
-	return &ErrorResponse{
+func newInternalServiceError() *HTTPResponseError {
+	return &HTTPResponseError{
 		ErrorCode: types.InternalServiceError.String(),
 		Message:   "Internal service error",
 	}
 }
 
-func (e *ErrorResponse) Error() string {
+func (e *HTTPResponseError) Error() string {
 	return e.Message
 }
 
@@ -38,7 +38,7 @@ func registerHandler(handlerFunc func(*http.Request) (*handlers.Result, *types.E
 				err.StatusCode = http.StatusInternalServerError
 			}
 
-			errorResponse := &ErrorResponse{
+			errorResponse := &HTTPResponseError{
 				ErrorCode: string(err.ErrorCode),
 				Message:   err.Err.Error(),
 			}
@@ -49,6 +49,7 @@ func registerHandler(handlerFunc func(*http.Request) (*handlers.Result, *types.E
 			}
 			// terminate the request here
 			writeResponse(w, r, err.StatusCode, errorResponse)
+
 			return
 		}
 
@@ -56,6 +57,7 @@ func registerHandler(handlerFunc func(*http.Request) (*handlers.Result, *types.E
 			logger.Ctx(r.Context()).Error().Msg("invalid success response, error returned")
 			// terminate the request here
 			writeResponse(w, r, http.StatusInternalServerError, newInternalServiceError())
+
 			return
 		}
 
@@ -75,6 +77,7 @@ func writeResponse(
 	if err != nil {
 		logger.Ctx(r.Context()).Err(err).Msg("failed to marshal error response")
 		http.Error(w, "Failed to process the request. Please try again later.", http.StatusInternalServerError)
+
 		return
 	}
 

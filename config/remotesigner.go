@@ -3,7 +3,7 @@ package config
 import "time"
 
 const (
-	defaultUrl     = "http://127.0.0.1:9791"
+	defaultURL     = "http://127.0.0.1:9791"
 	defaultTimeout = 2 * time.Second
 )
 
@@ -15,7 +15,7 @@ type RemoteSignerCfg struct {
 
 func DefaultRemoteSignerConfig() RemoteSignerCfg {
 	return RemoteSignerCfg{
-		URL:     defaultUrl,
+		URL:     defaultURL,
 		Timeout: defaultTimeout,
 		HMACKey: "",
 	}

@@ -46,6 +46,7 @@ func (v *CacheVersionedParams) Get(version uint32) (*types.StakingParams, error)
 	}
 
 	v.paramsByVersion[version] = params
+
 	return params, nil
 }
 
@@ -60,6 +61,7 @@ func (v *CacheVersionedParams) getParamsByVersion(version uint32) (*types.Stakin
 		if err != nil {
 			return err
 		}
+
 		return nil
 	}, RtyAtt, RtyDel, RtyErr, retry.OnRetry(func(n uint, err error) {
 		v.logger.Debug(

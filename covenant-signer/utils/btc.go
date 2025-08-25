@@ -39,6 +39,7 @@ func SerializeBTCTx(tx *wire.MsgTx) ([]byte, error) {
 	if err := tx.Serialize(&txBuf); err != nil {
 		return nil, err
 	}
+
 	return txBuf.Bytes(), nil
 }
 
@@ -50,7 +51,6 @@ func SerializeBTCTxToHex(tx *wire.MsgTx) (string, error) {
 	}
 
 	return hex.EncodeToString(bytes), nil
-
 }
 
 func PubKeyFromHex(hexString string) (*btcec.PublicKey, error) {

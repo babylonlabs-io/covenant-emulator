@@ -54,5 +54,5 @@ func initHome(c *cli.Context) error {
 	defaultConfig := covcfg.DefaultConfigWithHomePath(homePath)
 	fileParser := flags.NewParser(&defaultConfig, flags.Default)
 
-	return flags.NewIniParser(fileParser).WriteFile(covcfg.ConfigFile(homePath), flags.IniIncludeComments|flags.IniIncludeDefaults)
+	return flags.NewIniParser(fileParser).WriteFile(covcfg.File(homePath), flags.IniIncludeComments|flags.IniIncludeDefaults)
 }

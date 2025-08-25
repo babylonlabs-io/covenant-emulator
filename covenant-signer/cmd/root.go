@@ -33,6 +33,7 @@ func NewRootCmd() *cobra.Command {
 	}
 
 	cmd.PersistentFlags().String(flags.FlagHome, defaultConfigDir, "The application home directory")
+
 	return cmd
 }
 

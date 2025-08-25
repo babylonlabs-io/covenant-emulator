@@ -37,6 +37,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## Unreleased
 
+### Improvements
+
+* [#134](https://github.com/babylonlabs-io/covenant-emulator/pull/134) chore: add golangci lint rules
+
 ## v0.16.0-rc.1
 
 ### Improvements
