@@ -113,7 +113,7 @@ func FuzzAddCovenantSig(f *testing.F) {
 		mockClientController := testutil.PrepareMockedClientController(t, params)
 
 		// create and start covenant emulator
-		ce, err := covenant.NewCovenantEmulator(&covenantConfig, mockClientController, zap.NewNop(), signer)
+		ce, err := covenant.NewEmulator(&covenantConfig, mockClientController, zap.NewNop(), signer)
 		require.NoError(t, err)
 
 		numDels := datagen.RandomInt(r, 3) + 1
@@ -394,6 +394,7 @@ func NewMockParam(p map[uint32]*types.StakingParams) *MockParamGetter {
 
 func (m *MockParamGetter) Get(version uint32) (*types.StakingParams, error) {
 	p := m.paramsByVersion[version]
+
 	return p, nil
 }
 
@@ -407,7 +408,7 @@ func NewMockParamError(err error) *MockParamError {
 	}
 }
 
-func (m *MockParamError) Get(version uint32) (*types.StakingParams, error) {
+func (m *MockParamError) Get(_ uint32) (*types.StakingParams, error) {
 	return nil, m.err
 }
 
@@ -539,5 +540,4 @@ func TestValidateStakeExpansion(t *testing.T) {
 		require.False(t, valid)
 		require.EqualError(t, err, "failed to decode previous delegation staking tx: encoding/hex: invalid byte: U+0069 'i'")
 	})
-
 }

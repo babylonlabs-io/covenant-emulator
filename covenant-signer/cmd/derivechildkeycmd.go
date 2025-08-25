@@ -15,7 +15,7 @@ var deriveChildKeyCmd = &cobra.Command{
 	Use:   "derive-child-key [master-key] [derivation-path]",
 	Args:  cobra.ExactArgs(2),
 	Short: "derives a child key from a master key",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, args []string) error {
 		masterKey := args[0]
 		derivationPath := args[1]
 

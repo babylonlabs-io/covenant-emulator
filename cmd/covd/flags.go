@@ -8,7 +8,7 @@ const (
 	keyNameFlag        = "key-name"
 	passphraseFlag     = "passphrase"
 	hdPathFlag         = "hd-path"
-	chainIdFlag        = "chain-id"
+	chainIDFlag        = "chain-id"
 	keyringBackendFlag = "keyring-backend"
 
 	defaultChainID        = "chain-test"

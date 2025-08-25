@@ -73,5 +73,6 @@ func NewRootLoggerWithFile(logFile string, level string) (*zap.Logger, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return logger, nil
 }

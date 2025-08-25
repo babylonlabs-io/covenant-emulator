@@ -14,10 +14,10 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 		startTime := time.Now()
 		logger := log.With().Str("path", r.URL.Path).Logger()
 
-		// Attach traceId into each log within the request chain
-		traceId := r.Context().Value(tracing.TraceIdKey)
-		if traceId != nil {
-			logger = logger.With().Interface("traceId", traceId).Logger()
+		// Attach traceID into each log within the request chain
+		traceID := r.Context().Value(tracing.TraceIDKey)
+		if traceID != nil {
+			logger = logger.With().Interface("traceID", traceID).Logger()
 		}
 
 		logger.Debug().Msg("request received")

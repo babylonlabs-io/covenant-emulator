@@ -35,6 +35,7 @@ type spendableOut struct {
 
 func GenRandomHexStr(r *rand.Rand, length uint64) string {
 	randBytes := datagen.GenRandomByteArray(r, length)
+
 	return hex.EncodeToString(randBytes)
 }
 
@@ -51,8 +52,8 @@ func GenValidSlashingRate(r *rand.Rand) sdkmath.LegacyDec {
 	return sdkmath.LegacyNewDecWithPrec(int64(datagen.RandomInt(r, 41)+10), 2)
 }
 
-func RandRange(r *rand.Rand, min, max int) int {
-	return rand.Intn(max+1-min) + min
+func RandRange(_ *rand.Rand, minVal, maxVal int) int {
+	return rand.Intn(maxVal+1-minVal) + minVal
 }
 
 func GenRandomParams(r *rand.Rand, t *testing.T) *types.StakingParams {
@@ -116,6 +117,7 @@ func GenBTCStakingSlashingInfo(
 	unbondingTxFee := r.Int63n(1000) + 1
 	spend := makeSpendableOutWithRandOutPoint(r, btcutil.Amount(stakingValue+unbondingTxFee))
 	outPoint := &spend.prevOut
+
 	return GenBTCStakingSlashingInfoWithOutPoint(
 		r,
 		t,
@@ -157,7 +159,6 @@ func GenBTCStakingSlashingInfoWithOutPoint(
 	slashingRate sdkmath.LegacyDec,
 	slashingChangeLockTime uint16,
 ) *TestStakingSlashingInfo {
-
 	stakingInfo, err := btcstaking.BuildStakingInfo(
 		stakerSK.PubKey(),
 		fpPKs,

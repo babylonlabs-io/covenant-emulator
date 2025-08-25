@@ -19,35 +19,37 @@ func TestHMACAuthMiddleware(t *testing.T) {
 	testHMACKey := "test-hmac-secret-key"
 	testBody := []byte(`{"test":"data"}`)
 
-	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, err := w.Write([]byte("success"))
 		if err != nil {
 			t.Fatalf("Failed to write response: %v", err)
 		}
-
 	})
 
-	makeRequestWithHMAC := func(t *testing.T, body []byte, hmacKey, hmacHeader string) *http.Request {
+	makeRequestWithHMAC := func(_ *testing.T, body []byte, _, hmacHeader string) *http.Request {
 		req := httptest.NewRequest(http.MethodPost, "/test", bytes.NewReader(body))
 		if hmacHeader != "" {
 			req.Header.Set(middlewares.HeaderCovenantHMAC, hmacHeader)
 		}
+
 		return req
 	}
 
-	makeRequestWithMethodAndHMAC := func(t *testing.T, method string, body []byte, hmacKey, hmacHeader string) *http.Request {
+	makeRequestWithMethodAndHMAC := func(_ *testing.T, method string, body []byte, _, hmacHeader string) *http.Request {
 		req := httptest.NewRequest(method, "/test", bytes.NewReader(body))
 		if hmacHeader != "" {
 			req.Header.Set(middlewares.HeaderCovenantHMAC, hmacHeader)
 		}
+
 		return req
 	}
 
-	executeMiddleware := func(t *testing.T, middleware func(http.Handler) http.Handler, req *http.Request) *httptest.ResponseRecorder {
+	executeMiddleware := func(_ *testing.T, middleware func(http.Handler) http.Handler, req *http.Request) *httptest.ResponseRecorder {
 		rr := httptest.NewRecorder()
 		handler := middleware(nextHandler)
 		handler.ServeHTTP(rr, req)
+
 		return rr
 	}
 
@@ -55,6 +57,7 @@ func TestHMACAuthMiddleware(t *testing.T) {
 		var respMap map[string]interface{}
 		err := json.NewDecoder(body).Decode(&respMap)
 		require.NoError(t, err, "Failed to decode error response")
+
 		return respMap
 	}
 
@@ -231,7 +234,7 @@ func TestHMACAuthMiddleware(t *testing.T) {
 // brokenReader is a mock io.ReadCloser that always returns an error when Read is called
 type brokenReader struct{}
 
-func (b *brokenReader) Read(p []byte) (n int, err error) {
+func (b *brokenReader) Read(_ []byte) (int, error) {
 	return 0, io.ErrUnexpectedEOF
 }
 
@@ -254,9 +257,11 @@ func (m *mockFailingResponseWriter) Header() http.Header {
 func (m *mockFailingResponseWriter) Write(data []byte) (int, error) {
 	if !m.writeFailed {
 		m.writeFailed = true
+
 		return 0, errors.New("simulated write error")
 	}
 	m.writtenData = data
+
 	return len(data), nil
 }
 

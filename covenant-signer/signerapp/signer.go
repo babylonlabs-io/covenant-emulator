@@ -115,9 +115,9 @@ func slashUnbondSig(
 	covenantPrivKey *btcec.PrivateKey,
 	signingTxReq *ParsedSigningRequest,
 	fpEncKey *asig.EncryptionKey,
-) (slashSig, slashUnbondingSig *asig.AdaptorSignature, err error) {
+) (*asig.AdaptorSignature, *asig.AdaptorSignature, error) {
 	// creates slash sigs
-	slashSig, err = btcstaking.EncSignTxWithOneScriptSpendInputStrict(
+	slashSig, err := btcstaking.EncSignTxWithOneScriptSpendInputStrict(
 		signingTxReq.SlashingTx,
 		signingTxReq.StakingTx,
 		signingTxReq.StakingOutputIdx,
@@ -130,7 +130,7 @@ func slashUnbondSig(
 	}
 
 	// creates slash unbonding sig
-	slashUnbondingSig, err = btcstaking.EncSignTxWithOneScriptSpendInputStrict(
+	slashUnbondingSig, err := btcstaking.EncSignTxWithOneScriptSpendInputStrict(
 		signingTxReq.SlashUnbondingTx,
 		signingTxReq.UnbondingTx,
 		0, // 0th output is always the unbonding script output
@@ -156,6 +156,7 @@ func unbondSig(covenantPrivKey *btcec.PrivateKey, signingTxReq *ParsedSigningReq
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign unbonding tx: %w", err)
 	}
+
 	return unbondingSig, nil
 }
 
