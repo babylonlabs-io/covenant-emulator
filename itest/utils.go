@@ -43,6 +43,7 @@ func AllocateUniquePort(t *testing.T) (int, string) {
 		}
 
 		url = fmt.Sprintf("127.0.0.1:%d", port)
+		//nolint:noctx
 		listener, err := net.Listen("tcp", url)
 		if err != nil {
 			portMutex.Unlock()
