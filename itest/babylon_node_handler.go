@@ -134,7 +134,7 @@ func NewBabylonNodeHandler(t *testing.T, covenantPk *types.BIP340PubKey) *Babylo
 	require.NoError(t, err)
 	pkScript, err := txscript.PayToAddrScript(decodedAddr)
 	require.NoError(t, err)
-
+	//nolint:noctx
 	initTestnetCmd := exec.Command(
 		"babylond",
 		"testnet",
@@ -165,7 +165,7 @@ func NewBabylonNodeHandler(t *testing.T, covenantPk *types.BIP340PubKey) *Babylo
 
 	f, err := os.Create(filepath.Join(testDir, "babylon.log"))
 	require.NoError(t, err)
-
+	//nolint:noctx
 	startCmd := exec.Command("babylond", "start",
 		fmt.Sprintf("--home=%s", nodeHome),
 		"--log_level=debug")

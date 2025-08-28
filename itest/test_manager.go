@@ -200,6 +200,7 @@ func (tm *TestManager) WaitForServicesStart(t *testing.T) {
 }
 
 func (tm *TestManager) SendToAddr(t *testing.T, toAddr, amount string) {
+	//nolint:noctx
 	sendTx := exec.Command(
 		"babylond",
 		"tx",
