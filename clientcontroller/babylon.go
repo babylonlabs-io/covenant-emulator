@@ -96,13 +96,13 @@ func (bc *BabylonController) GetKeyAddress() sdk.AccAddress {
 
 func (bc *BabylonController) QueryStakingParamsByVersion(version uint32) (*types.StakingParams, error) {
 	// query btc checkpoint params
-	ckptParamRes, err := bc.bbnClient.QueryClient.BTCCheckpointParams()
+	ckptParamRes, err := bc.bbnClient.BTCCheckpointParams()
 	if err != nil {
 		return nil, fmt.Errorf("failed to query params of the btccheckpoint module: %w", err)
 	}
 
 	// query btc staking params
-	stakingParamRes, err := bc.bbnClient.QueryClient.BTCStakingParamsByVersion(version)
+	stakingParamRes, err := bc.bbnClient.BTCStakingParamsByVersion(version)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query staking params with version %d: %w", version, err)
 	}
@@ -208,7 +208,7 @@ func (bc *BabylonController) QueryVerifiedDelegations(limit uint64) ([]*types.De
 
 // QueryBTCDelegation queries the BTC delegation by the tx hash
 func (bc *BabylonController) QueryBTCDelegation(stakingTxHashHex string) (*types.Delegation, error) {
-	resp, err := bc.bbnClient.QueryClient.BTCDelegation(stakingTxHashHex)
+	resp, err := bc.bbnClient.BTCDelegation(stakingTxHashHex)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query BTC delegation %s: %w", stakingTxHashHex, err)
 	}
@@ -229,7 +229,7 @@ func (bc *BabylonController) queryDelegationsWithStatus(status btcstakingtypes.B
 	indexDels := uint64(0)
 
 	for indexDels < delsLimit {
-		res, err := bc.bbnClient.QueryClient.BTCDelegations(status, pagination)
+		res, err := bc.bbnClient.BTCDelegations(status, pagination)
 		if err != nil {
 			return nil, fmt.Errorf("failed to query BTC delegations: %w", err)
 		}
