@@ -1,3 +1,4 @@
+//nolint:revive
 package types
 
 // UnlockRequest represents a request to unlock the key.
