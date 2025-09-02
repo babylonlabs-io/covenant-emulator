@@ -14,7 +14,7 @@ import (
 type CovenantServer struct {
 	started int32
 
-	ce *covenant.CovenantEmulator
+	ce *covenant.Emulator
 
 	logger *zap.Logger
 
@@ -22,7 +22,7 @@ type CovenantServer struct {
 }
 
 // NewCovenantServer creates a new server with the given config.
-func NewCovenantServer(l *zap.Logger, ce *covenant.CovenantEmulator, sig signal.Interceptor) *CovenantServer {
+func NewCovenantServer(l *zap.Logger, ce *covenant.Emulator, sig signal.Interceptor) *CovenantServer {
 	return &CovenantServer{
 		logger:      l,
 		ce:          ce,

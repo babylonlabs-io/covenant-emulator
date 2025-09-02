@@ -1,5 +1,4 @@
 //go:build e2e
-// +build e2e
 
 package e2etest
 
@@ -10,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	asig "github.com/babylonlabs-io/babylon/crypto/schnorr-adaptor-signature"
+	asig "github.com/babylonlabs-io/babylon/v3/crypto/schnorr-adaptor-signature"
 
-	"github.com/babylonlabs-io/babylon/btcstaking"
+	"github.com/babylonlabs-io/babylon/v3/btcstaking"
 	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/config"
 	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/itest/containers"
 	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/keystore/cosmos"
@@ -65,7 +64,7 @@ func StartManager(
 		appConfig.Server.HMACKey = hmacKey
 	}
 
-	var retriever *cosmos.CosmosKeyringRetriever
+	var retriever *cosmos.KeyringRetriever
 
 	if useEncryptedFileKeyRing {
 		appConfig.KeyStore.KeyStoreType = "cosmos"

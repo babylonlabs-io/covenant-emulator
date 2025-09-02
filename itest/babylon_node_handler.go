@@ -11,7 +11,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/babylonlabs-io/babylon/types"
+	"github.com/babylonlabs-io/babylon/v3/types"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/txscript"
@@ -77,6 +77,7 @@ func (n *babylonNode) stop() (err error) {
 	if runtime.GOOS == "windows" {
 		return n.cmd.Process.Signal(os.Kill)
 	}
+
 	return n.cmd.Process.Signal(os.Interrupt)
 }
 
@@ -97,6 +98,7 @@ func (n *babylonNode) cleanup() error {
 			log.Printf("Cannot remove dir %s: %v", dir, err)
 		}
 	}
+
 	return nil
 }
 
@@ -107,6 +109,7 @@ func (n *babylonNode) shutdown() error {
 	if err := n.cleanup(); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -131,7 +134,7 @@ func NewBabylonNodeHandler(t *testing.T, covenantPk *types.BIP340PubKey) *Babylo
 	require.NoError(t, err)
 	pkScript, err := txscript.PayToAddrScript(decodedAddr)
 	require.NoError(t, err)
-
+	//nolint:noctx
 	initTestnetCmd := exec.Command(
 		"babylond",
 		"testnet",
@@ -162,13 +165,11 @@ func NewBabylonNodeHandler(t *testing.T, covenantPk *types.BIP340PubKey) *Babylo
 
 	f, err := os.Create(filepath.Join(testDir, "babylon.log"))
 	require.NoError(t, err)
-
-	startCmd := exec.Command(
-		"babylond",
-		"start",
+	//nolint:noctx
+	startCmd := exec.Command("babylond", "start",
 		fmt.Sprintf("--home=%s", nodeHome),
-		"--log_level=debug",
-	)
+		"--log_level=debug")
+	startCmd.Env = append(os.Environ(), "BABYLON_BLS_PASSWORD=password")
 
 	startCmd.Stdout = f
 
@@ -181,8 +182,10 @@ func (w *BabylonNodeHandler) Start() error {
 	if err := w.babylonNode.start(); err != nil {
 		// try to cleanup after start error, but return original error
 		_ = w.babylonNode.cleanup()
+
 		return err
 	}
+
 	return nil
 }
 
@@ -196,6 +199,7 @@ func (w *BabylonNodeHandler) Stop() error {
 
 func (w *BabylonNodeHandler) GetNodeDataDir() string {
 	dir := filepath.Join(w.babylonNode.dataDir, "node0", "babylond")
+
 	return dir
 }
 

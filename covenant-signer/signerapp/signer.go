@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/babylonlabs-io/babylon/btcstaking"
-	asig "github.com/babylonlabs-io/babylon/crypto/schnorr-adaptor-signature"
+	"github.com/babylonlabs-io/babylon/v3/btcstaking"
+	asig "github.com/babylonlabs-io/babylon/v3/crypto/schnorr-adaptor-signature"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/btcsuite/btcd/wire"
@@ -16,6 +16,7 @@ type ParsedSigningRequest struct {
 	SlashingTx              *wire.MsgTx
 	UnbondingTx             *wire.MsgTx
 	SlashUnbondingTx        *wire.MsgTx
+	StakeExp                *ParsedSigningRequestStkExp
 	StakingOutputIdx        uint32
 	SlashingScript          []byte
 	UnbondingScript         []byte
@@ -23,10 +24,18 @@ type ParsedSigningRequest struct {
 	FpEncKeys               []*asig.EncryptionKey
 }
 
+type ParsedSigningRequestStkExp struct {
+	PreviousActiveStakeTx              *wire.MsgTx
+	OtherFundingOutput                 *wire.TxOut
+	PreviousStakingOutputIdx           uint32
+	PreviousActiveStakeUnbondingScript []byte
+}
+
 type ParsedSigningResponse struct {
 	SlashAdaptorSigs          [][]byte
 	UnbondingSig              *schnorr.Signature
 	SlashUnbondingAdaptorSigs [][]byte
+	StakeExpSig               *schnorr.Signature
 }
 
 type SignerApp struct {
@@ -67,11 +76,22 @@ func (s *SignerApp) SignTransactions(
 		return nil, err
 	}
 
-	return &ParsedSigningResponse{
+	resp := &ParsedSigningResponse{
 		SlashAdaptorSigs:          slashSigs,
 		UnbondingSig:              unbondingSig,
 		SlashUnbondingAdaptorSigs: slashUnbondingSigs,
-	}, nil
+		StakeExpSig:               nil,
+	}
+
+	if req.StakeExp != nil {
+		stakeExpSig, err := stkExpSig(privKey, req)
+		if err != nil {
+			return nil, err
+		}
+		resp.StakeExpSig = stakeExpSig
+	}
+
+	return resp, nil
 }
 
 func (s *SignerApp) Unlock(ctx context.Context, passphrase string) error {
@@ -95,9 +115,9 @@ func slashUnbondSig(
 	covenantPrivKey *btcec.PrivateKey,
 	signingTxReq *ParsedSigningRequest,
 	fpEncKey *asig.EncryptionKey,
-) (slashSig, slashUnbondingSig *asig.AdaptorSignature, err error) {
+) (*asig.AdaptorSignature, *asig.AdaptorSignature, error) {
 	// creates slash sigs
-	slashSig, err = btcstaking.EncSignTxWithOneScriptSpendInputStrict(
+	slashSig, err := btcstaking.EncSignTxWithOneScriptSpendInputStrict(
 		signingTxReq.SlashingTx,
 		signingTxReq.StakingTx,
 		signingTxReq.StakingOutputIdx,
@@ -110,7 +130,7 @@ func slashUnbondSig(
 	}
 
 	// creates slash unbonding sig
-	slashUnbondingSig, err = btcstaking.EncSignTxWithOneScriptSpendInputStrict(
+	slashUnbondingSig, err := btcstaking.EncSignTxWithOneScriptSpendInputStrict(
 		signingTxReq.SlashUnbondingTx,
 		signingTxReq.UnbondingTx,
 		0, // 0th output is always the unbonding script output
@@ -136,5 +156,22 @@ func unbondSig(covenantPrivKey *btcec.PrivateKey, signingTxReq *ParsedSigningReq
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign unbonding tx: %w", err)
 	}
+
 	return unbondingSig, nil
+}
+
+// stkExpSig signs the stake expansion transaction
+func stkExpSig(covenantPrivKey *btcec.PrivateKey, signingTxReq *ParsedSigningRequest) (*schnorr.Signature, error) {
+	stkExpSig, err := btcstaking.SignTxForFirstScriptSpendWithTwoInputsFromScript(
+		signingTxReq.StakingTx,
+		signingTxReq.StakeExp.PreviousActiveStakeTx.TxOut[signingTxReq.StakeExp.PreviousStakingOutputIdx],
+		signingTxReq.StakeExp.OtherFundingOutput,
+		covenantPrivKey,
+		signingTxReq.StakeExp.PreviousActiveStakeUnbondingScript,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to sign spend of previous stake %s with stake expansion tx %s: %w", signingTxReq.StakeExp.PreviousActiveStakeTx.TxHash().String(), signingTxReq.StakingTx.TxHash().String(), err)
+	}
+
+	return stkExpSig, nil
 }

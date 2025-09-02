@@ -10,7 +10,7 @@ import (
 	"github.com/babylonlabs-io/covenant-emulator/types"
 )
 
-func CreateClientCtx(keyringDir string, chainId string) (client.Context, error) {
+func CreateClientCtx(keyringDir string, chainID string) (client.Context, error) {
 	var err error
 	var homeDir string
 
@@ -21,8 +21,9 @@ func CreateClientCtx(keyringDir string, chainId string) (client.Context, error) 
 		}
 		keyringDir = path.Join(homeDir, ".covenant-emulator")
 	}
+
 	return client.Context{}.
-		WithChainID(chainId).
+		WithChainID(chainID).
 		WithCodec(codec.MakeCodec()).
 		WithKeyringDir(keyringDir), nil
 }

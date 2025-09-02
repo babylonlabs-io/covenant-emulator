@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/babylonlabs-io/babylon/types"
+	"github.com/babylonlabs-io/babylon/v3/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/jessevdk/go-flags"
 
@@ -26,7 +26,7 @@ var createKeyCommand = cli.Command{
 	Usage:     "Create a Covenant account in the keyring.",
 	Flags: []cli.Flag{
 		cli.StringFlag{
-			Name:  chainIdFlag,
+			Name:  chainIDFlag,
 			Usage: "The chainID of the consumer chain",
 			Value: defaultChainID,
 		},
@@ -61,7 +61,7 @@ var createKeyCommand = cli.Command{
 
 func createKey(ctx *cli.Context) error {
 	homePath := ctx.String(homeFlag)
-	chainID := ctx.String(chainIdFlag)
+	chainID := ctx.String(chainIDFlag)
 	keyName := ctx.String(keyNameFlag)
 	backend := ctx.String(keyringBackendFlag)
 	passphrase := ctx.String(passphraseFlag)
@@ -71,7 +71,7 @@ func createKey(ctx *cli.Context) error {
 	// check the config file exists
 	cfg, err := covcfg.LoadConfig(homePath)
 	if err != nil {
-		return fmt.Errorf("failed to load the config from %s: %w", covcfg.ConfigFile(homePath), err)
+		return fmt.Errorf("failed to load the config from %s: %w", covcfg.File(homePath), err)
 	}
 
 	keyPair, err := keyring.CreateCovenantKey(
@@ -100,7 +100,7 @@ func createKey(ctx *cli.Context) error {
 	cfg.BabylonConfig.KeyringBackend = keyBackend
 	fileParser := flags.NewParser(cfg, flags.Default)
 
-	return flags.NewIniParser(fileParser).WriteFile(covcfg.ConfigFile(homePath), flags.IniIncludeComments|flags.IniIncludeDefaults)
+	return flags.NewIniParser(fileParser).WriteFile(covcfg.File(homePath), flags.IniIncludeComments|flags.IniIncludeDefaults)
 }
 
 var showKeyCommand = cli.Command{
@@ -109,7 +109,7 @@ var showKeyCommand = cli.Command{
 	Usage:     "Show a Covenant account in the keyring.",
 	Flags: []cli.Flag{
 		cli.StringFlag{
-			Name:  chainIdFlag,
+			Name:  chainIDFlag,
 			Usage: "The chainID of the consumer chain",
 			Value: defaultChainID,
 		},
@@ -139,7 +139,7 @@ var showKeyCommand = cli.Command{
 
 func showKey(ctx *cli.Context) error {
 	homePath := ctx.String(homeFlag)
-	chainID := ctx.String(chainIdFlag)
+	chainID := ctx.String(chainIDFlag)
 	keyName := ctx.String(keyNameFlag)
 	backend := ctx.String(keyringBackendFlag)
 	passphrase := ctx.String(passphraseFlag)
@@ -178,6 +178,7 @@ func showKey(ctx *cli.Context) error {
 			BabylonAddr: babylonAddr.String(),
 		},
 	)
+
 	return nil
 }
 
@@ -185,6 +186,7 @@ func printRespJSON(resp interface{}) {
 	jsonBytes, err := json.MarshalIndent(resp, "", "    ")
 	if err != nil {
 		fmt.Println("unable to decode response: ", err)
+
 		return
 	}
 

@@ -133,13 +133,14 @@ func WriteConfigToFile(pathToConfFile string, conf *Config) error {
 
 	if _, err := os.Stat(pathToConfFile); os.IsNotExist(err) {
 		if err := os.MkdirAll(dirPath, folderPermissions); err != nil {
-			return fmt.Errorf("couldn't make config: %v", err)
+			return fmt.Errorf("couldn't make config: %w", err)
 		}
 
 		if err := writeConfigToFile(pathToConfFile, conf); err != nil {
-			return fmt.Errorf("could config to the file: %v", err)
+			return fmt.Errorf("could config to the file: %w", err)
 		}
 	}
+
 	return nil
 }
 

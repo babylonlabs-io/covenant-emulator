@@ -24,6 +24,7 @@ type PublicResponse[T any] struct {
 
 func NewResult[T any](data T) *Result {
 	res := &PublicResponse[T]{Data: data}
+
 	return &Result{Data: res, Status: http.StatusOK}
 }
 

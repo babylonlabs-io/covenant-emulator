@@ -11,15 +11,15 @@ import (
 	"github.com/btcsuite/btcd/btcec/v2"
 )
 
-var _ signerapp.PrivKeyRetriever = &CosmosKeyringRetriever{}
+var _ signerapp.PrivKeyRetriever = &KeyringRetriever{}
 
-type CosmosKeyringRetriever struct {
+type KeyringRetriever struct {
 	Kr           *ChainKeyringController
 	mu           sync.Mutex
 	btcecPrivKey *btcec.PrivateKey
 }
 
-func NewCosmosKeyringRetriever(cfg *config.CosmosKeyStoreConfig) (*CosmosKeyringRetriever, error) {
+func NewCosmosKeyringRetriever(cfg *config.CosmosKeyStoreConfig) (*KeyringRetriever, error) {
 	input := strings.NewReader("")
 	kr, err := CreateKeyring(cfg.KeyDirectory, cfg.ChainID, cfg.KeyringBackend, input)
 	if err != nil {
@@ -30,13 +30,14 @@ func NewCosmosKeyringRetriever(cfg *config.CosmosKeyStoreConfig) (*CosmosKeyring
 	if err != nil {
 		return nil, err
 	}
-	return &CosmosKeyringRetriever{
+
+	return &KeyringRetriever{
 		Kr:           kc,
 		btcecPrivKey: nil,
 	}, nil
 }
 
-func (k *CosmosKeyringRetriever) PrivKey(ctx context.Context) (*btcec.PrivateKey, error) {
+func (k *KeyringRetriever) PrivKey(_ context.Context) (*btcec.PrivateKey, error) {
 	k.mu.Lock()
 	defer k.mu.Unlock()
 
@@ -47,7 +48,7 @@ func (k *CosmosKeyringRetriever) PrivKey(ctx context.Context) (*btcec.PrivateKey
 	return k.btcecPrivKey, nil
 }
 
-func (k *CosmosKeyringRetriever) Unlock(ctx context.Context, passphrase string) error {
+func (k *KeyringRetriever) Unlock(_ context.Context, passphrase string) error {
 	k.mu.Lock()
 	defer k.mu.Unlock()
 
@@ -64,10 +65,11 @@ func (k *CosmosKeyringRetriever) Unlock(ctx context.Context, passphrase string) 
 	btcecPrivKey, _ := btcec.PrivKeyFromBytes(privKey.Key)
 
 	k.btcecPrivKey = btcecPrivKey
+
 	return nil
 }
 
-func (k *CosmosKeyringRetriever) Lock(ctx context.Context) error {
+func (k *KeyringRetriever) Lock(_ context.Context) error {
 	k.mu.Lock()
 	defer k.mu.Unlock()
 

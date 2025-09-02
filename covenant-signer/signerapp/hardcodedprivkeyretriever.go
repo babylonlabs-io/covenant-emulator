@@ -19,7 +19,7 @@ func NewHardcodedPrivKeyRetriever(privKey *btcec.PrivateKey) *HardcodedPrivKeyRe
 	}
 }
 
-func (r *HardcodedPrivKeyRetriever) PrivKey(ctx context.Context) (*btcec.PrivateKey, error) {
+func (r *HardcodedPrivKeyRetriever) PrivKey(_ context.Context) (*btcec.PrivateKey, error) {
 	// return copy of the private key
 	bytes := r.privKey.Serialize()
 
@@ -29,11 +29,11 @@ func (r *HardcodedPrivKeyRetriever) PrivKey(ctx context.Context) (*btcec.Private
 }
 
 // Key is always unlocked in this implementation
-func (r *HardcodedPrivKeyRetriever) Unlock(ctx context.Context, passphrase string) error {
+func (r *HardcodedPrivKeyRetriever) Unlock(_ context.Context, _ string) error {
 	return nil
 }
 
 // Key is always unlocked in this implementation
-func (r *HardcodedPrivKeyRetriever) Lock(ctx context.Context) error {
+func (r *HardcodedPrivKeyRetriever) Lock(_ context.Context) error {
 	return nil
 }

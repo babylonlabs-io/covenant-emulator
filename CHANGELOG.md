@@ -39,8 +39,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Improvements
 
-* [#112](https://github.com/babylonlabs-io/covenant-emulator/pull/112) Send batch of messages again if some msg failed,
-just removing the failed one. Add config `MaxRetiresBatchRemovingMsgs` to limit the retries.
+* [#134](https://github.com/babylonlabs-io/covenant-emulator/pull/134) chore: add golangci lint rules
+* [#141](https://github.com/babylonlabs-io/covenant-emulator/pull/141) chore: bumps go1.25
+
+## v0.16.0-rc.1
+
+### Improvements
+
+* [#125](https://github.com/babylonlabs-io/covenant-emulator/pull/125) Update config defaults for gas adjustment and cov batch sigs.
+* [#127](https://github.com/babylonlabs-io/covenant-emulator/pull/127) Add Stake Expansion support
+* [#128](https://github.com/babylonlabs-io/covenant-emulator/pull/128) Removed check where the covenant needs to have signed the
+previous staking transaction to sign the stake expansion tx.
+* [#129](https://github.com/babylonlabs-io/covenant-emulator/pull/129) bump Babylon to
+v3.0.0-rc.0
+
+## v0.15.1
+
+### Improvements
+
+* [#122](https://github.com/babylonlabs-io/covenant-emulator/pull/122) Bump babylon node to v1.0.0
+
+## v0.15.0
+
+### Improvements
+
+* [#120](https://github.com/babylonlabs-io/covenant-emulator/pull/120) Bump babylon to rc-9.
 * [#119](https://github.com/babylonlabs-io/covenant-emulator/pull/119) Make passphrase for Unlock optional.
 * [#116](https://github.com/babylonlabs-io/covenant-emulator/pull/116) Add health check to prometheus server.
 * [#117](https://github.com/babylonlabs-io/covenant-emulator/pull/117) Add health check on startup, increase gas adjustment and update docs.

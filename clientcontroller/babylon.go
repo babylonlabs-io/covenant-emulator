@@ -14,12 +14,12 @@ import (
 	"github.com/btcsuite/btcd/btcec/v2"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 
-	"github.com/babylonlabs-io/babylon/client/babylonclient"
-	bbnclient "github.com/babylonlabs-io/babylon/client/client"
-	bbntypes "github.com/babylonlabs-io/babylon/types"
-	btcctypes "github.com/babylonlabs-io/babylon/x/btccheckpoint/types"
-	btclctypes "github.com/babylonlabs-io/babylon/x/btclightclient/types"
-	btcstakingtypes "github.com/babylonlabs-io/babylon/x/btcstaking/types"
+	"github.com/babylonlabs-io/babylon/v3/client/babylonclient"
+	bbnclient "github.com/babylonlabs-io/babylon/v3/client/client"
+	bbntypes "github.com/babylonlabs-io/babylon/v3/types"
+	btcctypes "github.com/babylonlabs-io/babylon/v3/x/btccheckpoint/types"
+	btclctypes "github.com/babylonlabs-io/babylon/v3/x/btclightclient/types"
+	btcstakingtypes "github.com/babylonlabs-io/babylon/v3/x/btcstaking/types"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	sdkclient "github.com/cosmos/cosmos-sdk/client"
@@ -78,6 +78,7 @@ func NewBabylonController(
 func (bc *BabylonController) mustGetTxSigner() string {
 	signer := bc.GetKeyAddress()
 	prefix := bc.cfg.AccountPrefix
+
 	return sdk.MustBech32ifyAddressBytes(prefix, signer)
 }
 
@@ -104,15 +105,15 @@ func (bc *BabylonController) GetKeyAddress() sdk.AccAddress {
 
 func (bc *BabylonController) QueryStakingParamsByVersion(version uint32) (*types.StakingParams, error) {
 	// query btc checkpoint params
-	ckptParamRes, err := bc.bbnClient.QueryClient.BTCCheckpointParams()
+	ckptParamRes, err := bc.bbnClient.BTCCheckpointParams()
 	if err != nil {
-		return nil, fmt.Errorf("failed to query params of the btccheckpoint module: %v", err)
+		return nil, fmt.Errorf("failed to query params of the btccheckpoint module: %w", err)
 	}
 
 	// query btc staking params
-	stakingParamRes, err := bc.bbnClient.QueryClient.BTCStakingParamsByVersion(version)
+	stakingParamRes, err := bc.bbnClient.BTCStakingParamsByVersion(version)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query staking params with version %d: %v", version, err)
+		return nil, fmt.Errorf("failed to query staking params with version %d: %w", version, err)
 	}
 
 	covenantPks := make([]*btcec.PublicKey, 0, len(stakingParamRes.Params.CovenantPks))
@@ -173,14 +174,22 @@ func (bc *BabylonController) SubmitCovenantSigs(covSigs []*types.CovenantSigs) (
 	msgs := make([]sdk.Msg, 0, len(covSigs))
 	for _, covSig := range covSigs {
 		bip340UnbondingSig := bbntypes.NewBIP340SignatureFromBTCSig(covSig.UnbondingSig)
-		msgs = append(msgs, &btcstakingtypes.MsgAddCovenantSigs{
+		msg := &btcstakingtypes.MsgAddCovenantSigs{
 			Signer:                  bc.mustGetTxSigner(),
 			Pk:                      bbntypes.NewBIP340PubKeyFromBTCPK(covSig.PublicKey),
 			StakingTxHash:           covSig.StakingTxHash.String(),
 			SlashingTxSigs:          covSig.SlashingSigs,
 			UnbondingTxSig:          bip340UnbondingSig,
 			SlashingUnbondingTxSigs: covSig.SlashingUnbondingSigs,
-		})
+			StakeExpansionTxSig:     nil,
+		}
+
+		if covSig.StkExpSig != nil {
+			stkExpSig := bbntypes.NewBIP340SignatureFromBTCSig(covSig.StkExpSig)
+			msg.StakeExpansionTxSig = stkExpSig
+		}
+
+		msgs = append(msgs, msg)
 	}
 
 	return bc.reliablySendMsgsResendingOnMsgErr(msgs)
@@ -280,6 +289,16 @@ func (bc *BabylonController) QueryVerifiedDelegations(limit uint64) ([]*types.De
 	return bc.queryDelegationsWithStatus(btcstakingtypes.BTCDelegationStatus_VERIFIED, limit, nil)
 }
 
+// QueryBTCDelegation queries the BTC delegation by the tx hash
+func (bc *BabylonController) QueryBTCDelegation(stakingTxHashHex string) (*types.Delegation, error) {
+	resp, err := bc.bbnClient.BTCDelegation(stakingTxHashHex)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query BTC delegation %s: %w", stakingTxHashHex, err)
+	}
+
+	return DelegationRespToDelegation(resp.BtcDelegation)
+}
+
 // queryDelegationsWithStatus queries BTC delegations that need a Covenant signature
 // with the given status (either pending or unbonding)
 // it is only used when the program is running in Covenant mode
@@ -293,9 +312,9 @@ func (bc *BabylonController) queryDelegationsWithStatus(status btcstakingtypes.B
 	indexDels := uint64(0)
 
 	for indexDels < delsLimit {
-		res, err := bc.bbnClient.QueryClient.BTCDelegations(status, pagination)
+		res, err := bc.bbnClient.BTCDelegations(status, pagination)
 		if err != nil {
-			return nil, fmt.Errorf("failed to query BTC delegations: %v", err)
+			return nil, fmt.Errorf("failed to query BTC delegations: %w", err)
 		}
 
 		for _, delResp := range res.BtcDelegations {
@@ -336,6 +355,7 @@ func (bc *BabylonController) queryDelegationsWithStatus(status btcstakingtypes.B
 
 func getContextWithCancel(timeout time.Duration) (context.Context, context.CancelFunc) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+
 	return ctx, cancel
 }
 
@@ -390,7 +410,7 @@ func DelegationRespToDelegation(del *btcstakingtypes.BTCDelegationResponse) (*ty
 		return nil, fmt.Errorf("total sat (%d) is larger than the maximum int64", del.TotalSat)
 	}
 
-	return &types.Delegation{
+	respDel := &types.Delegation{
 		BtcPk:            del.BtcPk.MustToBTCPK(),
 		FpBtcPks:         fpBtcPks,
 		TotalSat:         btcutil.Amount(del.TotalSat),
@@ -404,7 +424,17 @@ func DelegationRespToDelegation(del *btcstakingtypes.BTCDelegationResponse) (*ty
 		UnbondingTime:    uint16(del.UnbondingTime),
 		BtcUndelegation:  undelegation,
 		ParamsVersion:    del.ParamsVersion,
-	}, nil
+		StakeExpansion:   nil,
+	}
+
+	if del.StkExp != nil {
+		respDel.StakeExpansion = &types.DelegationStakeExpansion{
+			PreviousStakingTxHashHex: del.StkExp.PreviousStakingTxHashHex,
+			OtherFundingTxOutHex:     del.StkExp.OtherFundingTxOutHex,
+		}
+	}
+
+	return respDel, nil
 }
 
 func UndelegationRespToUndelegation(undel *btcstakingtypes.BTCUndelegationResponse) (*types.Undelegation, error) {
@@ -508,6 +538,57 @@ func (bc *BabylonController) CreateBTCDelegation(
 	return &types.TxResponse{TxHash: res.TxHash}, nil
 }
 
+// CreateStakeExpansionDelegation creates a BTC stake expansion delegation using MsgBtcStakeExpand
+// Currently this is only used for e2e tests, probably does not need to add it into the interface
+func (bc *BabylonController) CreateStakeExpansionDelegation(
+	delBtcPk *bbntypes.BIP340PubKey,
+	fpPks []*btcec.PublicKey,
+	pop *btcstakingtypes.ProofOfPossessionBTC,
+	stakingTime uint32,
+	stakingValue int64,
+	stakingTxInfo *btcctypes.TransactionInfo,
+	slashingTx *btcstakingtypes.BTCSlashingTx,
+	delSlashingSig *bbntypes.BIP340Signature,
+	unbondingTx []byte,
+	unbondingTime uint32,
+	unbondingValue int64,
+	unbondingSlashingTx *btcstakingtypes.BTCSlashingTx,
+	delUnbondingSlashingSig *bbntypes.BIP340Signature,
+	previousStakingTxHash string,
+	fundingTx []byte,
+) (*types.TxResponse, error) {
+	fpBtcPks := make([]bbntypes.BIP340PubKey, 0, len(fpPks))
+	for _, v := range fpPks {
+		fpBtcPks = append(fpBtcPks, *bbntypes.NewBIP340PubKeyFromBTCPK(v))
+	}
+
+	msg := &btcstakingtypes.MsgBtcStakeExpand{
+		StakerAddr:                    bc.mustGetTxSigner(),
+		Pop:                           pop,
+		BtcPk:                         delBtcPk,
+		FpBtcPkList:                   fpBtcPks,
+		StakingTime:                   stakingTime,
+		StakingValue:                  stakingValue,
+		StakingTx:                     stakingTxInfo.Transaction,
+		SlashingTx:                    slashingTx,
+		DelegatorSlashingSig:          delSlashingSig,
+		UnbondingTx:                   unbondingTx,
+		UnbondingTime:                 unbondingTime,
+		UnbondingValue:                unbondingValue,
+		UnbondingSlashingTx:           unbondingSlashingTx,
+		DelegatorUnbondingSlashingSig: delUnbondingSlashingSig,
+		PreviousStakingTxHash:         previousStakingTxHash,
+		FundingTx:                     fundingTx,
+	}
+
+	res, err := bc.reliablySendMsg(msg)
+	if err != nil {
+		return nil, err
+	}
+
+	return &types.TxResponse{TxHash: res.TxHash}, nil
+}
+
 // Register a finality provider to Babylon
 // Currently this is only used for e2e tests, probably does not need to add it into the interface
 func (bc *BabylonController) RegisterFinalityProvider(
@@ -561,7 +642,7 @@ func (bc *BabylonController) QueryFinalityProviders() ([]*btcstakingtypes.Finali
 		}
 		res, err := queryClient.FinalityProviders(ctx, queryRequest)
 		if err != nil {
-			return nil, fmt.Errorf("failed to query finality providers: %v", err)
+			return nil, fmt.Errorf("failed to query finality providers: %w", err)
 		}
 		fps = append(fps, res.FinalityProviders...)
 		if res.Pagination == nil || res.Pagination.NextKey == nil {
@@ -586,7 +667,7 @@ func (bc *BabylonController) QueryBtcLightClientTip() (*btclctypes.BTCHeaderInfo
 	queryRequest := &btclctypes.QueryTipRequest{}
 	res, err := queryClient.Tip(ctx, queryRequest)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query BTC tip: %v", err)
+		return nil, fmt.Errorf("failed to query BTC tip: %w", err)
 	}
 
 	return res.Header, nil

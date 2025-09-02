@@ -109,6 +109,7 @@ func (kc *ChainKeyringController) CreateChainKey(passphrase, hdPath string) (*Ch
 	switch v := privKey.(type) {
 	case *sdksecp256k1.PrivKey:
 		sk, pk := btcec.PrivKeyFromBytes(v.Key)
+
 		return &ChainKeyInfo{
 			Name:       kc.keyName,
 			Address:    addr,

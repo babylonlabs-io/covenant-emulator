@@ -38,13 +38,16 @@ func AllocateUniquePort(t *testing.T) (int, string) {
 		if _, exists := allocatedPorts[port]; exists {
 			// Port already allocated, try another one
 			portMutex.Unlock()
+
 			continue
 		}
 
 		url = fmt.Sprintf("127.0.0.1:%d", port)
+		//nolint:noctx
 		listener, err := net.Listen("tcp", url)
 		if err != nil {
 			portMutex.Unlock()
+
 			continue
 		}
 
@@ -60,6 +63,7 @@ func AllocateUniquePort(t *testing.T) (int, string) {
 
 	// If no available port was found, fail the test
 	t.Fatalf("failed to find an available port in range %d-%d", basePort, basePort+portRange)
+
 	return 0, ""
 }
 

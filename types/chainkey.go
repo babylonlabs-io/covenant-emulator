@@ -1,3 +1,4 @@
+//nolint:revive
 package types
 
 import (
@@ -22,6 +23,7 @@ func NewChainKeyInfo(
 	if err != nil {
 		return nil, err
 	}
+
 	return &ChainKeyInfo{
 		KeyOutput:  keyOut,
 		PublicKey:  pk,

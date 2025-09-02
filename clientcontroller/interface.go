@@ -25,6 +25,9 @@ type (
 		// QueryPendingDelegations queries BTC delegations that are in status of pending
 		QueryPendingDelegations(limit uint64, filter FilterFn) ([]*types.Delegation, error)
 
+		// QueryBTCDelegation queries the BTC delegation by the tx hash
+		QueryBTCDelegation(stakingTxHashHex string) (*types.Delegation, error)
+
 		QueryStakingParamsByVersion(version uint32) (*types.StakingParams, error)
 
 		Close() error

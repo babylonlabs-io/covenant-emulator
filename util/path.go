@@ -1,6 +1,8 @@
+//nolint:revive
 package util
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/user"
@@ -16,6 +18,7 @@ func FileExists(name string) bool {
 			return false
 		}
 	}
+
 	return true
 }
 
@@ -25,15 +28,18 @@ func MakeDirectory(dir string) error {
 		// Show a nicer error message if it's because a symlink
 		// is linked to a directory that does not exist
 		// (probably because it's not mounted).
-		if e, ok := err.(*os.PathError); ok && os.IsExist(err) {
+		var e *os.PathError
+		if errors.As(err, &e) && os.IsExist(err) {
 			link, lerr := os.Readlink(e.Path)
 			if lerr == nil {
 				str := "is symlink %s -> %s mounted?"
 				err = fmt.Errorf(str, e.Path, link)
 			}
 		}
+
 		return fmt.Errorf("failed to create dir %s: %w", dir, err)
 	}
+
 	return nil
 }
 

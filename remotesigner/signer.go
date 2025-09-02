@@ -13,7 +13,7 @@ import (
 var _ covenant.Signer = RemoteSigner{}
 
 func covenantRequestToSignerRequest(req covenant.SigningRequest) *signerapp.ParsedSigningRequest {
-	return &signerapp.ParsedSigningRequest{
+	parsedReq := &signerapp.ParsedSigningRequest{
 		StakingTx:               req.StakingTx,
 		SlashingTx:              req.SlashingTx,
 		UnbondingTx:             req.UnbondingTx,
@@ -24,6 +24,21 @@ func covenantRequestToSignerRequest(req covenant.SigningRequest) *signerapp.Pars
 		UnbondingSlashingScript: req.UnbondingTxSlashingPkScriptPath,
 		FpEncKeys:               req.FpEncKeys,
 	}
+
+	if req.StakeExp != nil {
+		parsedReq.StakeExp = covenantRequestToSignerRequestStkExp(*req.StakeExp)
+	}
+
+	return parsedReq
+}
+
+func covenantRequestToSignerRequestStkExp(req covenant.SigningRequestStkExp) *signerapp.ParsedSigningRequestStkExp {
+	return &signerapp.ParsedSigningRequestStkExp{
+		PreviousActiveStakeTx:              req.PreviousActiveStakeTx,
+		PreviousStakingOutputIdx:           req.PreviousStakingOutputIdx,
+		OtherFundingOutput:                 req.OtherFundingOutput,
+		PreviousActiveStakeUnbondingScript: req.PreviousActiveStakeUnbondingPkScriptPath,
+	}
 }
 
 func signerResponseToCovenantResponse(resp *signerapp.ParsedSigningResponse) *covenant.SignaturesResponse {
@@ -31,6 +46,7 @@ func signerResponseToCovenantResponse(resp *signerapp.ParsedSigningResponse) *co
 		SlashSigs:          resp.SlashAdaptorSigs,
 		UnbondingSig:       resp.UnbondingSig,
 		SlashUnbondingSigs: resp.SlashUnbondingAdaptorSigs,
+		StkExtSig:          resp.StakeExpSig,
 	}
 }
 

@@ -1,3 +1,4 @@
+//nolint:revive
 package types
 
 import (
@@ -44,6 +45,7 @@ func NewError(statusCode int, errorCode ErrorCode, err error) *Error {
 	if errorCode == "" {
 		errorCode = InternalServiceError
 	}
+
 	return &Error{
 		StatusCode: statusCode,
 		ErrorCode:  errorCode,

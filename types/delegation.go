@@ -1,11 +1,15 @@
+//nolint:revive
 package types
 
 import (
+	"encoding/hex"
 	"math"
 
 	"github.com/btcsuite/btcd/btcutil"
+	"github.com/btcsuite/btcd/wire"
 
-	bbn "github.com/babylonlabs-io/babylon/types"
+	"github.com/babylonlabs-io/babylon/v3/btcstaking"
+	bbn "github.com/babylonlabs-io/babylon/v3/types"
 
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
@@ -46,6 +50,32 @@ type Delegation struct {
 	BtcUndelegation *Undelegation
 	// params version used to validate delegation
 	ParamsVersion uint32
+	// StakeExpansion is the hash of the staking tx that was used as
+	// input to the stake expansion, if empty it is NOT a stake expansion.
+	StakeExpansion *DelegationStakeExpansion
+}
+
+// DelegationStakeExpansion necessary info to construct covenant signatures
+// for the stake expansion
+type DelegationStakeExpansion struct {
+	// PreviousStakingTxHashHex is the hex hash of the staking tx that was used as
+	// input to the stake expansion.
+	PreviousStakingTxHashHex string
+	// OtherFundingTxOutHex is the other funding output (TxOut) which was used
+	// as input to construct the BTC delegation. The stake expansion has a set of
+	// 2 inputs, the first input is the previous staking transaction and the
+	// second input (this one) is to pay for fees and optionally to add more
+	// stake to the BTC delegation.
+	OtherFundingTxOutHex string
+}
+
+func (d *DelegationStakeExpansion) OtherFundingTxOut() (*wire.TxOut, error) {
+	otherFundingTxOut, err := hex.DecodeString(d.OtherFundingTxOutHex)
+	if err != nil {
+		return nil, err
+	}
+
+	return btcstaking.DeserializeTxOut(otherFundingTxOut)
 }
 
 // HasCovenantQuorum returns whether a delegation has sufficient sigs
@@ -61,6 +91,10 @@ func (d *Delegation) GetStakingTime() uint16 {
 	}
 
 	return uint16(d.StakingTime)
+}
+
+func (d *Delegation) IsStakeExpansion() bool {
+	return d.StakeExpansion != nil
 }
 
 // Undelegation signalizes that the delegation is being undelegated
