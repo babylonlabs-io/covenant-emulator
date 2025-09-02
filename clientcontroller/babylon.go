@@ -210,11 +210,6 @@ func (bc *BabylonController) reliablySendMsgsResendingOnMsgErr(msgs []sdk.Msg) (
 			// concatenate the errors, to throw out if needed
 			err = errors.Join(err, errSendMsg)
 
-			// something failed, check if it is the message index failure
-			//if len(msgs) <= 1 {
-			//	return nil, err
-			//}
-
 			if strings.Contains(errSendMsg.Error(), "message index: ") {
 				// remove the failed msg from the batch and send again
 				failedIndex, found := FailedMessageIndex(errSendMsg)
