@@ -47,6 +47,7 @@ func NewClientController(
 		if err != nil {
 			return nil, fmt.Errorf("failed to create Babylon rpc client: %w", err)
 		}
+
 		return cc, nil
 	default:
 		return nil, fmt.Errorf("unsupported consumer chain")

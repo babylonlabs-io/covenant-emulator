@@ -221,6 +221,7 @@ func (bc *BabylonController) reliablySendMsgsResendingOnMsgErr(msgs []sdk.Msg) (
 				}
 
 				msgs = RemoveMsgAtIndex(msgs, failedIndex)
+
 				continue
 			}
 
@@ -259,6 +260,7 @@ func RemoveMsgAtIndex(msgs []sdk.Msg, index int) []sdk.Msg {
 	if index < 0 || index >= len(msgs) {
 		return msgs
 	}
+
 	return append(msgs[:index], msgs[index+1:]...)
 }
 
@@ -274,6 +276,7 @@ func FailedMessageIndex(err error) (int, bool) {
 			return index, true
 		}
 	}
+
 	return 0, false
 }
 
