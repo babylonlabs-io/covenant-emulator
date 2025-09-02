@@ -163,7 +163,7 @@ func (bc *BabylonController) reliablySendMsgs(msgs []sdk.Msg) (*babylonclient.Re
 	return bc.bbnClient.ReliablySendMsgs(
 		context.Background(),
 		msgs,
-		expectedErrors,
+		nil,
 		unrecoverableErrors,
 	)
 }
@@ -209,7 +209,7 @@ func (bc *BabylonController) reliablySendMsgsResendingOnMsgErr(msgs []sdk.Msg) (
 			err = errors.Join(err, errSendMsg)
 
 			// something failed, check if it is the message index failure
-			if res == nil || len(msgs) <= 1 {
+			if len(msgs) <= 1 {
 				return nil, err
 			}
 

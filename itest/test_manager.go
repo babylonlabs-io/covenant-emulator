@@ -54,6 +54,7 @@ type TestManager struct {
 	CovenanConfig    *covcfg.Config
 	CovBBNClient     *covcc.BabylonController
 	StakingParams    *types.StakingParams
+	Signer           *remotesigner.RemoteSigner
 	baseDir          string
 }
 
@@ -177,6 +178,7 @@ func StartManager(t *testing.T, hmacKey string) *TestManager {
 		CovenanConfig:    covenantConfig,
 		CovBBNClient:     covbc,
 		baseDir:          testDir,
+		Signer:           &signer,
 	}
 
 	tm.WaitForServicesStart(t)
