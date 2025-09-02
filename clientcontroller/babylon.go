@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	sdkErrors "cosmossdk.io/errors"
+
 	sdkmath "cosmossdk.io/math"
 	"github.com/btcsuite/btcd/btcec/v2"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
@@ -209,9 +211,9 @@ func (bc *BabylonController) reliablySendMsgsResendingOnMsgErr(msgs []sdk.Msg) (
 			err = errors.Join(err, errSendMsg)
 
 			// something failed, check if it is the message index failure
-			if len(msgs) <= 1 {
-				return nil, err
-			}
+			//if len(msgs) <= 1 {
+			//	return nil, err
+			//}
 
 			if strings.Contains(errSendMsg.Error(), "message index: ") {
 				// remove the failed msg from the batch and send again
@@ -233,6 +235,10 @@ func (bc *BabylonController) reliablySendMsgsResendingOnMsgErr(msgs []sdk.Msg) (
 		}
 
 		return &types.TxResponse{TxHash: res.TxHash, Events: res.Events}, nil
+	}
+
+	if err != nil && errorContained(err, expectedErrors) {
+		return &types.TxResponse{}, nil
 	}
 
 	return nil, fmt.Errorf("failed to send batch of msgs: %w", err)
@@ -674,4 +680,14 @@ func (bc *BabylonController) QueryBtcLightClientTip() (*btclctypes.BTCHeaderInfo
 	}
 
 	return res.Header, nil
+}
+
+func errorContained(err error, errList []*sdkErrors.Error) bool {
+	for _, e := range errList {
+		if strings.Contains(err.Error(), e.Error()) {
+			return true
+		}
+	}
+
+	return false
 }

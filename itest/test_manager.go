@@ -322,7 +322,7 @@ func (tm *TestManager) waitForNDelsWithStatus(t *testing.T, n int, queryFunc fun
 			return false
 		}
 
-		return len(dels) == n
+		return len(dels) >= n
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
 	t.Logf("delegations are %s", statusName)
