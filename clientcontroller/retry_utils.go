@@ -12,6 +12,7 @@ var unrecoverableErrors = []*sdkErr.Error{
 	btcstakingtypes.ErrInvalidCovenantSig,
 }
 
+//nolint:unused
 var expectedErrors = []*sdkErr.Error{
 	btcstakingtypes.ErrDuplicatedCovenantSig,
 }
