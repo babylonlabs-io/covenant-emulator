@@ -34,20 +34,22 @@ type (
 	}
 )
 
-func NewClientController(chainName string, bbnConfig *config.BBNConfig, netParams *chaincfg.Params, logger *zap.Logger) (ClientController, error) {
-	var (
-		cc  ClientController
-		err error
-	)
+func NewClientController(
+	chainName string,
+	bbnConfig *config.BBNConfig,
+	netParams *chaincfg.Params,
+	logger *zap.Logger,
+	maxRetiresBatchRemovingMsgs uint64,
+) (ClientController, error) {
 	switch chainName {
 	case babylonConsumerChainName:
-		cc, err = NewBabylonController(bbnConfig, netParams, logger)
+		cc, err := NewBabylonController(bbnConfig, netParams, logger, maxRetiresBatchRemovingMsgs)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create Babylon rpc client: %w", err)
 		}
+
+		return cc, nil
 	default:
 		return nil, fmt.Errorf("unsupported consumer chain")
 	}
-
-	return cc, err
 }
