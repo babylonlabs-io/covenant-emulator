@@ -122,7 +122,7 @@ func (bc *BabylonController) QueryStakingParamsByVersion(version uint32) (*types
 	for _, pk := range stakingParamRes.Params.CovenantPks {
 		covPk, err := pk.ToBTCPK()
 		if err != nil {
-			return nil, fmt.Errorf("invalid covenant public key")
+			return nil, errors.New("invalid covenant public key")
 		}
 		covenantPks = append(covenantPks, covPk)
 	}
@@ -379,11 +379,11 @@ func DelegationRespToDelegation(del *btcstakingtypes.BTCDelegationResponse) (*ty
 	)
 
 	if del.StakingTxHex == "" {
-		return nil, fmt.Errorf("staking tx should not be empty in delegation")
+		return nil, errors.New("staking tx should not be empty in delegation")
 	}
 
 	if del.SlashingTxHex == "" {
-		return nil, fmt.Errorf("slashing tx should not be empty in delegation")
+		return nil, errors.New("slashing tx should not be empty in delegation")
 	}
 
 	for _, s := range del.CovenantSigs {
@@ -407,7 +407,7 @@ func DelegationRespToDelegation(del *btcstakingtypes.BTCDelegationResponse) (*ty
 	}
 
 	if del.UnbondingTime > uint32(math.MaxUint16) {
-		return nil, fmt.Errorf("unbonding time should be smaller than max uint16")
+		return nil, errors.New("unbonding time should be smaller than max uint16")
 	}
 
 	if del.TotalSat > uint64(math.MaxInt64) {
@@ -448,11 +448,11 @@ func UndelegationRespToUndelegation(undel *btcstakingtypes.BTCUndelegationRespon
 	)
 
 	if undel.UnbondingTxHex == "" {
-		return nil, fmt.Errorf("staking tx should not be empty in undelegation")
+		return nil, errors.New("staking tx should not be empty in undelegation")
 	}
 
 	if undel.SlashingTxHex == "" {
-		return nil, fmt.Errorf("slashing tx should not be empty in undelegation")
+		return nil, errors.New("slashing tx should not be empty in undelegation")
 	}
 
 	for _, unbondingSig := range undel.CovenantUnbondingSigList {
