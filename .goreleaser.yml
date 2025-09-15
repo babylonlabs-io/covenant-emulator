@@ -35,7 +35,7 @@ builds:
       - -trimpath
     ldflags:
       - -X github.com/babylonlabs-io/covenant-emulator/version.version={{ .Version }}
-      - -X github.com/babylonlabs-io/covenant-emulator/version.Commit={{ .Commit }}
+      - -X github.com/babylonlabs-io/covenant-emulator/version.commit={{ .Commit }}
       - -w -s
       - -linkmode=external
       - -extldflags "-Wl,-z,muldefs -static -z noexecstack"
@@ -59,7 +59,7 @@ builds:
       - -trimpath
     ldflags:
       - -X github.com/babylonlabs-io/covenant-emulator/version.version={{ .Version }}
-      - -X github.com/babylonlabs-io/covenant-emulator/version.Commit={{ .Commit }}
+      - -X github.com/babylonlabs-io/covenant-emulator/version.commit={{ .Commit }}
       - -w -s
       - -linkmode=external
       - -extldflags "-Wl,-z,muldefs -static -z noexecstack"
@@ -84,7 +84,7 @@ builds:
       - -trimpath
     ldflags:
       - -X github.com/babylonlabs-io/covenant-emulator/version.version={{ .Version }}
-      - -X github.com/babylonlabs-io/covenant-emulator/version.Commit={{ .Commit }}
+      - -X github.com/babylonlabs-io/covenant-emulator/version.commit={{ .Commit }}
       - -w -s
       - -linkmode=external
     tags:
@@ -107,7 +107,7 @@ builds:
       - -trimpath
     ldflags:
       - -X github.com/babylonlabs-io/covenant-emulator/version.version={{ .Version }}
-      - -X github.com/babylonlabs-io/covenant-emulator/version.Commit={{ .Commit }}
+      - -X github.com/babylonlabs-io/covenant-emulator/version.commit={{ .Commit }}
       - -w -s
       - -linkmode=external
       - -extldflags "-Wl,-z,muldefs -static -z noexecstack"
@@ -131,7 +131,7 @@ builds:
       - -trimpath
     ldflags:
       - -X github.com/babylonlabs-io/covenant-emulator/version.version={{ .Version }}
-      - -X github.com/babylonlabs-io/covenant-emulator/version.Commit={{ .Commit }}
+      - -X github.com/babylonlabs-io/covenant-emulator/version.commit={{ .Commit }}
       - -w -s
       - -linkmode=external
       - -extldflags "-Wl,-z,muldefs -static -z noexecstack"
@@ -156,7 +156,7 @@ builds:
       - -trimpath
     ldflags:
       - -X github.com/babylonlabs-io/covenant-emulator/version.version={{ .Version }}
-      - -X github.com/babylonlabs-io/covenant-emulator/version.Commit={{ .Commit }}
+      - -X github.com/babylonlabs-io/covenant-emulator/version.commit={{ .Commit }}
       - -w -s
       - -linkmode=external
     tags:
@@ -190,3 +190,4 @@ release:
 changelog:
   disable: true
 
+dist: dist
