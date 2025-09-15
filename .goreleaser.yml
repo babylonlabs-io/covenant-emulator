@@ -34,13 +34,15 @@ builds:
       - -mod=readonly
       - -trimpath
     ldflags:
+      - -X github.com/babylonlabs-io/covenant-emulator/version.version={{ .Version }}
+      - -X github.com/babylonlabs-io/covenant-emulator/version.Commit={{ .Commit }}
       - -w -s
       - -linkmode=external
       - -extldflags "-Wl,-z,muldefs -static -z noexecstack"
     tags:
+      - muslc
       - netgo
       - osusergo
-      - muslc
 
   - id: covd-linux-arm64
     main: ./cmd/covd
@@ -56,13 +58,15 @@ builds:
       - -mod=readonly
       - -trimpath
     ldflags:
+      - -X github.com/babylonlabs-io/covenant-emulator/version.version={{ .Version }}
+      - -X github.com/babylonlabs-io/covenant-emulator/version.Commit={{ .Commit }}
       - -w -s
       - -linkmode=external
       - -extldflags "-Wl,-z,muldefs -static -z noexecstack"
     tags:
+      - muslc
       - netgo
       - osusergo
-      - muslc
 
   - id: covd-darwin
     main: ./cmd/covd
@@ -79,11 +83,13 @@ builds:
       - -mod=readonly
       - -trimpath
     ldflags:
+      - -X github.com/babylonlabs-io/covenant-emulator/version.version={{ .Version }}
+      - -X github.com/babylonlabs-io/covenant-emulator/version.Commit={{ .Commit }}
       - -w -s
       - -linkmode=external
     tags:
-      - netgo
       - ledger
+      - netgo
       - static_wasm
 
   - id: covenant-signer-linux-amd64
@@ -100,13 +106,15 @@ builds:
       - -mod=readonly
       - -trimpath
     ldflags:
+      - -X github.com/babylonlabs-io/covenant-emulator/version.version={{ .Version }}
+      - -X github.com/babylonlabs-io/covenant-emulator/version.Commit={{ .Commit }}
       - -w -s
       - -linkmode=external
       - -extldflags "-Wl,-z,muldefs -static -z noexecstack"
     tags:
+      - muslc
       - netgo
       - osusergo
-      - muslc
 
   - id: covenant-signer-linux-arm64
     main: ./covenant-signer/main.go
@@ -122,13 +130,15 @@ builds:
       - -mod=readonly
       - -trimpath
     ldflags:
+      - -X github.com/babylonlabs-io/covenant-emulator/version.version={{ .Version }}
+      - -X github.com/babylonlabs-io/covenant-emulator/version.Commit={{ .Commit }}
       - -w -s
       - -linkmode=external
       - -extldflags "-Wl,-z,muldefs -static -z noexecstack"
     tags:
+      - muslc
       - netgo
       - osusergo
-      - muslc
 
   - id: covenant-signer-darwin
     main: ./covenant-signer/main.go
@@ -145,11 +155,13 @@ builds:
       - -mod=readonly
       - -trimpath
     ldflags:
+      - -X github.com/babylonlabs-io/covenant-emulator/version.version={{ .Version }}
+      - -X github.com/babylonlabs-io/covenant-emulator/version.Commit={{ .Commit }}
       - -w -s
       - -linkmode=external
     tags:
-      - netgo
       - ledger
+      - netgo
       - static_wasm
 
 archives:
