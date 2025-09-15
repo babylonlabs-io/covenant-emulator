@@ -88,7 +88,7 @@ builds:
 
   - id: covenant-signer-linux-amd64
     main: ./covenant-signer/main.go
-    binary: covenant-signer-platform
+    binary: covenant-signer
     goos:
       - linux
     goarch:
@@ -110,7 +110,7 @@ builds:
 
   - id: covenant-signer-linux-arm64
     main: ./covenant-signer/main.go
-    binary: covenant-signer-platform
+    binary: covenant-signer
     goos:
       - linux
     goarch:
@@ -132,7 +132,7 @@ builds:
 
   - id: covenant-signer-darwin
     main: ./covenant-signer/main.go
-    binary: covenant-signer-platform
+    binary: covenant-signer
     goos:
       - darwin
     goarch:
