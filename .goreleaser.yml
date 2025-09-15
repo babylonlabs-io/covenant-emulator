@@ -1,38 +1,167 @@
+version: 2
 project_name: covenant-emulator
+
+env:
+  - CGO_ENABLED=1
+  - CGO_LDFLAGS=-L/lib
+
+before:
+  hooks:
+    - wget -nc https://github.com/CosmWasm/wasmvm/releases/download/{{ .Env.COSMWASM_VERSION }}/libwasmvm_muslc.x86_64.a -O /lib/libwasmvm_muslc.x86_64.a
+    - wget -nc https://github.com/CosmWasm/wasmvm/releases/download/{{ .Env.COSMWASM_VERSION }}/libwasmvm_muslc.aarch64.a -O /lib/libwasmvm_muslc.aarch64.a
+    - wget -nc https://github.com/CosmWasm/wasmvm/releases/download/{{ .Env.COSMWASM_VERSION }}/libwasmvmstatic_darwin.a -O /lib/libwasmvmstatic_darwin.a
+
+    - curl -LO https://musl.cc/x86_64-linux-musl-cross.tgz
+    - tar xf x86_64-linux-musl-cross.tgz
+    - mv -n -u x86_64-linux-musl-cross /opt/musl-cross-x86_64
+
+    - curl -LO https://musl.cc/aarch64-linux-musl-cross.tgz
+    - tar xf aarch64-linux-musl-cross.tgz
+    - mv -n -u aarch64-linux-musl-cross /opt/musl-cross-aarch64
 
 builds:
   - id: covd-linux-amd64
     main: ./cmd/covd
     binary: covd
-    hooks:
-      pre:
-        - wget https://github.com/CosmWasm/wasmvm/releases/download/{{ .Env.COSMWASM_VERSION }}/libwasmvm.x86_64.so -O /lib/libwasmvm_muslc.x86_64.so
     goos:
       - linux
     goarch:
       - amd64
+    env:
+      - CC=/opt/musl-cross-x86_64/bin/x86_64-linux-musl-gcc
+      - LD=/opt/musl-cross-x86_64/bin/x86_64-linux-musl-ld
     flags:
       - -mod=readonly
       - -trimpath
     ldflags:
-      - -w
-      - -s
+      - -w -s
+      - -linkmode=external
+      - -extldflags "-Wl,-z,muldefs -static -z noexecstack"
     tags:
       - netgo
+      - osusergo
+      - muslc
+
+  - id: covd-linux-arm64
+    main: ./cmd/covd
+    binary: covd
+    goos:
+      - linux
+    goarch:
+      - arm64
+    env:
+      - CC=/opt/musl-cross-aarch64/bin/aarch64-linux-musl-gcc
+      - LD=/opt/musl-cross-aarch64/bin/aarch64-linux-musl-ld
+    flags:
+      - -mod=readonly
+      - -trimpath
+    ldflags:
+      - -w -s
+      - -linkmode=external
+      - -extldflags "-Wl,-z,muldefs -static -z noexecstack"
+    tags:
+      - netgo
+      - osusergo
+      - muslc
+
+  - id: covd-darwin
+    main: ./cmd/covd
+    binary: covd
+    goos:
+      - darwin
+    goarch:
+      - arm64
+    env:
+      - CC=oa64-clang
+      - CGO_CFLAGS=-mmacosx-version-min=10.12
+      - CGO_LDFLAGS=-L/lib -mmacosx-version-min=10.12
+    flags:
+      - -mod=readonly
+      - -trimpath
+    ldflags:
+      - -w -s
+      - -linkmode=external
+    tags:
+      - netgo
+      - ledger
+      - static_wasm
+
+  - id: covenant-signer-linux-amd64
+    main: ./covenant-signer/main.go
+    binary: covenant-signer-platform
+    goos:
+      - linux
+    goarch:
+      - amd64
+    env:
+      - CC=/opt/musl-cross-x86_64/bin/x86_64-linux-musl-gcc
+      - LD=/opt/musl-cross-x86_64/bin/x86_64-linux-musl-ld
+    flags:
+      - -mod=readonly
+      - -trimpath
+    ldflags:
+      - -w -s
+      - -linkmode=external
+      - -extldflags "-Wl,-z,muldefs -static -z noexecstack"
+    tags:
+      - netgo
+      - osusergo
+      - muslc
+
+  - id: covenant-signer-linux-arm64
+    main: ./covenant-signer/main.go
+    binary: covenant-signer-platform
+    goos:
+      - linux
+    goarch:
+      - arm64
+    env:
+      - CC=/opt/musl-cross-aarch64/bin/aarch64-linux-musl-gcc
+      - LD=/opt/musl-cross-aarch64/bin/aarch64-linux-musl-ld
+    flags:
+      - -mod=readonly
+      - -trimpath
+    ldflags:
+      - -w -s
+      - -linkmode=external
+      - -extldflags "-Wl,-z,muldefs -static -z noexecstack"
+    tags:
+      - netgo
+      - osusergo
+      - muslc
+
+  - id: covenant-signer-darwin
+    main: ./covenant-signer/main.go
+    binary: covenant-signer-platform
+    goos:
+      - darwin
+    goarch:
+      - arm64
+    env:
+      - CC=oa64-clang
+      - CGO_CFLAGS=-mmacosx-version-min=10.12
+      - CGO_LDFLAGS=-L/lib -mmacosx-version-min=10.12
+    flags:
+      - -mod=readonly
+      - -trimpath
+    ldflags:
+      - -w -s
+      - -linkmode=external
+    tags:
+      - netgo
+      - ledger
+      - static_wasm
 
 archives:
-  - id: zipped
-    builds:
+  - ids:
       - covd-linux-amd64
+      - covd-linux-arm64
+      - covd-darwin
+      - covenant-signer-linux-amd64
+      - covenant-signer-linux-arm64
+      - covenant-signer-darwin
     name_template: "{{.ProjectName}}-{{ .Version }}-{{ .Os }}-{{ .Arch }}"
-    format: tar.gz
-    files:
-      - none*
-  - id: binaries
-    builds:
-      - covd-linux-amd64
-    name_template: "{{.ProjectName}}-{{ .Version }}-{{ .Os }}-{{ .Arch }}"
-    format: binary
+    formats: [tar.gz, binary]
     files:
       - none*
 
@@ -49,4 +178,3 @@ release:
 changelog:
   disable: true
 
-dist: dist
