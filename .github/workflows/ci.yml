@@ -10,7 +10,11 @@ permissions:
       
 jobs:
   lint_test:
+<<<<<<< Updated upstream
     uses: babylonlabs-io/.github/.github/workflows/reusable_go_lint_test.yml@v0.13.4
+=======
+    uses: babylonlabs-io/.github/.github/workflows/reusable_go_lint_test.yml@5151754256060bf160c411d0784f831f29882106 # v0.13.4
+>>>>>>> Stashed changes
     with:
       go-version: '1.25'
       go-lint-version: 'v2.4.0'
@@ -22,7 +26,11 @@ jobs:
       gosec-args: "-exclude-generated -exclude-dir=itest -exclude-dir=testutil -exclude-dir=covenant-signer ./..."
 
   docker_pipeline:
+<<<<<<< Updated upstream
     uses: babylonlabs-io/.github/.github/workflows/reusable_docker_pipeline.yml@v0.13.4
+=======
+    uses: babylonlabs-io/.github/.github/workflows/reusable_docker_pipeline.yml@5151754256060bf160c411d0784f831f29882106 # v0.13.4
+>>>>>>> Stashed changes
     secrets: inherit
     with:
       publish: false
@@ -50,7 +58,11 @@ jobs:
         run: gosec ./...
 
   docker_pipeline_covenant_signer:
+<<<<<<< Updated upstream
     uses: babylonlabs-io/.github/.github/workflows/reusable_docker_pipeline.yml@v0.13.4
+=======
+    uses: babylonlabs-io/.github/.github/workflows/reusable_docker_pipeline.yml@5151754256060bf160c411d0784f831f29882106 # v0.13.4
+>>>>>>> Stashed changes
     secrets: inherit
     with:
       publish: false
