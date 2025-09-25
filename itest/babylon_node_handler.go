@@ -11,7 +11,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/babylonlabs-io/babylon/v3/types"
+	"github.com/babylonlabs-io/babylon/v4/types"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/txscript"
