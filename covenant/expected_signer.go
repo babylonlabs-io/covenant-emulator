@@ -1,7 +1,7 @@
 package covenant
 
 import (
-	asig "github.com/babylonlabs-io/babylon/v3/crypto/schnorr-adaptor-signature"
+	asig "github.com/babylonlabs-io/babylon/v4/crypto/schnorr-adaptor-signature"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/btcsuite/btcd/wire"
 	secp "github.com/decred/dcrd/dcrec/secp256k1/v4"

@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	asig "github.com/babylonlabs-io/babylon/v3/crypto/schnorr-adaptor-signature"
+	asig "github.com/babylonlabs-io/babylon/v4/crypto/schnorr-adaptor-signature"
 
-	"github.com/babylonlabs-io/babylon/v3/btcstaking"
+	"github.com/babylonlabs-io/babylon/v4/btcstaking"
 	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/config"
 	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/itest/containers"
 	"github.com/babylonlabs-io/covenant-emulator/covenant-signer/keystore/cosmos"
