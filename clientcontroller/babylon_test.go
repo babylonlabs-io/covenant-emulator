@@ -5,9 +5,9 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/babylonlabs-io/babylon/v3/testutil/datagen"
-	bbntypes "github.com/babylonlabs-io/babylon/v3/types"
-	"github.com/babylonlabs-io/babylon/v3/x/btcstaking/types"
+	"github.com/babylonlabs-io/babylon/v4/testutil/datagen"
+	bbntypes "github.com/babylonlabs-io/babylon/v4/types"
+	"github.com/babylonlabs-io/babylon/v4/x/btcstaking/types"
 	"github.com/babylonlabs-io/covenant-emulator/clientcontroller"
 	"github.com/babylonlabs-io/covenant-emulator/testutil"
 	"github.com/cosmos/cosmos-sdk/testutil/testdata"
