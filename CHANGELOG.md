@@ -42,6 +42,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 * [#134](https://github.com/babylonlabs-io/covenant-emulator/pull/134) chore: add golangci lint rules
 * [#141](https://github.com/babylonlabs-io/covenant-emulator/pull/141) chore: bumps go1.25
 * [#112](https://github.com/babylonlabs-io/covenant-emulator/pull/112) feat: resend batch msgs if some failed
+* [#151](https://github.com/babylonlabs-io/covenant-emulator/pull/151) chore: bump to v4, rm phase 3 signingcontext
 
 ## v0.16.0-rc.1
 
