@@ -25,7 +25,7 @@ To successfully complete this guide, you will need:
   Note that the phase-2 covenant-signer program is a different one than the one
   used doing phase-1
 2. A connection to a Babylon node. To run your own node, please refer to the
-  [Babylon Node Setup Guide](https://github.com/babylonlabs-io/networks/blob/main/bbn-test-5/bbn-test-5/babylon-node/README.md).
+  [Babylon Node Setup Guide](https://github.com/babylonlabs-io/networks/blob/main/bbn-test-6/babylon-node/README.md).
 
 ## 2. Boot Order and Signer Dependency
 
@@ -132,7 +132,7 @@ BitcoinNetwork = signet
 # Babylon specific parameters
 
 # Babylon chain ID
-ChainID = bbn-test-5
+ChainID = bbn-test-6
 
 # Babylon node RPC endpoint
 RPCAddr = https://rpc-euphrates.devnet.babylonlabs.io:443
@@ -229,7 +229,7 @@ covd create-key --key-name <name> --chain-id <chain-id> --keyring-backend <backe
 
 Parameters:
 - `--key-name`: Name for the key in the keyring
-- `--chain-id`: ID of the Babylon chain (e.g., bbn-test-5)
+- `--chain-id`: ID of the Babylon chain (e.g., bbn-test-6)
 - `--keyring-backend`: Backend for key storage, we will use `test`
   for this guide.
 

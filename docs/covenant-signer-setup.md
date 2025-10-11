@@ -45,7 +45,7 @@ This guide requires that:
   your master private key.
 2. You have access to the private Bitcoin key you set up your covenant with.
 3. A connection to a Babylon node. To run your own node, please refer to the
-  [Babylon Node Setup Guide](https://github.com/babylonlabs-io/networks/blob/main/bbn-test-5/babylon-node/README.md).
+  [Babylon Node Setup Guide](https://github.com/babylonlabs-io/networks/blob/main/bbn-test-6/babylon-node/README.md).
 
 For a refresher on setting up the Bitcoin node, refer to the
 [deployment guide of your phase-1 covenant signer setup](https://github.com/babylonlabs-io/covenant-signer/blob/main/docs/deployment.md#2-bitcoind-setup).
