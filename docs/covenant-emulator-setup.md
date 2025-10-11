@@ -25,7 +25,7 @@ To successfully complete this guide, you will need:
   Note that the phase-2 covenant-signer program is a different one than the one
   used doing phase-1
 2. A connection to a Babylon node. To run your own node, please refer to the
-  [Babylon Node Setup Guide](https://github.com/babylonlabs-io/networks/blob/main/bbn-test-6/bbn-test-6/babylon-node/README.md).
+  [Babylon Node Setup Guide](https://github.com/babylonlabs-io/networks/blob/main/bbn-test-6/babylon-node/README.md).
 
 ## 2. Boot Order and Signer Dependency
 
