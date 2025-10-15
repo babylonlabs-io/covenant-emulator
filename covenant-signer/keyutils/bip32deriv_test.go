@@ -18,6 +18,24 @@ var parsePathTests = []struct {
 		expected: []uint32{0x80000054, 0x80000001, 0x80000000, 0, 0},
 		wantErr:  false,
 	},
+	{
+		name:     "overflow - hardened index at maximum allowed value",
+		path:     "2147483647h/1h/0h/0/0",
+		expected: []uint32{0xFFFFFFFF, 0x80000001, 0x80000000, 0, 0},
+		wantErr:  false,
+	},
+	{
+		name:     "overflow - hardened index exceeds maximum",
+		path:     "2147483648h/1h/0h/0/0",
+		expected: nil,
+		wantErr:  true,
+	},
+	{
+		name:     "overflow - hardened index at uint32 max",
+		path:     "4294967295h/1h/0h/0/0",
+		expected: nil,
+		wantErr:  true,
+	},
 }
 
 func TestParsePath(t *testing.T) {
