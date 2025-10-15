@@ -34,7 +34,12 @@ func parseHardened(elem string) (uint32, error) {
 
 	numAsUint32 := uint32(parsedNum)
 
-	// todo check for overflow
+	// Check for overflow: numAsUint32 must be less than HardenedKeyStart
+	// to avoid integer overflow when adding HardenedKeyStart (0x80000000)
+	if numAsUint32 >= hdkeychain.HardenedKeyStart {
+		return 0, fmt.Errorf("hardened index %d exceeds maximum allowed value %d", numAsUint32, hdkeychain.HardenedKeyStart-1)
+	}
+
 	return hdkeychain.HardenedKeyStart + numAsUint32, nil
 }
 
