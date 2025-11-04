@@ -148,3 +148,37 @@ func TestSubmitCovenantSigsBatchToSubmission(t *testing.T) {
 	require.NotEmpty(t, txRespBatch.TxHash, "Transaction hash should not be empty")
 	t.Logf("Successfully submitted batch of %d delegations, TxHash: %s", len(batchDels), txRespBatch.TxHash)
 }
+
+func TestMultisigBtcDelegation(t *testing.T) {
+	tm, btcPks := StartManagerWithFinalityProvider(t, 1)
+	defer tm.Stop(t)
+
+	// send a BTC delegation that is not following pre-approval flow
+	_ = tm.InsertMultisigBTCDelegation(t, btcPks, stakingTime, stakingAmount, false)
+
+	// check the BTC delegation is pending
+	_ = tm.WaitForNPendingDels(t, 1)
+
+	// check the BTC delegation is active
+	_ = tm.WaitForNActiveDels(t, 1)
+
+	// send a BTC delegation that is following pre-approval flow
+	_ = tm.InsertMultisigBTCDelegation(t, btcPks, stakingTime, stakingAmount, true)
+
+	// check the BTC delegation is pending
+	_ = tm.WaitForNPendingDels(t, 1)
+
+	time.Sleep(10 * time.Second)
+
+	// check the BTC delegation is verified
+	dels := tm.WaitForNVerifiedDels(t, 1)
+
+	// test duplicate, should expect no error
+	// remove covenant sigs
+	dels[0].CovenantSigs = nil
+	dels[0].BtcUndelegation.CovenantSlashingSigs = nil
+	dels[0].BtcUndelegation.CovenantUnbondingSigs = nil
+	res, err := tm.CovenantEmulator.AddCovenantSignatures(dels)
+	require.NoError(t, err)
+	require.Empty(t, res)
+}

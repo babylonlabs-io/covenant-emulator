@@ -70,6 +70,20 @@ type TestDelegationData struct {
 	StakingAmount    int64
 }
 
+type TestMultisigDelegationData struct {
+	DelegatorPrivKeys []*btcec.PrivateKey
+	DelegatorKeys     []*btcec.PublicKey
+	SlashingTx        *bstypes.BTCSlashingTx
+	StakingTx         *wire.MsgTx
+	StakingTxInfo     *btcctypes.TransactionInfo
+	DelegatorSig      *bbntypes.BIP340Signature
+	FpPks             []*btcec.PublicKey
+
+	SlashingPkScript []byte
+	StakingTime      uint16
+	StakingAmount    int64
+}
+
 type testFinalityProviderData struct {
 	BabylonAddress sdk.AccAddress
 	BtcPrivKey     *btcec.PrivateKey
@@ -476,6 +490,203 @@ func (tm *TestManager) InsertBTCDelegation(
 		SlashingPkScript: params.SlashingPkScript,
 		StakingTime:      stakingTime,
 		StakingAmount:    stakingAmount,
+	}
+}
+
+// InsertMultisigBTCDelegation inserts 2-of-3 multisig BTC delegation to Babylon
+// isPreApproval indicates whether the delegation follows
+// pre-approval flow, if so, the inclusion proof is nil
+func (tm *TestManager) InsertMultisigBTCDelegation(
+	t *testing.T,
+	fpPks []*btcec.PublicKey, stakingTime uint16, stakingAmount int64,
+	isPreApproval bool,
+) *TestMultisigDelegationData {
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	params := tm.StakingParams
+
+	// delegator BTC key pairs, staking tx and slashing tx
+	delBtcPrivKeys, delBtcPubKeys, err := datagen.GenRandomBTCKeyPairs(r, 3)
+	require.NoError(t, err)
+
+	unbondingTime := uint16(tm.StakingParams.UnbondingTimeBlocks)
+	testStakingInfo := datagen.GenMultisigBTCStakingSlashingInfo(
+		r,
+		t,
+		btcNetworkParams,
+		delBtcPrivKeys,
+		2,
+		fpPks,
+		params.CovenantPks,
+		params.CovenantQuorum,
+		stakingTime,
+		stakingAmount,
+		params.SlashingPkScript,
+		params.SlashingRate,
+		unbondingTime,
+	)
+
+	// proof-of-possession with the first delBtcPrivKeys
+	pop, err := datagen.NewPoPBTC(tm.CovBBNClient.GetKeyAddress(), delBtcPrivKeys[0])
+	require.NoError(t, err)
+
+	// create and insert BTC headers which include the staking tx to get staking tx info
+	currentBtcTipResp, err := tm.CovBBNClient.QueryBtcLightClientTip()
+	require.NoError(t, err)
+	tipHeader, err := bbntypes.NewBTCHeaderBytesFromHex(currentBtcTipResp.HeaderHex)
+	require.NoError(t, err)
+	blockWithStakingTx := datagen.CreateBlockWithTransaction(r, tipHeader.ToBlockHeader(), testStakingInfo.StakingTx)
+	accumulatedWork := btclctypes.CalcWork(&blockWithStakingTx.HeaderBytes)
+	accumulatedWork = btclctypes.CumulativeWork(accumulatedWork, currentBtcTipResp.Work)
+	parentBlockHeaderInfo := &btclctypes.BTCHeaderInfo{
+		Header: &blockWithStakingTx.HeaderBytes,
+		Hash:   blockWithStakingTx.HeaderBytes.Hash(),
+		Height: currentBtcTipResp.Height + 1,
+		Work:   &accumulatedWork,
+	}
+	headers := make([]bbntypes.BTCHeaderBytes, 0)
+	headers = append(headers, blockWithStakingTx.HeaderBytes)
+	for i := 0; i < int(params.ComfirmationTimeBlocks); i++ {
+		headerInfo := datagen.GenRandomValidBTCHeaderInfoWithParent(r, *parentBlockHeaderInfo)
+		headers = append(headers, *headerInfo.Header)
+		parentBlockHeaderInfo = headerInfo
+	}
+	_, err = tm.CovBBNClient.InsertBtcBlockHeaders(headers)
+	require.NoError(t, err)
+	btcHeader := blockWithStakingTx.HeaderBytes
+	serializedStakingTx, err := bbntypes.SerializeBTCTx(testStakingInfo.StakingTx)
+	require.NoError(t, err)
+	txInfo := btcctypes.NewTransactionInfo(&btcctypes.TransactionKey{Index: 1, Hash: btcHeader.Hash()}, serializedStakingTx, blockWithStakingTx.SpvProof.MerkleNodes)
+
+	slashingSpendInfo, err := testStakingInfo.StakingInfo.SlashingPathSpendInfo()
+	require.NoError(t, err)
+
+	// delegator sig with main btc pk
+	delegatorSig, err := testStakingInfo.SlashingTx.Sign(
+		testStakingInfo.StakingTx,
+		datagen.StakingOutIdx,
+		slashingSpendInfo.GetPkScriptPath(),
+		delBtcPrivKeys[0],
+	)
+	require.NoError(t, err)
+
+	// rest of the delegator's sig
+	var extraDelegatorSigs []*bstypes.SignatureInfo
+	delSKs := delBtcPrivKeys[1:2]
+	for _, delSK := range delSKs {
+		sig, err := testStakingInfo.SlashingTx.Sign(
+			testStakingInfo.StakingTx,
+			datagen.StakingOutIdx,
+			slashingSpendInfo.GetPkScriptPath(),
+			delSK,
+		)
+		require.NoError(t, err)
+
+		extraDelegatorSigs = append(extraDelegatorSigs, &bstypes.SignatureInfo{
+			Pk:  bbntypes.NewBIP340PubKeyFromBTCPK(delSK.PubKey()),
+			Sig: sig,
+		})
+	}
+
+	unbondingValue := stakingAmount - 1000
+	stakingTxHash := testStakingInfo.StakingTx.TxHash()
+
+	testUnbondingInfo := datagen.GenMultisigBTCUnbondingSlashingInfo(
+		r,
+		t,
+		btcNetworkParams,
+		delBtcPrivKeys,
+		2,
+		fpPks,
+		params.CovenantPks,
+		params.CovenantQuorum,
+		wire.NewOutPoint(&stakingTxHash, datagen.StakingOutIdx),
+		unbondingTime,
+		unbondingValue,
+		params.SlashingPkScript,
+		params.SlashingRate,
+		unbondingTime,
+	)
+
+	unbondingTxMsg := testUnbondingInfo.UnbondingTx
+
+	unbondingSlashingPathInfo, err := testUnbondingInfo.UnbondingInfo.SlashingPathSpendInfo()
+	require.NoError(t, err)
+
+	// unbonding sig with main btc pk
+	unbondingSig, err := testUnbondingInfo.SlashingTx.Sign(
+		unbondingTxMsg,
+		datagen.StakingOutIdx,
+		unbondingSlashingPathInfo.GetPkScriptPath(),
+		delBtcPrivKeys[0],
+	)
+	require.NoError(t, err)
+
+	// rest of the delegator's sig
+	var extraUnbondingSigs []*bstypes.SignatureInfo
+	for _, delSK := range delSKs {
+		sig, err := testStakingInfo.SlashingTx.Sign(
+			testStakingInfo.StakingTx,
+			datagen.StakingOutIdx,
+			slashingSpendInfo.GetPkScriptPath(),
+			delSK,
+		)
+		require.NoError(t, err)
+
+		extraUnbondingSigs = append(extraUnbondingSigs, &bstypes.SignatureInfo{
+			Pk:  bbntypes.NewBIP340PubKeyFromBTCPK(delSK.PubKey()),
+			Sig: sig,
+		})
+	}
+
+	serializedUnbondingTx, err := bbntypes.SerializeBTCTx(testUnbondingInfo.UnbondingTx)
+	require.NoError(t, err)
+
+	// construct multisigInfo
+	stakerPKList := make([]bbntypes.BIP340PubKey, 0)
+	for _, delBtcPubKey := range delBtcPubKeys[1:] {
+		stakerPKList = append(stakerPKList, *bbntypes.NewBIP340PubKeyFromBTCPK(delBtcPubKey))
+	}
+
+	multisigInfo := &bstypes.AdditionalStakerInfo{
+		StakerBtcPkList:                stakerPKList,
+		StakerQuorum:                   2,
+		DelegatorSlashingSigs:          extraDelegatorSigs,
+		DelegatorUnbondingSlashingSigs: extraUnbondingSigs,
+	}
+
+	// submit the BTC delegation to Babylon
+	_, err = tm.CovBBNClient.CreateMultisigBTCDelegation(
+		bbntypes.NewBIP340PubKeyFromBTCPK(delBtcPubKeys[0]),
+		fpPks,
+		pop,
+		uint32(stakingTime),
+		stakingAmount,
+		txInfo,
+		testStakingInfo.SlashingTx,
+		delegatorSig,
+		serializedUnbondingTx,
+		uint32(unbondingTime),
+		unbondingValue,
+		testUnbondingInfo.SlashingTx,
+		unbondingSig,
+		isPreApproval,
+		multisigInfo,
+	)
+	require.NoError(t, err)
+
+	t.Log("successfully submitted a BTC delegation")
+
+	return &TestMultisigDelegationData{
+		DelegatorPrivKeys: delBtcPrivKeys,
+		DelegatorKeys:     delBtcPubKeys,
+		FpPks:             fpPks,
+		StakingTx:         testStakingInfo.StakingTx,
+		SlashingTx:        testStakingInfo.SlashingTx,
+		StakingTxInfo:     txInfo,
+		DelegatorSig:      delegatorSig,
+		SlashingPkScript:  params.SlashingPkScript,
+		StakingTime:       stakingTime,
+		StakingAmount:     stakingAmount,
 	}
 }
 

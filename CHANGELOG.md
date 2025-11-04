@@ -38,8 +38,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 ## Unreleased
 
 ### Bug Fixes
-* 
+
 * [#156](https://github.com/babylonlabs-io/covenant-emulator/pull/156) fix: overflow in parse hardened
+* [#159](https://github.com/babylonlabs-io/covenant-emulator/pull/159) Support M-of-N multisig btc delegation
 
 ## v0.16.0-rc.2
 
