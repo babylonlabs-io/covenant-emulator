@@ -6,7 +6,7 @@ require (
 	cosmossdk.io/errors v1.0.2
 	cosmossdk.io/math v1.5.3
 	github.com/avast/retry-go/v4 v4.5.1
-	github.com/babylonlabs-io/babylon/v4 v4.0.0-rc.0
+	github.com/babylonlabs-io/babylon/v4 v4.0.0-snapshot.250925.0.20251029041923-54247ad2b7b8
 	github.com/btcsuite/btcd v0.24.2
 	github.com/btcsuite/btcd/btcec/v2 v2.3.4
 	github.com/btcsuite/btcd/btcutil v1.1.6
@@ -280,8 +280,6 @@ replace (
 	cosmossdk.io/core => cosmossdk.io/core v0.11.3
 	// use cosmos fork of keyring
 	github.com/99designs/keyring => github.com/cosmos/keyring v1.2.0
-	// TODO: remove it after bump babylon to v5
-	github.com/babylonlabs-io/babylon/v4 => ../babylon
 	// use babylon fork of btcec with crypto fix
 	github.com/btcsuite/btcd/btcec/v2 => github.com/babylonlabs-io/btcd/btcec/v2 v2.3.4-babylon.rc.0
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
