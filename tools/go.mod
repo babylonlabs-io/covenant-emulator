@@ -2,7 +2,7 @@ module github.com/babylonlabs-io/covenant-emulator/tools
 
 go 1.25.0
 
-require github.com/babylonlabs-io/babylon/v4 v4.0.0-rc.0
+require github.com/babylonlabs-io/babylon/v4 v4.0.0-rc.3
 
 require (
 	cel.dev/expr v0.24.0 // indirect
@@ -67,7 +67,7 @@ require (
 	github.com/cockroachdb/pebble v1.1.5 // indirect
 	github.com/cockroachdb/redact v1.1.6 // indirect
 	github.com/cockroachdb/tokenbucket v0.0.0-20230807174530-cc333fc44b06 // indirect
-	github.com/cometbft/cometbft v0.38.18 // indirect
+	github.com/cometbft/cometbft v0.38.19 // indirect
 	github.com/cometbft/cometbft-db v0.15.0 // indirect
 	github.com/cosmos/btcutil v1.0.5 // indirect
 	github.com/cosmos/cosmos-db v1.1.3 // indirect
