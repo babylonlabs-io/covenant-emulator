@@ -429,12 +429,25 @@ func DelegationRespToDelegation(del *btcstakingtypes.BTCDelegationResponse) (*ty
 		BtcUndelegation:  undelegation,
 		ParamsVersion:    del.ParamsVersion,
 		StakeExpansion:   nil,
+		MultisigInfo:     nil,
 	}
 
 	if del.StkExp != nil {
 		respDel.StakeExpansion = &types.DelegationStakeExpansion{
 			PreviousStakingTxHashHex: del.StkExp.PreviousStakingTxHashHex,
 			OtherFundingTxOutHex:     del.StkExp.OtherFundingTxOutHex,
+		}
+	}
+
+	if del.MultisigInfo != nil {
+		stakerBtcPkList, err := bbntypes.NewBTCPKsFromBIP340PKs(del.MultisigInfo.StakerBtcPkList)
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert staker btc pk list: %w", err)
+		}
+
+		respDel.MultisigInfo = &types.AdditionalStakerInfo{
+			StakerBtcPkList: stakerBtcPkList,
+			StakerQuorum:    del.MultisigInfo.StakerQuorum,
 		}
 	}
 

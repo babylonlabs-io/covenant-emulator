@@ -53,6 +53,19 @@ type Delegation struct {
 	// StakeExpansion is the hash of the staking tx that was used as
 	// input to the stake expansion, if empty it is NOT a stake expansion.
 	StakeExpansion *DelegationStakeExpansion
+	// MultisigInfo contains additional staker info that is used for multisig
+	// btc delegation, it empty it is NOT a multisig btc delegation.
+	MultisigInfo *AdditionalStakerInfo
+}
+
+// AdditionalStakerInfo necessary info to construct covenant signatures for
+// multisig btc delegation
+type AdditionalStakerInfo struct {
+	// StakerBtcPkList is the list of btc staker's pk and the main btc pk is not
+	// included in this list. i.e., for M-of-N multisig, the length of StakerBtcPkList is N-1
+	StakerBtcPkList []*btcec.PublicKey
+	// StakerQuorum is a threshold of M-of-N multisig
+	StakerQuorum uint32
 }
 
 // DelegationStakeExpansion necessary info to construct covenant signatures
@@ -95,6 +108,10 @@ func (d *Delegation) GetStakingTime() uint16 {
 
 func (d *Delegation) IsStakeExpansion() bool {
 	return d.StakeExpansion != nil
+}
+
+func (d *Delegation) IsMultisigBtcDel() bool {
+	return d.MultisigInfo != nil
 }
 
 // Undelegation signalizes that the delegation is being undelegated

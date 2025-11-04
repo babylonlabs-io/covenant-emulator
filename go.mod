@@ -89,7 +89,7 @@ require (
 	github.com/cockroachdb/pebble v1.1.5 // indirect
 	github.com/cockroachdb/redact v1.1.6 // indirect
 	github.com/cockroachdb/tokenbucket v0.0.0-20230807174530-cc333fc44b06 // indirect
-	github.com/cometbft/cometbft v0.38.18 // indirect
+	github.com/cometbft/cometbft v0.38.19 // indirect
 	github.com/cometbft/cometbft-db v0.15.0 // indirect
 	github.com/containerd/continuity v0.3.0 // indirect
 	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f // indirect
@@ -280,6 +280,8 @@ replace (
 	cosmossdk.io/core => cosmossdk.io/core v0.11.3
 	// use cosmos fork of keyring
 	github.com/99designs/keyring => github.com/cosmos/keyring v1.2.0
+	// TODO: remove it after bump babylon to v5
+	github.com/babylonlabs-io/babylon/v4 => ../babylon
 	// use babylon fork of btcec with crypto fix
 	github.com/btcsuite/btcd/btcec/v2 => github.com/babylonlabs-io/btcd/btcec/v2 v2.3.4-babylon.rc.0
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
