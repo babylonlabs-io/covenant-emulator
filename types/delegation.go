@@ -54,7 +54,7 @@ type Delegation struct {
 	// input to the stake expansion, if empty it is NOT a stake expansion.
 	StakeExpansion *DelegationStakeExpansion
 	// MultisigInfo contains additional staker info that is used for multisig
-	// btc delegation, it empty it is NOT a multisig btc delegation.
+	// btc delegation, if empty it is NOT a multisig btc delegation.
 	MultisigInfo *AdditionalStakerInfo
 }
 
