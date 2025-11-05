@@ -32,7 +32,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 )
 
 var (
@@ -95,7 +95,7 @@ func StartManager(t *testing.T, hmacKey string) *TestManager {
 	testDir, err := baseDir("cee2etest")
 	require.NoError(t, err)
 
-	logger := zap.NewNop()
+	logger := zaptest.NewLogger(t)
 	covenantConfig := defaultCovenantConfig(testDir)
 	err = covenantConfig.Validate()
 	require.NoError(t, err)

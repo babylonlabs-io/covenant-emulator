@@ -543,8 +543,8 @@ func decodeDelegationTransactions(del *types.Delegation, params *types.StakingPa
 		return nil, nil, err
 	}
 
-	// 2-1. verify the transactions with multisig info
 	if del.IsMultisigBtcDel() {
+		// 2-1. verify the transactions with multisig info
 		stakerPKs := del.MultisigInfo.StakerBtcPkList
 		stakerPKs = append(stakerPKs, del.BtcPk)
 
@@ -562,21 +562,21 @@ func decodeDelegationTransactions(del *types.Delegation, params *types.StakingPa
 		); err != nil {
 			return nil, nil, fmt.Errorf("invalid txs in the delegation: %w", err)
 		}
-	}
-
-	// 2-2. verify the transactions
-	if err := btcstaking.CheckSlashingTxMatchFundingTx(
-		slashingMsgTx,
-		stakingMsgTx,
-		del.StakingOutputIdx,
-		int64(params.MinSlashingTxFeeSat),
-		params.SlashingRate,
-		params.SlashingPkScript,
-		del.BtcPk,
-		del.UnbondingTime,
-		btcNet,
-	); err != nil {
-		return nil, nil, fmt.Errorf("invalid txs in the delegation: %w", err)
+	} else {
+		// 2-2. verify the transactions
+		if err := btcstaking.CheckSlashingTxMatchFundingTx(
+			slashingMsgTx,
+			stakingMsgTx,
+			del.StakingOutputIdx,
+			int64(params.MinSlashingTxFeeSat),
+			params.SlashingRate,
+			params.SlashingPkScript,
+			del.BtcPk,
+			del.UnbondingTime,
+			btcNet,
+		); err != nil {
+			return nil, nil, fmt.Errorf("invalid txs in the delegation: %w", err)
+		}
 	}
 
 	return stakingMsgTx, slashingMsgTx, nil
@@ -594,8 +594,8 @@ func decodeUndelegationTransactions(del *types.Delegation, params *types.Staking
 		return nil, nil, fmt.Errorf("failed to decode unbonding slashing tx from hex: %w", err)
 	}
 
-	// 2-1. verify transactions with multisig info
 	if del.IsMultisigBtcDel() {
+		// 2-1. verify transactions with multisig info
 		stakerPKs := del.MultisigInfo.StakerBtcPkList
 		stakerPKs = append(stakerPKs, del.BtcPk)
 
@@ -613,21 +613,21 @@ func decodeUndelegationTransactions(del *types.Delegation, params *types.Staking
 		); err != nil {
 			return nil, nil, fmt.Errorf("invalid txs in the undelegation: %w", err)
 		}
-	}
-
-	// 2-2. verify transactions
-	if err := btcstaking.CheckSlashingTxMatchFundingTx(
-		unbondingSlashingMsgTx,
-		unbondingMsgTx,
-		0,
-		int64(params.MinSlashingTxFeeSat),
-		params.SlashingRate,
-		params.SlashingPkScript,
-		del.BtcPk,
-		del.UnbondingTime,
-		btcNet,
-	); err != nil {
-		return nil, nil, fmt.Errorf("invalid txs in the undelegation: %w", err)
+	} else {
+		// 2-2. verify transactions
+		if err := btcstaking.CheckSlashingTxMatchFundingTx(
+			unbondingSlashingMsgTx,
+			unbondingMsgTx,
+			0,
+			int64(params.MinSlashingTxFeeSat),
+			params.SlashingRate,
+			params.SlashingPkScript,
+			del.BtcPk,
+			del.UnbondingTime,
+			btcNet,
+		); err != nil {
+			return nil, nil, fmt.Errorf("invalid txs in the undelegation: %w", err)
+		}
 	}
 
 	return unbondingMsgTx, unbondingSlashingMsgTx, err
