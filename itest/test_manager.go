@@ -624,10 +624,10 @@ func (tm *TestManager) InsertMultisigBTCDelegation(
 	// rest of the delegator's sig
 	var extraUnbondingSigs []*bstypes.SignatureInfo
 	for _, delSK := range delSKs {
-		sig, err := testStakingInfo.SlashingTx.Sign(
-			testStakingInfo.StakingTx,
+		sig, err := testUnbondingInfo.SlashingTx.Sign(
+			unbondingTxMsg,
 			datagen.StakingOutIdx,
-			slashingSpendInfo.GetPkScriptPath(),
+			unbondingSlashingPathInfo.GetPkScriptPath(),
 			delSK,
 		)
 		require.NoError(t, err)
