@@ -547,7 +547,7 @@ func decodeDelegationTransactions(del *types.Delegation, params *types.StakingPa
 
 	if del.IsMultisigBtcDel() {
 		// 2-1. verify the transactions with multisig info
-		stakerPKs := make([]*btcec.PublicKey, len(del.MultisigInfo.StakerBtcPkList)+1)
+		stakerPKs := make([]*btcec.PublicKey, len(del.MultisigInfo.StakerBtcPkList))
 		copy(stakerPKs, del.MultisigInfo.StakerBtcPkList)
 		stakerPKs = append(stakerPKs, del.BtcPk)
 
@@ -599,7 +599,7 @@ func decodeUndelegationTransactions(del *types.Delegation, params *types.Staking
 
 	if del.IsMultisigBtcDel() {
 		// 2-1. verify transactions with multisig info
-		stakerPKs := make([]*btcec.PublicKey, len(del.MultisigInfo.StakerBtcPkList)+1)
+		stakerPKs := make([]*btcec.PublicKey, len(del.MultisigInfo.StakerBtcPkList))
 		copy(stakerPKs, del.MultisigInfo.StakerBtcPkList)
 		stakerPKs = append(stakerPKs, del.BtcPk)
 
