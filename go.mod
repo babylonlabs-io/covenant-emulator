@@ -6,7 +6,7 @@ require (
 	cosmossdk.io/errors v1.0.2
 	cosmossdk.io/math v1.5.3
 	github.com/avast/retry-go/v4 v4.5.1
-	github.com/babylonlabs-io/babylon/v4 v4.0.0-rc.0
+	github.com/babylonlabs-io/babylon/v4 v4.0.0
 	github.com/btcsuite/btcd v0.24.2
 	github.com/btcsuite/btcd/btcec/v2 v2.3.4
 	github.com/btcsuite/btcd/btcutil v1.1.6
@@ -89,7 +89,7 @@ require (
 	github.com/cockroachdb/pebble v1.1.5 // indirect
 	github.com/cockroachdb/redact v1.1.6 // indirect
 	github.com/cockroachdb/tokenbucket v0.0.0-20230807174530-cc333fc44b06 // indirect
-	github.com/cometbft/cometbft v0.38.18 // indirect
+	github.com/cometbft/cometbft v0.38.19 // indirect
 	github.com/cometbft/cometbft-db v0.15.0 // indirect
 	github.com/containerd/continuity v0.3.0 // indirect
 	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f // indirect
