@@ -2,7 +2,7 @@ module github.com/babylonlabs-io/covenant-emulator/tools
 
 go 1.25.0
 
-require github.com/babylonlabs-io/babylon/v4 v4.0.0-rc.3
+require github.com/babylonlabs-io/babylon/v4 v4.0.0
 
 require (
 	cel.dev/expr v0.24.0 // indirect
