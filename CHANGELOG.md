@@ -37,6 +37,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## Unreleased
 
+<<<<<<< HEAD
+=======
+### Improvements
+
+* [#160](https://github.com/babylonlabs-io/covenant-emulator/pull/160) chore: bump babylon to `v4.0.0-rc.3`
+* [#161](https://github.com/babylonlabs-io/covenant-emulator/pull/161) chore: bump babylon to `v4.0.0`
+
+>>>>>>> e57eb4a (chore: bump bbn to v4.0.0 (#161))
 ### Bug Fixes
 * 
 * [#156](https://github.com/babylonlabs-io/covenant-emulator/pull/156) fix: overflow in parse hardened

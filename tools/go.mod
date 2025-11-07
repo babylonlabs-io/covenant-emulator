@@ -2,7 +2,11 @@ module github.com/babylonlabs-io/covenant-emulator/tools
 
 go 1.25.0
 
+<<<<<<< HEAD
 require github.com/babylonlabs-io/babylon/v4 v4.0.0-rc.0
+=======
+require github.com/babylonlabs-io/babylon/v4 v4.0.0
+>>>>>>> e57eb4a (chore: bump bbn to v4.0.0 (#161))
 
 require (
 	cel.dev/expr v0.24.0 // indirect
