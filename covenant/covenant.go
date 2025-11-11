@@ -409,9 +409,10 @@ func pkScriptPathUnbondingSlash(
 	)
 
 	if del.IsMultisigBtcDel() {
-		stakerPKs := make([]*btcec.PublicKey, 0, len(del.MultisigInfo.StakerBtcPkList)+1)
-		stakerPKs = append(stakerPKs, del.MultisigInfo.StakerBtcPkList...)
-		stakerPKs = append(stakerPKs, del.BtcPk)
+		stakerPKs, err := constructStakerPKsFromMultisigInfoAndBtcPk(del.MultisigInfo.StakerBtcPkList, del.BtcPk)
+		if err != nil {
+			return nil, fmt.Errorf("failed to construct staker pks from multisig info: %w", err)
+		}
 
 		unbondingInfo, err = btcstaking.BuildMultisigUnbondingInfo(
 			stakerPKs,
@@ -480,9 +481,10 @@ func pkScriptPathSlashAndUnbond(
 	)
 
 	if del.IsMultisigBtcDel() {
-		stakerPKs := make([]*btcec.PublicKey, 0, len(del.MultisigInfo.StakerBtcPkList)+1)
-		stakerPKs = append(stakerPKs, del.MultisigInfo.StakerBtcPkList...)
-		stakerPKs = append(stakerPKs, del.BtcPk)
+		stakerPKs, err := constructStakerPKsFromMultisigInfoAndBtcPk(del.MultisigInfo.StakerBtcPkList, del.BtcPk)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to construct staker pks from multisig info: %w", err)
+		}
 
 		stakingInfo, err = btcstaking.BuildMultisigStakingInfo(
 			stakerPKs,
@@ -547,9 +549,10 @@ func decodeDelegationTransactions(del *types.Delegation, params *types.StakingPa
 
 	if del.IsMultisigBtcDel() {
 		// 2-1. verify the transactions with multisig info
-		stakerPKs := make([]*btcec.PublicKey, 0, len(del.MultisigInfo.StakerBtcPkList)+1)
-		stakerPKs = append(stakerPKs, del.MultisigInfo.StakerBtcPkList...)
-		stakerPKs = append(stakerPKs, del.BtcPk)
+		stakerPKs, err := constructStakerPKsFromMultisigInfoAndBtcPk(del.MultisigInfo.StakerBtcPkList, del.BtcPk)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to construct staker pks from multisig info: %w", err)
+		}
 
 		if err := btcstaking.CheckSlashingTxMatchFundingTxMultisig(
 			slashingMsgTx,
@@ -599,9 +602,10 @@ func decodeUndelegationTransactions(del *types.Delegation, params *types.Staking
 
 	if del.IsMultisigBtcDel() {
 		// 2-1. verify transactions with multisig info
-		stakerPKs := make([]*btcec.PublicKey, 0, len(del.MultisigInfo.StakerBtcPkList)+1)
-		stakerPKs = append(stakerPKs, del.MultisigInfo.StakerBtcPkList...)
-		stakerPKs = append(stakerPKs, del.BtcPk)
+		stakerPKs, err := constructStakerPKsFromMultisigInfoAndBtcPk(del.MultisigInfo.StakerBtcPkList, del.BtcPk)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to construct staker pks from multisig info: %w", err)
+		}
 
 		if err := btcstaking.CheckSlashingTxMatchFundingTxMultisig(
 			unbondingSlashingMsgTx,
@@ -635,6 +639,24 @@ func decodeUndelegationTransactions(del *types.Delegation, params *types.Staking
 	}
 
 	return unbondingMsgTx, unbondingSlashingMsgTx, err
+}
+
+func constructStakerPKsFromMultisigInfoAndBtcPk(
+	multisigStakerBtcPkList []*btcec.PublicKey,
+	btcPk *btcec.PublicKey,
+) ([]*btcec.PublicKey, error) {
+	if len(multisigStakerBtcPkList) == 0 {
+		return nil, fmt.Errorf("multisigStakerBtcPkList is empty")
+	}
+	if btcPk == nil {
+		return nil, fmt.Errorf("btcPk is nil")
+	}
+
+	stakerPKs := make([]*btcec.PublicKey, 0, len(multisigStakerBtcPkList)+1)
+	stakerPKs = append(stakerPKs, multisigStakerBtcPkList...)
+	stakerPKs = append(stakerPKs, btcPk)
+
+	return stakerPKs, nil
 }
 
 // delegationsToBatches takes a list of delegations and splits them into batches
