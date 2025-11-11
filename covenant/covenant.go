@@ -93,14 +93,13 @@ func (ce *Emulator) AddCovenantSignatures(btcDels []*types.Delegation) (*types.T
 	for _, btcDel := range btcDels {
 		// 0. nil checks
 		if btcDel == nil {
-			ce.logger.Error("empty delegation")
+			ce.logger.Error("empty delegation", zap.String("staking_tx_hex", btcDel.StakingTxHex))
 
 			continue
 		}
 
 		if btcDel.BtcUndelegation == nil {
-			ce.logger.Error("empty undelegation",
-				zap.String("staking_tx_hex", btcDel.StakingTxHex))
+			ce.logger.Error("empty undelegation", zap.String("staking_tx_hex", btcDel.StakingTxHex))
 
 			continue
 		}
@@ -130,6 +129,7 @@ func (ce *Emulator) AddCovenantSignatures(btcDels []*types.Delegation) (*types.T
 			ce.logger.Error("invalid unbonding time",
 				zap.Uint32("expected_unbonding_time", unbondingTimeBlocks),
 				zap.Uint16("got_unbonding_time", unbondingTime),
+				zap.String("staking_tx_hex", btcDel.StakingTxHex),
 			)
 
 			continue
@@ -145,6 +145,7 @@ func (ce *Emulator) AddCovenantSignatures(btcDels []*types.Delegation) (*types.T
 				zap.Uint16("min_staking_time", params.MinStakingTime),
 				zap.Uint16("max_staking_time", params.MaxStakingTime),
 				zap.Uint16("got_staking_time", stakingTime),
+				zap.String("staking_tx_hex", btcDel.StakingTxHex),
 			)
 
 			continue
@@ -155,6 +156,7 @@ func (ce *Emulator) AddCovenantSignatures(btcDels []*types.Delegation) (*types.T
 				zap.Int64("min_staking_value", int64(params.MinStakingValue)),
 				zap.Int64("max_staking_value", int64(params.MaxStakingValue)),
 				zap.Int64("got_staking_value", int64(btcDel.TotalSat)),
+				zap.String("staking_tx_hex", btcDel.StakingTxHex),
 			)
 
 			continue
@@ -180,6 +182,7 @@ func (ce *Emulator) AddCovenantSignatures(btcDels []*types.Delegation) (*types.T
 				zap.String("staker_pk", stakerPkHex),
 				zap.String("unbonding_tx_hex", btcDel.BtcUndelegation.UnbondingTxHex),
 				zap.String("unbonding_slashing_tx_hex", btcDel.BtcUndelegation.SlashingTxHex),
+				zap.String("staking_tx_hex", btcDel.StakingTxHex),
 				zap.Error(err),
 			)
 
@@ -192,6 +195,7 @@ func (ce *Emulator) AddCovenantSignatures(btcDels []*types.Delegation) (*types.T
 			ce.logger.Error("invalid unbonding fee",
 				zap.Int64("expected_unbonding_fee", int64(params.UnbondingFee)),
 				zap.Int64("got_unbonding_fee", unbondingFee),
+				zap.String("staking_tx_hex", btcDel.StakingTxHex),
 			)
 
 			continue
@@ -202,14 +206,21 @@ func (ce *Emulator) AddCovenantSignatures(btcDels []*types.Delegation) (*types.T
 		// pk script paths for Slash, unbond and unbonding slashing
 		fpsEncKeys, err := fpEncKeysFromDel(btcDel)
 		if err != nil {
-			ce.logger.Error("failed to encript the finality provider keys of the btc delegation", zap.String("staker_pk", stakerPkHex), zap.Error(err))
+			ce.logger.Error("failed to encript the finality provider keys of the btc delegation",
+				zap.String("staker_pk", stakerPkHex),
+				zap.String("staking_tx_hex", btcDel.StakingTxHex),
+				zap.Error(err),
+			)
 
 			continue
 		}
 
 		slashingPkScriptPath, stakingTxUnbondingPkScriptPath, unbondingTxSlashingPkScriptPath, err := pkScriptPaths(btcDel, params, &ce.config.BTCNetParams, unbondingTx)
 		if err != nil {
-			ce.logger.Error("failed to generate pk script path", zap.Error(err))
+			ce.logger.Error("failed to generate pk script path",
+				zap.Error(err),
+				zap.String("staking_tx_hex", btcDel.StakingTxHex),
+			)
 
 			continue
 		}
@@ -232,6 +243,7 @@ func (ce *Emulator) AddCovenantSignatures(btcDels []*types.Delegation) (*types.T
 			if err != nil {
 				ce.logger.Error("error building stake expansion request",
 					zap.Error(err),
+					zap.String("staking_tx_hex", btcDel.StakingTxHex),
 				)
 
 				continue
@@ -243,7 +255,10 @@ func (ce *Emulator) AddCovenantSignatures(btcDels []*types.Delegation) (*types.T
 		// 10. sign covenant transactions
 		resp, err := ce.SignTransactions(req)
 		if err != nil {
-			ce.logger.Error("failed to sign transactions", zap.Error(err))
+			ce.logger.Error("failed to sign transactions",
+				zap.Error(err),
+				zap.String("staking_tx_hex", btcDel.StakingTxHex),
+			)
 
 			continue
 		}

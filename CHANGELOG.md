@@ -39,6 +39,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Improvements
 
+* [#165](https://github.com/babylonlabs-io/covenant-emulator/pull/165) chore: add missing log detail of stk tx hex
 * [#159](https://github.com/babylonlabs-io/covenant-emulator/pull/159) Support M-of-N multisig btc delegation
 
 ## v0.16.0
