@@ -37,6 +37,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## Unreleased
 
+### Improvements
+
+* [#165](https://github.com/babylonlabs-io/covenant-emulator/pull/165) chore: add missing log detail of stk tx hex
+
 ## v0.16.0
 
 ### Improvements
