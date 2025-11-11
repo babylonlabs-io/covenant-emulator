@@ -95,6 +95,33 @@ func TestStakeExpansionDelegation(t *testing.T) {
 	t.Log("stake expansion delegation test completed successfully")
 }
 
+func TestMultisigStakeExpansionDelegation(t *testing.T) {
+	tm, btcPks := StartManagerWithFinalityProvider(t, 1)
+	defer tm.Stop(t)
+
+	// Create a multisig BTC delegation that will serve as the base
+	baseDel := tm.InsertMultisigBTCDelegation(t, btcPks, stakingTime, stakingAmount, false)
+
+	// Wait for the base delegation to become active
+	activeDels := tm.WaitForNActiveDels(t, 1)
+	require.Len(t, activeDels, 1)
+
+	// Create a multisig stake expansion delegation referencing the base staking tx
+	_ = tm.InsertMultisigStakeExpansionDelegation(t, btcPks, stakingTime, stakingAmount, baseDel.StakingTx, true)
+
+	// Wait for the stake expansion delegation to become pending
+	pendingDels := tm.WaitForNPendingDels(t, 1)
+	require.Len(t, pendingDels, 1)
+
+	// Wait for the stake expansion delegation to become verified
+	verifiedDels := tm.WaitForNVerifiedDels(t, 1)
+	require.Len(t, verifiedDels, 1)
+	require.NotNil(t, verifiedDels[0].StakeExpansion)
+	require.True(t, verifiedDels[0].IsMultisigBtcDel())
+
+	t.Log("multisig stake expansion delegation test completed successfully")
+}
+
 func TestSubmitCovenantSigsBatchToSubmission(t *testing.T) {
 	tm, btcPks := StartManagerWithFinalityProvider(t, 1)
 	defer tm.Stop(t)

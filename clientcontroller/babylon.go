@@ -629,6 +629,7 @@ func (bc *BabylonController) CreateStakeExpansionDelegation(
 	delUnbondingSlashingSig *bbntypes.BIP340Signature,
 	previousStakingTxHash string,
 	fundingTx []byte,
+	multisigInfo *btcstakingtypes.AdditionalStakerInfo,
 ) (*types.TxResponse, error) {
 	fpBtcPks := make([]bbntypes.BIP340PubKey, 0, len(fpPks))
 	for _, v := range fpPks {
@@ -652,6 +653,7 @@ func (bc *BabylonController) CreateStakeExpansionDelegation(
 		DelegatorUnbondingSlashingSig: delUnbondingSlashingSig,
 		PreviousStakingTxHash:         previousStakingTxHash,
 		FundingTx:                     fundingTx,
+		MultisigInfo:                  multisigInfo,
 	}
 
 	res, err := bc.reliablySendMsg(msg)
