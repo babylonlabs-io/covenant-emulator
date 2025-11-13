@@ -429,12 +429,25 @@ func DelegationRespToDelegation(del *btcstakingtypes.BTCDelegationResponse) (*ty
 		BtcUndelegation:  undelegation,
 		ParamsVersion:    del.ParamsVersion,
 		StakeExpansion:   nil,
+		MultisigInfo:     nil,
 	}
 
 	if del.StkExp != nil {
 		respDel.StakeExpansion = &types.DelegationStakeExpansion{
 			PreviousStakingTxHashHex: del.StkExp.PreviousStakingTxHashHex,
 			OtherFundingTxOutHex:     del.StkExp.OtherFundingTxOutHex,
+		}
+	}
+
+	if del.MultisigInfo != nil {
+		stakerBtcPkList, err := bbntypes.NewBTCPKsFromBIP340PKs(del.MultisigInfo.StakerBtcPkList)
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert staker btc pk list: %w", err)
+		}
+
+		respDel.MultisigInfo = &types.AdditionalStakerInfo{
+			StakerBtcPkList: stakerBtcPkList,
+			StakerQuorum:    del.MultisigInfo.StakerQuorum,
 		}
 	}
 
@@ -542,6 +555,62 @@ func (bc *BabylonController) CreateBTCDelegation(
 	return &types.TxResponse{TxHash: res.TxHash}, nil
 }
 
+// CreateMultisigBTCDelegation is currently only used for e2e tests,
+// probably does not need to add it into the interface
+func (bc *BabylonController) CreateMultisigBTCDelegation(
+	delBtcPk *bbntypes.BIP340PubKey,
+	fpPks []*btcec.PublicKey,
+	pop *btcstakingtypes.ProofOfPossessionBTC,
+	stakingTime uint32,
+	stakingValue int64,
+	stakingTxInfo *btcctypes.TransactionInfo,
+	slashingTx *btcstakingtypes.BTCSlashingTx,
+	delSlashingSig *bbntypes.BIP340Signature,
+	unbondingTx []byte,
+	unbondingTime uint32,
+	unbondingValue int64,
+	unbondingSlashingTx *btcstakingtypes.BTCSlashingTx,
+	delUnbondingSlashingSig *bbntypes.BIP340Signature,
+	isPreApproval bool,
+	multisigInfo *btcstakingtypes.AdditionalStakerInfo,
+) (*types.TxResponse, error) {
+	fpBtcPks := make([]bbntypes.BIP340PubKey, 0, len(fpPks))
+	for _, v := range fpPks {
+		fpBtcPks = append(fpBtcPks, *bbntypes.NewBIP340PubKeyFromBTCPK(v))
+	}
+
+	var inclusionProof *btcstakingtypes.InclusionProof
+	if !isPreApproval {
+		inclusionProof = btcstakingtypes.NewInclusionProof(stakingTxInfo.Key, stakingTxInfo.Proof)
+	}
+
+	msg := &btcstakingtypes.MsgCreateBTCDelegation{
+		StakerAddr:                    bc.mustGetTxSigner(),
+		Pop:                           pop,
+		BtcPk:                         delBtcPk,
+		FpBtcPkList:                   fpBtcPks,
+		StakingTime:                   stakingTime,
+		StakingValue:                  stakingValue,
+		StakingTx:                     stakingTxInfo.Transaction,
+		StakingTxInclusionProof:       inclusionProof,
+		SlashingTx:                    slashingTx,
+		DelegatorSlashingSig:          delSlashingSig,
+		UnbondingTx:                   unbondingTx,
+		UnbondingTime:                 unbondingTime,
+		UnbondingValue:                unbondingValue,
+		UnbondingSlashingTx:           unbondingSlashingTx,
+		DelegatorUnbondingSlashingSig: delUnbondingSlashingSig,
+		MultisigInfo:                  multisigInfo,
+	}
+
+	res, err := bc.reliablySendMsg(msg)
+	if err != nil {
+		return nil, err
+	}
+
+	return &types.TxResponse{TxHash: res.TxHash}, nil
+}
+
 // CreateStakeExpansionDelegation creates a BTC stake expansion delegation using MsgBtcStakeExpand
 // Currently this is only used for e2e tests, probably does not need to add it into the interface
 func (bc *BabylonController) CreateStakeExpansionDelegation(
@@ -560,6 +629,7 @@ func (bc *BabylonController) CreateStakeExpansionDelegation(
 	delUnbondingSlashingSig *bbntypes.BIP340Signature,
 	previousStakingTxHash string,
 	fundingTx []byte,
+	multisigInfo *btcstakingtypes.AdditionalStakerInfo,
 ) (*types.TxResponse, error) {
 	fpBtcPks := make([]bbntypes.BIP340PubKey, 0, len(fpPks))
 	for _, v := range fpPks {
@@ -583,6 +653,7 @@ func (bc *BabylonController) CreateStakeExpansionDelegation(
 		DelegatorUnbondingSlashingSig: delUnbondingSlashingSig,
 		PreviousStakingTxHash:         previousStakingTxHash,
 		FundingTx:                     fundingTx,
+		MultisigInfo:                  multisigInfo,
 	}
 
 	res, err := bc.reliablySendMsg(msg)

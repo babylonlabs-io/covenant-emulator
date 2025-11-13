@@ -95,6 +95,33 @@ func TestStakeExpansionDelegation(t *testing.T) {
 	t.Log("stake expansion delegation test completed successfully")
 }
 
+func TestMultisigStakeExpansionDelegation(t *testing.T) {
+	tm, btcPks := StartManagerWithFinalityProvider(t, 1)
+	defer tm.Stop(t)
+
+	// Create a multisig BTC delegation that will serve as the base
+	baseDel := tm.InsertMultisigBTCDelegation(t, btcPks, stakingTime, stakingAmount, false)
+
+	// Wait for the base delegation to become active
+	activeDels := tm.WaitForNActiveDels(t, 1)
+	require.Len(t, activeDels, 1)
+
+	// Create a multisig stake expansion delegation referencing the base staking tx
+	_ = tm.InsertMultisigStakeExpansionDelegation(t, btcPks, stakingTime, stakingAmount, baseDel.StakingTx, true)
+
+	// Wait for the stake expansion delegation to become pending
+	pendingDels := tm.WaitForNPendingDels(t, 1)
+	require.Len(t, pendingDels, 1)
+
+	// Wait for the stake expansion delegation to become verified
+	verifiedDels := tm.WaitForNVerifiedDels(t, 1)
+	require.Len(t, verifiedDels, 1)
+	require.NotNil(t, verifiedDels[0].StakeExpansion)
+	require.True(t, verifiedDels[0].IsMultisigBtcDel())
+
+	t.Log("multisig stake expansion delegation test completed successfully")
+}
+
 func TestSubmitCovenantSigsBatchToSubmission(t *testing.T) {
 	tm, btcPks := StartManagerWithFinalityProvider(t, 1)
 	defer tm.Stop(t)
@@ -147,4 +174,38 @@ func TestSubmitCovenantSigsBatchToSubmission(t *testing.T) {
 	require.NotNil(t, txRespBatch, "Transaction response should not be nil")
 	require.NotEmpty(t, txRespBatch.TxHash, "Transaction hash should not be empty")
 	t.Logf("Successfully submitted batch of %d delegations, TxHash: %s", len(batchDels), txRespBatch.TxHash)
+}
+
+func TestMultisigBtcDelegation(t *testing.T) {
+	tm, btcPks := StartManagerWithFinalityProvider(t, 1)
+	defer tm.Stop(t)
+
+	// send a BTC delegation that is not following pre-approval flow
+	_ = tm.InsertMultisigBTCDelegation(t, btcPks, stakingTime, stakingAmount, false)
+
+	// check the BTC delegation is pending
+	_ = tm.WaitForNPendingDels(t, 1)
+
+	// check the BTC delegation is active
+	_ = tm.WaitForNActiveDels(t, 1)
+
+	// send a BTC delegation that is following pre-approval flow
+	_ = tm.InsertMultisigBTCDelegation(t, btcPks, stakingTime, stakingAmount, true)
+
+	// check the BTC delegation is pending
+	_ = tm.WaitForNPendingDels(t, 1)
+
+	time.Sleep(10 * time.Second)
+
+	// check the BTC delegation is verified
+	dels := tm.WaitForNVerifiedDels(t, 1)
+
+	// test duplicate, should expect no error
+	// remove covenant sigs
+	dels[0].CovenantSigs = nil
+	dels[0].BtcUndelegation.CovenantSlashingSigs = nil
+	dels[0].BtcUndelegation.CovenantUnbondingSigs = nil
+	res, err := tm.CovenantEmulator.AddCovenantSignatures(dels)
+	require.NoError(t, err)
+	require.Empty(t, res)
 }

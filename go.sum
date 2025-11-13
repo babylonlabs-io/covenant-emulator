@@ -724,8 +724,10 @@ github.com/aws/aws-sdk-go v1.44.122/go.mod h1:y4AeaBuwd2Lk+GepC1E9v0qOiTws0MIWAX
 github.com/aws/aws-sdk-go v1.49.0 h1:g9BkW1fo9GqKfwg2+zCD+TW/D36Ux+vtfJ8guF4AYmY=
 github.com/aws/aws-sdk-go v1.49.0/go.mod h1:LF8svs817+Nz+DmiMQKTO3ubZ/6IaTpq3TjupRn3Eqk=
 github.com/aws/aws-sdk-go-v2 v0.18.0/go.mod h1:JWVYvqSMppoMJC0x5wdwiImzgXTI9FuZwxzkQq9wy+g=
-github.com/babylonlabs-io/babylon/v4 v4.0.0 h1:hMqYJc9Y+2v8Qvhfsu0hHEhWox3RPLCE0BNdP9q1W2A=
-github.com/babylonlabs-io/babylon/v4 v4.0.0/go.mod h1:6vRR3bwtUDElFe9rO8MABHDFOcA21D0ix6KFfGRbgQc=
+github.com/babylonlabs-io/babylon/v4 v4.0.0-snapshot.250925.0.20251105104712-e39a875af2a7 h1:OYIxIa3z9sfwMyCXFKBKxBTaM/G59VqVcWJtCEGmjOY=
+github.com/babylonlabs-io/babylon/v4 v4.0.0-snapshot.250925.0.20251105104712-e39a875af2a7/go.mod h1:6vRR3bwtUDElFe9rO8MABHDFOcA21D0ix6KFfGRbgQc=
+github.com/babylonlabs-io/babylon/v4 v4.0.0-snapshot.250925.0.20251111141225-13f784296bd8 h1:cNLqtYp3HMXh+vzKvv5qdaNWJ/Z44GnsiOzGI/5HR9Y=
+github.com/babylonlabs-io/babylon/v4 v4.0.0-snapshot.250925.0.20251111141225-13f784296bd8/go.mod h1:6vRR3bwtUDElFe9rO8MABHDFOcA21D0ix6KFfGRbgQc=
 github.com/babylonlabs-io/btcd/btcec/v2 v2.3.4-babylon.rc.0 h1:BVqjtFpXKYnaPMTfrWgt0sg03jZMywNzz142ZV9ck+g=
 github.com/babylonlabs-io/btcd/btcec/v2 v2.3.4-babylon.rc.0/go.mod h1:zYzJ8etWJQIv1Ogk7OzpWjowwOdXY1W/17j2MW85J04=
 github.com/babylonlabs-io/tokenfactory v0.50.6-wasmvm2 h1:7wtBLjwncBsYgc+LlW4eir/bGcycrhpbz7PkUVADzBc=
