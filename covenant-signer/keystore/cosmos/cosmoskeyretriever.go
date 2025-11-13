@@ -2,6 +2,7 @@ package cosmos
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -42,7 +43,7 @@ func (k *KeyringRetriever) PrivKey(_ context.Context) (*btcec.PrivateKey, error)
 	defer k.mu.Unlock()
 
 	if k.btcecPrivKey == nil {
-		return nil, fmt.Errorf("private key is not unlocked. Please call Unlock() first")
+		return nil, errors.New("private key is not unlocked. Please call Unlock() first")
 	}
 
 	return k.btcecPrivKey, nil

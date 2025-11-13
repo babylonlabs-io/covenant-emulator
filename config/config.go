@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 	"time"
@@ -89,11 +90,11 @@ func LoadConfig(homePath string) (*Config, error) {
 // normalized. The cleaned up config is returned on success.
 func (cfg *Config) Validate() error {
 	if cfg.Metrics == nil {
-		return fmt.Errorf("empty metrics config")
+		return errors.New("empty metrics config")
 	}
 
 	if err := cfg.Metrics.Validate(); err != nil {
-		return fmt.Errorf("invalid metrics config")
+		return errors.New("invalid metrics config")
 	}
 
 	switch cfg.BitcoinNetwork {
