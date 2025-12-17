@@ -81,7 +81,7 @@ func TestStakeExpansionDelegation(t *testing.T) {
 	require.Len(t, activeDels, 1)
 
 	// Create a stake expansion delegation using the base delegation's staking tx hash
-	_ = tm.InsertStakeExpansionDelegation(t, btcPks, stakingTime, stakingAmount, baseDel.StakingTx, true)
+	_ = tm.InsertStakeExpansionDelegation(t, btcPks, stakingTime, stakingAmount, baseDel.StakingTx, baseDel.DelegatorPrivKey, baseDel.DelegatorKey)
 
 	// Wait for the stake expansion delegation to become pending
 	pendingDels := tm.WaitForNPendingDels(t, 1)
@@ -107,7 +107,7 @@ func TestMultisigStakeExpansionDelegation(t *testing.T) {
 	require.Len(t, activeDels, 1)
 
 	// Create a multisig stake expansion delegation referencing the base staking tx
-	_ = tm.InsertMultisigStakeExpansionDelegation(t, btcPks, stakingTime, stakingAmount, baseDel.StakingTx, true)
+	_ = tm.InsertMultisigStakeExpansionDelegation(t, btcPks, stakingTime, stakingAmount, baseDel.StakingTx, baseDel.DelegatorPrivKeys, baseDel.DelegatorKeys)
 
 	// Wait for the stake expansion delegation to become pending
 	pendingDels := tm.WaitForNPendingDels(t, 1)
