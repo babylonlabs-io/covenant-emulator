@@ -699,14 +699,11 @@ func (tm *TestManager) InsertStakeExpansionDelegation(
 	stakingTime uint16,
 	stakingAmount int64,
 	prevStakingTx *wire.MsgTx,
-	_ bool,
+	prevDelBtcPrivKey *btcec.PrivateKey,
+	prevDelBtcPubKey *btcec.PublicKey,
 ) *TestDelegationData {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	params := tm.StakingParams
-
-	// delegator BTC key pairs, staking tx and slashing tx
-	delBtcPrivKey, delBtcPubKey, err := datagen.GenRandomBTCKeyPair(r)
-	require.NoError(t, err)
 
 	unbondingTime := uint16(tm.StakingParams.UnbondingTimeBlocks)
 
@@ -730,7 +727,7 @@ func (tm *TestManager) InsertStakeExpansionDelegation(
 		t,
 		btcNetworkParams,
 		outPoints,
-		delBtcPrivKey,
+		prevDelBtcPrivKey,
 		fpPks,
 		params.CovenantPks,
 		params.CovenantQuorum,
@@ -742,7 +739,7 @@ func (tm *TestManager) InsertStakeExpansionDelegation(
 	)
 
 	// proof-of-possession
-	pop, err := datagen.NewPoPBTC(tm.CovBBNClient.GetKeyAddress(), delBtcPrivKey)
+	pop, err := datagen.NewPoPBTC(tm.CovBBNClient.GetKeyAddress(), prevDelBtcPrivKey)
 	require.NoError(t, err)
 
 	// create and insert BTC headers which include the staking tx to get staking tx info
@@ -781,7 +778,7 @@ func (tm *TestManager) InsertStakeExpansionDelegation(
 		testStakingInfo.StakingTx,
 		datagen.StakingOutIdx,
 		slashingSpendInfo.GetPkScriptPath(),
-		delBtcPrivKey,
+		prevDelBtcPrivKey,
 	)
 	require.NoError(t, err)
 
@@ -792,7 +789,7 @@ func (tm *TestManager) InsertStakeExpansionDelegation(
 		r,
 		t,
 		btcNetworkParams,
-		delBtcPrivKey,
+		prevDelBtcPrivKey,
 		fpPks,
 		params.CovenantPks,
 		params.CovenantQuorum,
@@ -813,7 +810,7 @@ func (tm *TestManager) InsertStakeExpansionDelegation(
 		unbondingTxMsg,
 		datagen.StakingOutIdx,
 		unbondingSlashingPathInfo.GetPkScriptPath(),
-		delBtcPrivKey,
+		prevDelBtcPrivKey,
 	)
 	require.NoError(t, err)
 
@@ -826,7 +823,7 @@ func (tm *TestManager) InsertStakeExpansionDelegation(
 
 	// submit the BTC stake expansion delegation to Babylon
 	_, err = tm.CovBBNClient.CreateStakeExpansionDelegation(
-		bbntypes.NewBIP340PubKeyFromBTCPK(delBtcPubKey),
+		bbntypes.NewBIP340PubKeyFromBTCPK(prevDelBtcPubKey),
 		fpPks,
 		pop,
 		uint32(stakingTime),
@@ -848,8 +845,8 @@ func (tm *TestManager) InsertStakeExpansionDelegation(
 	t.Log("successfully submitted a BTC stake expansion delegation")
 
 	return &TestDelegationData{
-		DelegatorPrivKey: delBtcPrivKey,
-		DelegatorKey:     delBtcPubKey,
+		DelegatorPrivKey: prevDelBtcPrivKey,
+		DelegatorKey:     prevDelBtcPubKey,
 		FpPks:            fpPks,
 		StakingTx:        testStakingInfo.StakingTx,
 		SlashingTx:       testStakingInfo.SlashingTx,
@@ -868,13 +865,11 @@ func (tm *TestManager) InsertMultisigStakeExpansionDelegation(
 	stakingTime uint16,
 	stakingAmount int64,
 	prevStakingTx *wire.MsgTx,
-	_ bool,
+	prevDelBtcPrivKeys []*btcec.PrivateKey,
+	prevDelBtcPubKeys []*btcec.PublicKey,
 ) *TestMultisigDelegationData {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	params := tm.StakingParams
-
-	delBtcPrivKeys, delBtcPubKeys, err := datagen.GenRandomBTCKeyPairs(r, 3)
-	require.NoError(t, err)
 
 	stakerQuorum := uint32(2)
 	unbondingTime := uint16(tm.StakingParams.UnbondingTimeBlocks)
@@ -890,8 +885,8 @@ func (tm *TestManager) InsertMultisigStakeExpansionDelegation(
 	fundingTxHash := fundingTx.TxHash()
 	fundingOutPoint := wire.NewOutPoint(&fundingTxHash, 0)
 
-	stakerPKs := make([]*btcec.PublicKey, len(delBtcPrivKeys))
-	for i, sk := range delBtcPrivKeys {
+	stakerPKs := make([]*btcec.PublicKey, len(prevDelBtcPrivKeys))
+	for i, sk := range prevDelBtcPrivKeys {
 		stakerPKs[i] = sk.PubKey()
 	}
 
@@ -933,7 +928,7 @@ func (tm *TestManager) InsertMultisigStakeExpansionDelegation(
 	slashingTx, err := bstypes.NewBTCSlashingTxFromMsgTx(slashingMsgTx)
 	require.NoError(t, err)
 
-	pop, err := datagen.NewPoPBTC(tm.CovBBNClient.GetKeyAddress(), delBtcPrivKeys[0])
+	pop, err := datagen.NewPoPBTC(tm.CovBBNClient.GetKeyAddress(), prevDelBtcPrivKeys[0])
 	require.NoError(t, err)
 
 	// create and insert BTC headers containing the staking tx for inclusion proof
@@ -972,12 +967,12 @@ func (tm *TestManager) InsertMultisigStakeExpansionDelegation(
 		stakingTx,
 		datagen.StakingOutIdx,
 		slashingSpendInfo.GetPkScriptPath(),
-		delBtcPrivKeys[0],
+		prevDelBtcPrivKeys[0],
 	)
 	require.NoError(t, err)
 
 	var extraDelegatorSigs []*bstypes.SignatureInfo
-	for _, delSK := range delBtcPrivKeys[1:] {
+	for _, delSK := range prevDelBtcPrivKeys[1:] {
 		sig, err := slashingTx.Sign(
 			stakingTx,
 			datagen.StakingOutIdx,
@@ -999,7 +994,7 @@ func (tm *TestManager) InsertMultisigStakeExpansionDelegation(
 		r,
 		t,
 		btcNetworkParams,
-		delBtcPrivKeys,
+		prevDelBtcPrivKeys,
 		stakerQuorum,
 		fpPks,
 		params.CovenantPks,
@@ -1021,12 +1016,12 @@ func (tm *TestManager) InsertMultisigStakeExpansionDelegation(
 		unbondingTxMsg,
 		datagen.StakingOutIdx,
 		unbondingSlashingPathInfo.GetPkScriptPath(),
-		delBtcPrivKeys[0],
+		prevDelBtcPrivKeys[0],
 	)
 	require.NoError(t, err)
 
 	var extraUnbondingSigs []*bstypes.SignatureInfo
-	for _, delSK := range delBtcPrivKeys[1:] {
+	for _, delSK := range prevDelBtcPrivKeys[1:] {
 		sig, err := testUnbondingInfo.SlashingTx.Sign(
 			unbondingTxMsg,
 			datagen.StakingOutIdx,
@@ -1048,7 +1043,7 @@ func (tm *TestManager) InsertMultisigStakeExpansionDelegation(
 	require.NoError(t, err)
 
 	stakerPKList := make([]bbntypes.BIP340PubKey, 0)
-	for _, delBtcPubKey := range delBtcPubKeys[1:] {
+	for _, delBtcPubKey := range prevDelBtcPubKeys[1:] {
 		stakerPKList = append(stakerPKList, *bbntypes.NewBIP340PubKeyFromBTCPK(delBtcPubKey))
 	}
 
@@ -1060,7 +1055,7 @@ func (tm *TestManager) InsertMultisigStakeExpansionDelegation(
 	}
 
 	_, err = tm.CovBBNClient.CreateStakeExpansionDelegation(
-		bbntypes.NewBIP340PubKeyFromBTCPK(delBtcPubKeys[0]),
+		bbntypes.NewBIP340PubKeyFromBTCPK(prevDelBtcPubKeys[0]),
 		fpPks,
 		pop,
 		uint32(stakingTime),
@@ -1082,8 +1077,8 @@ func (tm *TestManager) InsertMultisigStakeExpansionDelegation(
 	t.Log("successfully submitted a multisig BTC stake expansion delegation")
 
 	return &TestMultisigDelegationData{
-		DelegatorPrivKeys: delBtcPrivKeys,
-		DelegatorKeys:     delBtcPubKeys,
+		DelegatorPrivKeys: prevDelBtcPrivKeys,
+		DelegatorKeys:     prevDelBtcPubKeys,
 		FpPks:             fpPks,
 		StakingTx:         stakingTx,
 		SlashingTx:        slashingTx,
