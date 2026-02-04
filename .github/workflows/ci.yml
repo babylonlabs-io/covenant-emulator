@@ -7,7 +7,7 @@ on:
 
 permissions:
   contents: read
-      
+
 jobs:
   lint_test:
     uses: babylonlabs-io/.github/.github/workflows/reusable_go_lint_test.yml@5151754256060bf160c411d0784f831f29882106 # v0.13.4
@@ -22,7 +22,11 @@ jobs:
       gosec-args: "-exclude-generated -exclude-dir=itest -exclude-dir=testutil -exclude-dir=covenant-signer ./..."
 
   docker_pipeline:
-    uses: babylonlabs-io/.github/.github/workflows/reusable_docker_pipeline.yml@5151754256060bf160c411d0784f831f29882106 # v0.13.4
+    permissions:
+      contents: read         # Required by reusable workflow
+      id-token: write        # Required for AWS OIDC
+      security-events: write # Required for Trivy SARIF uploads
+    uses: babylonlabs-io/.github/.github/workflows/reusable_docker_pipeline.yml@d2299e834fcbaca4bf2db043a2939798043d5951 # v0.16.1
     secrets: inherit
     with:
       publish: false
@@ -50,7 +54,11 @@ jobs:
         run: gosec ./...
 
   docker_pipeline_covenant_signer:
-    uses: babylonlabs-io/.github/.github/workflows/reusable_docker_pipeline.yml@5151754256060bf160c411d0784f831f29882106 # v0.13.4
+    permissions:
+      contents: read         # Required by reusable workflow
+      id-token: write        # Required for AWS OIDC
+      security-events: write # Required for Trivy SARIF uploads
+    uses: babylonlabs-io/.github/.github/workflows/reusable_docker_pipeline.yml@d2299e834fcbaca4bf2db043a2939798043d5951 # v0.16.1
     secrets: inherit
     with:
       publish: false
