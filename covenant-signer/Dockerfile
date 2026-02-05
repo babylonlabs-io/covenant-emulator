@@ -3,6 +3,7 @@ FROM golang:1.25-alpine AS builder
 # Use muslc for static libs
 ARG BUILD_TAGS="muslc"
 
+# hadolint ignore=DL3018
 RUN apk add --no-cache --update openssh git make build-base linux-headers libc-dev \
                                 pkgconfig zeromq-dev musl-dev alpine-sdk libsodium-dev \
                                 libzmq-static libsodium-static gcc
@@ -17,11 +18,11 @@ COPY ./ /go/src/github.com/babylonlabs-io/covenant-emulator/covenant-signer/
 # Cosmwasm - Download correct libwasmvm version
 SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 RUN WASMVM_VERSION=$(go list -m github.com/CosmWasm/wasmvm/v2 | cut -d ' ' -f 2) && \
-    wget -q https://github.com/CosmWasm/wasmvm/releases/download/$WASMVM_VERSION/libwasmvm_muslc."$(uname -m)".a \
+    wget -q https://github.com/CosmWasm/wasmvm/releases/download/"$WASMVM_VERSION"/libwasmvm_muslc."$(uname -m)".a \
     -O /lib/libwasmvm_muslc."$(uname -m)".a && \
     # verify checksum
     wget -q https://github.com/CosmWasm/wasmvm/releases/download/"$WASMVM_VERSION"/checksums.txt -O /tmp/checksums.txt && \
-    sha256sum /lib/libwasmvm_muslc."$(uname -m)".a | grep $(cat /tmp/checksums.txt | grep libwasmvm_muslc."$(uname -m)" | cut -d ' ' -f 1)
+    sha256sum /lib/libwasmvm_muslc."$(uname -m)".a | grep "$(cat /tmp/checksums.txt | grep libwasmvm_muslc."$(uname -m)" | cut -d ' ' -f 1)"
 
 
 RUN BUILD_TAGS=$BUILD_TAGS \
@@ -29,11 +30,11 @@ RUN BUILD_TAGS=$BUILD_TAGS \
     make build
 
 # FINAL IMAGE
-FROM alpine:3.16 AS run
+FROM alpine:3.21 AS run
 
 RUN addgroup --gid 1138 -S covenant-signer && adduser --uid 1138 -S covenant-signer -G covenant-signer
 
-RUN apk add bash curl jq
+RUN apk add --no-cache bash=5.2.37-r0 curl=8.14.1-r2 jq=1.7.1-r0
 
 COPY --from=builder /go/src/github.com/babylonlabs-io/covenant-emulator/covenant-signer/build/covenant-signer /bin/covenant-signer
 
