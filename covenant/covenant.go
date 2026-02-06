@@ -273,7 +273,7 @@ func (ce *Emulator) AddCovenantSignatures(btcDels []*types.Delegation) (*types.T
 		})
 	}
 
-	// 10. submit covenant sigs
+	// 11. submit covenant sigs
 	res, err := ce.cc.SubmitCovenantSigs(covenantSigs)
 	if err != nil {
 		ce.recordMetricsFailedSignDelegations(len(covenantSigs))
@@ -418,17 +418,43 @@ func pkScriptPathUnbondingSlash(
 	params *types.StakingParams,
 	btcNet *chaincfg.Params,
 ) ([]byte, error) {
-	unbondingInfo, err := btcstaking.BuildUnbondingInfo(
-		del.BtcPk,
-		del.FpBtcPks,
-		params.CovenantPks,
-		params.CovenantQuorum,
-		del.UnbondingTime,
-		btcutil.Amount(unbondingTx.TxOut[0].Value),
-		btcNet,
+	var (
+		unbondingInfo *btcstaking.UnbondingInfo
+		err           error
 	)
-	if err != nil {
-		return nil, err
+
+	if del.IsMultisigBtcDel() {
+		stakerPKs, err := constructStakerPKsFromMultisigInfoAndBtcPk(del.MultisigInfo.StakerBtcPkList, del.BtcPk)
+		if err != nil {
+			return nil, fmt.Errorf("failed to construct staker pks from multisig info: %w", err)
+		}
+
+		unbondingInfo, err = btcstaking.BuildMultisigUnbondingInfo(
+			stakerPKs,
+			del.MultisigInfo.StakerQuorum,
+			del.FpBtcPks,
+			params.CovenantPks,
+			params.CovenantQuorum,
+			del.UnbondingTime,
+			btcutil.Amount(unbondingTx.TxOut[0].Value),
+			btcNet,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to build multisig unbonding info: %w", err)
+		}
+	} else {
+		unbondingInfo, err = btcstaking.BuildUnbondingInfo(
+			del.BtcPk,
+			del.FpBtcPks,
+			params.CovenantPks,
+			params.CovenantQuorum,
+			del.UnbondingTime,
+			btcutil.Amount(unbondingTx.TxOut[0].Value),
+			btcNet,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to build unbonding info: %w", err)
+		}
 	}
 
 	unbondingTxSlashingPathInfo, err := unbondingInfo.SlashingPathSpendInfo()
@@ -464,18 +490,43 @@ func pkScriptPathSlashAndUnbond(
 	params *types.StakingParams,
 	btcNet *chaincfg.Params,
 ) ([]byte, []byte, error) {
-	// sign slash signatures with every finality providers
-	stakingInfo, err := btcstaking.BuildStakingInfo(
-		del.BtcPk,
-		del.FpBtcPks,
-		params.CovenantPks,
-		params.CovenantQuorum,
-		del.GetStakingTime(),
-		del.TotalSat,
-		btcNet,
+	var (
+		stakingInfo *btcstaking.StakingInfo
+		err         error
 	)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to build staking info: %w", err)
+
+	if del.IsMultisigBtcDel() {
+		stakerPKs, err := constructStakerPKsFromMultisigInfoAndBtcPk(del.MultisigInfo.StakerBtcPkList, del.BtcPk)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to construct staker pks from multisig info: %w", err)
+		}
+
+		stakingInfo, err = btcstaking.BuildMultisigStakingInfo(
+			stakerPKs,
+			del.MultisigInfo.StakerQuorum,
+			del.FpBtcPks,
+			params.CovenantPks,
+			params.CovenantQuorum,
+			del.GetStakingTime(),
+			del.TotalSat,
+			btcNet,
+		)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to build multisig staking info: %w", err)
+		}
+	} else {
+		stakingInfo, err = btcstaking.BuildStakingInfo(
+			del.BtcPk,
+			del.FpBtcPks,
+			params.CovenantPks,
+			params.CovenantQuorum,
+			del.GetStakingTime(),
+			del.TotalSat,
+			btcNet,
+		)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to build staking info: %w", err)
+		}
 	}
 
 	slashingPathInfo, err := stakingInfo.SlashingPathSpendInfo()
@@ -511,19 +562,42 @@ func decodeDelegationTransactions(del *types.Delegation, params *types.StakingPa
 		return nil, nil, err
 	}
 
-	// 2. verify the transactions
-	if err := btcstaking.CheckSlashingTxMatchFundingTx(
-		slashingMsgTx,
-		stakingMsgTx,
-		del.StakingOutputIdx,
-		int64(params.MinSlashingTxFeeSat),
-		params.SlashingRate,
-		params.SlashingPkScript,
-		del.BtcPk,
-		del.UnbondingTime,
-		btcNet,
-	); err != nil {
-		return nil, nil, fmt.Errorf("invalid txs in the delegation: %w", err)
+	if del.IsMultisigBtcDel() {
+		// 2-1. verify the transactions with multisig info
+		stakerPKs, err := constructStakerPKsFromMultisigInfoAndBtcPk(del.MultisigInfo.StakerBtcPkList, del.BtcPk)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to construct staker pks from multisig info: %w", err)
+		}
+
+		if err := btcstaking.CheckSlashingTxMatchFundingTxMultisig(
+			slashingMsgTx,
+			stakingMsgTx,
+			del.StakingOutputIdx,
+			int64(params.MinSlashingTxFeeSat),
+			params.SlashingRate,
+			params.SlashingPkScript,
+			stakerPKs,
+			del.MultisigInfo.StakerQuorum,
+			del.UnbondingTime,
+			btcNet,
+		); err != nil {
+			return nil, nil, fmt.Errorf("invalid txs in the delegation: %w", err)
+		}
+	} else {
+		// 2-2. verify the transactions
+		if err := btcstaking.CheckSlashingTxMatchFundingTx(
+			slashingMsgTx,
+			stakingMsgTx,
+			del.StakingOutputIdx,
+			int64(params.MinSlashingTxFeeSat),
+			params.SlashingRate,
+			params.SlashingPkScript,
+			del.BtcPk,
+			del.UnbondingTime,
+			btcNet,
+		); err != nil {
+			return nil, nil, fmt.Errorf("invalid txs in the delegation: %w", err)
+		}
 	}
 
 	return stakingMsgTx, slashingMsgTx, nil
@@ -541,22 +615,63 @@ func decodeUndelegationTransactions(del *types.Delegation, params *types.Staking
 		return nil, nil, fmt.Errorf("failed to decode unbonding slashing tx from hex: %w", err)
 	}
 
-	// 2. verify transactions
-	if err := btcstaking.CheckSlashingTxMatchFundingTx(
-		unbondingSlashingMsgTx,
-		unbondingMsgTx,
-		0,
-		int64(params.MinSlashingTxFeeSat),
-		params.SlashingRate,
-		params.SlashingPkScript,
-		del.BtcPk,
-		del.UnbondingTime,
-		btcNet,
-	); err != nil {
-		return nil, nil, fmt.Errorf("invalid txs in the undelegation: %w", err)
+	if del.IsMultisigBtcDel() {
+		// 2-1. verify transactions with multisig info
+		stakerPKs, err := constructStakerPKsFromMultisigInfoAndBtcPk(del.MultisigInfo.StakerBtcPkList, del.BtcPk)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to construct staker pks from multisig info: %w", err)
+		}
+
+		if err := btcstaking.CheckSlashingTxMatchFundingTxMultisig(
+			unbondingSlashingMsgTx,
+			unbondingMsgTx,
+			0,
+			int64(params.MinSlashingTxFeeSat),
+			params.SlashingRate,
+			params.SlashingPkScript,
+			stakerPKs,
+			del.MultisigInfo.StakerQuorum,
+			del.UnbondingTime,
+			btcNet,
+		); err != nil {
+			return nil, nil, fmt.Errorf("invalid txs in the undelegation: %w", err)
+		}
+	} else {
+		// 2-2. verify transactions
+		if err := btcstaking.CheckSlashingTxMatchFundingTx(
+			unbondingSlashingMsgTx,
+			unbondingMsgTx,
+			0,
+			int64(params.MinSlashingTxFeeSat),
+			params.SlashingRate,
+			params.SlashingPkScript,
+			del.BtcPk,
+			del.UnbondingTime,
+			btcNet,
+		); err != nil {
+			return nil, nil, fmt.Errorf("invalid txs in the undelegation: %w", err)
+		}
 	}
 
 	return unbondingMsgTx, unbondingSlashingMsgTx, err
+}
+
+func constructStakerPKsFromMultisigInfoAndBtcPk(
+	multisigStakerBtcPkList []*btcec.PublicKey,
+	btcPk *btcec.PublicKey,
+) ([]*btcec.PublicKey, error) {
+	if len(multisigStakerBtcPkList) == 0 {
+		return nil, fmt.Errorf("multisigStakerBtcPkList is empty")
+	}
+	if btcPk == nil {
+		return nil, fmt.Errorf("btcPk is nil")
+	}
+
+	stakerPKs := make([]*btcec.PublicKey, 0, len(multisigStakerBtcPkList)+1)
+	stakerPKs = append(stakerPKs, multisigStakerBtcPkList...)
+	stakerPKs = append(stakerPKs, btcPk)
+
+	return stakerPKs, nil
 }
 
 // delegationsToBatches takes a list of delegations and splits them into batches
