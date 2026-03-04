@@ -649,14 +649,7 @@ func AcceptDelegationToSign(
 	}
 	// 3. For stake expansion, verify if the covenant is in the committee of the previous active delegation
 	if del.IsStakeExpansion() {
-		valid, err := ValidateStakeExpansion(paramCache, covenantSerializedPk, del, prevDel)
-		if err != nil {
-			return false, err
-		}
-		if !valid {
-			return false, fmt.Errorf("covenant %s is not in the committee of the previous delegation %s",
-				hex.EncodeToString(covenantSerializedPk), del.StakeExpansion.PreviousStakingTxHashHex)
-		}
+		return ValidateStakeExpansion(paramCache, covenantSerializedPk, del, prevDel)
 	}
 
 	return true, nil
