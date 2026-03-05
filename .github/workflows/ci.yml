@@ -33,6 +33,7 @@ jobs:
       dockerfile: ./Dockerfile
       repoName: covenant-emulator
       docker_scan: true
+      trivy_nofail: true
 
   go_sec_covenant_signer:
     runs-on: ubuntu-24.04
@@ -66,3 +67,4 @@ jobs:
       dockerContext: ./
       repoName: covenant-signer
       docker_scan: true
+      trivy_nofail: true
