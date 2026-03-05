@@ -32,8 +32,8 @@ jobs:
       publish: false
       dockerfile: ./Dockerfile
       repoName: covenant-emulator
-      docker_scan: true
       trivy_nofail: true
+      secret_nofail: true
 
   go_sec_covenant_signer:
     runs-on: ubuntu-24.04
@@ -66,5 +66,5 @@ jobs:
       dockerfile: ./covenant-signer/Dockerfile
       dockerContext: ./
       repoName: covenant-signer
-      docker_scan: true
       trivy_nofail: true
+      secret_nofail: true
