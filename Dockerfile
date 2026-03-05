@@ -1,7 +1,8 @@
-FROM golang:1.25 AS builder
+FROM golang:1.25-bookworm AS builder
 
-# hadolint ignore=DL3008
-RUN apt-get update && apt-get install --no-install-recommends -y ca-certificates make git bash gcc curl jq && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    jq=1.6-2.1+deb12u1 \
+    && rm -rf /var/lib/apt/lists/*
 
 # Build
 WORKDIR /go/src/github.com/babylonlabs-io/covenant-emulator
@@ -20,17 +21,21 @@ FROM debian:bookworm-slim AS run
 
 RUN addgroup --gid 1138 --system covenant-emulator && adduser --uid 1138 --system --home /home/covenant-emulator covenant-emulator
 
-# hadolint ignore=DL3008
-RUN apt-get update && apt-get install --no-install-recommends -y ca-certificates bash curl jq wget && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates=20230311+deb12u1 \
+    curl=7.88.1-10+deb12u14 \
+    jq=1.6-2.1+deb12u1 \
+    wget=1.21.3-1+deb12u1 \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /go/src/github.com/babylonlabs-io/covenant-emulator/go.mod /tmp
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 RUN WASMVM_VERSION=$(grep github.com/CosmWasm/wasmvm /tmp/go.mod | cut -d' ' -f2) && \
-    wget -q https://github.com/CosmWasm/wasmvm/releases/download/$WASMVM_VERSION/libwasmvm."$(uname -m)".so \
-        -O /lib/libwasmvm."$(uname -m)".so && \
+    wget -q "https://github.com/CosmWasm/wasmvm/releases/download/${WASMVM_VERSION}/libwasmvm.$(uname -m).so" \
+        -O "/lib/libwasmvm.$(uname -m).so" && \
     # verify checksum
-    wget -q https://github.com/CosmWasm/wasmvm/releases/download/$WASMVM_VERSION/checksums.txt -O /tmp/checksums.txt && \
-    sha256sum /lib/libwasmvm."$(uname -m)".so | grep $(cat /tmp/checksums.txt | grep libwasmvm."$(uname -m)" | cut -d ' ' -f 1)
+    wget -q "https://github.com/CosmWasm/wasmvm/releases/download/${WASMVM_VERSION}/checksums.txt" -O /tmp/checksums.txt && \
+    sha256sum "/lib/libwasmvm.$(uname -m).so" | grep "$(cat /tmp/checksums.txt | grep "libwasmvm.$(uname -m)" | cut -d ' ' -f 1)"
 RUN rm -f /tmp/go.mod
 
 COPY --from=builder /go/src/github.com/babylonlabs-io/covenant-emulator/build/covd /bin/covd

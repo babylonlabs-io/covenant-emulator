@@ -40,6 +40,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 ### Improvements
 
 * [#165](https://github.com/babylonlabs-io/covenant-emulator/pull/165) chore: add missing log detail of stk tx hex
+* [#180](https://github.com/babylonlabs-io/covenant-emulator/pull/180) fix: avoid err wrap in `ValidateStakeExpansion`
+to not drop entire query if covenant is not in the committee of stake extension
 
 ## v0.16.0
 

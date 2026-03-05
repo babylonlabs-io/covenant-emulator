@@ -412,6 +412,99 @@ func (m *MockParamError) Get(_ uint32) (*types.StakingParams, error) {
 	return nil, m.err
 }
 
+func TestAcceptDelegationToSignStakeExpansion(t *testing.T) {
+	r := rand.New(rand.NewSource(time.Now().Unix()))
+
+	covenantConfig := covcfg.DefaultConfig()
+	covenantConfig.BabylonConfig.KeyDirectory = t.TempDir()
+
+	covKeyPairInCommittee, err := keyring.CreateCovenantKey(
+		covenantConfig.BabylonConfig.KeyDirectory,
+		covenantConfig.BabylonConfig.ChainID,
+		covenantConfig.BabylonConfig.Key,
+		covenantConfig.BabylonConfig.KeyringBackend,
+		passphrase,
+		hdPath,
+	)
+	require.NoError(t, err)
+
+	covKeyInCommittee := schnorr.SerializePubKey(covKeyPairInCommittee.PublicKey)
+
+	newCovKeyPair, err := keyring.CreateCovenantKey(
+		covenantConfig.BabylonConfig.KeyDirectory,
+		covenantConfig.BabylonConfig.ChainID,
+		"new-covenant-key",
+		covenantConfig.BabylonConfig.KeyringBackend,
+		passphrase,
+		hdPath,
+	)
+	require.NoError(t, err)
+
+	pVersionPrev := uint32(datagen.RandomInRange(r, 1, 10))
+	pVersionCurr := pVersionPrev + 1
+
+	paramsPrev := testutil.GenRandomParams(r, t)
+	paramsPrev.CovenantPks = append(paramsPrev.CovenantPks, covKeyPairInCommittee.PublicKey)
+
+	paramsCurr := testutil.GenRandomParams(r, t)
+	paramsCurr.CovenantPks = append(paramsCurr.CovenantPks, covKeyPairInCommittee.PublicKey, newCovKeyPair.PublicKey)
+
+	paramsGet := NewMockParam(map[uint32]*types.StakingParams{
+		pVersionPrev: paramsPrev,
+		pVersionCurr: paramsCurr,
+	})
+
+	stkTxHex := "02000000012c1ca601b81bf5bdd97081d1bf17241d4d688f51ccbe8be3d3f3174d0e4e4aa40100000000ffffffff0250c3000000000000225120d0d55103aa70a12162f733805c3a2f5ff8e857d5fc92381c3d6f22a791165ac115400f00000000002251206f5ec73002ee8b5b2bb942f26e169354821e6ec06f9b3a1d3cf355d6f276c5d800000000"
+	stakingMsgTx, _, err := bbntypes.NewBTCTxFromHex(stkTxHex)
+	require.NoError(t, err)
+	prevStakingTxHashHex := stakingMsgTx.TxHash().String()
+
+	prevDel := &types.Delegation{
+		StakingTxHex:  stkTxHex,
+		ParamsVersion: pVersionPrev,
+		CovenantSigs:  []*types.CovenantAdaptorSigInfo{},
+	}
+
+	stkExpDel := &types.Delegation{
+		StakingTxHex:  testutil.GenRandomHexStr(r, 100),
+		ParamsVersion: pVersionCurr,
+		CovenantSigs:  []*types.CovenantAdaptorSigInfo{},
+		StakeExpansion: &types.DelegationStakeExpansion{
+			PreviousStakingTxHashHex: prevStakingTxHashHex,
+		},
+	}
+
+	t.Run("accepts when covenant in both current and previous committee", func(t *testing.T) {
+		accept, err := covenant.AcceptDelegationToSign(covKeyPairInCommittee.PublicKey, paramsGet, stkExpDel, prevDel)
+		require.NoError(t, err)
+		require.True(t, accept)
+	})
+
+	t.Run("rejects without error when covenant not in previous committee", func(t *testing.T) {
+		accept, err := covenant.AcceptDelegationToSign(newCovKeyPair.PublicKey, paramsGet, stkExpDel, prevDel)
+		require.NoError(t, err)
+		require.False(t, accept)
+	})
+
+	t.Run("already signed covenant is rejected without error", func(t *testing.T) {
+		pubKeyFromSchnorr, err := schnorr.ParsePubKey(covKeyInCommittee)
+		require.NoError(t, err)
+
+		signedDel := &types.Delegation{
+			StakingTxHex:  stkExpDel.StakingTxHex,
+			ParamsVersion: stkExpDel.ParamsVersion,
+			CovenantSigs: []*types.CovenantAdaptorSigInfo{
+				{Pk: pubKeyFromSchnorr},
+			},
+			StakeExpansion: stkExpDel.StakeExpansion,
+		}
+
+		accept, err := covenant.AcceptDelegationToSign(covKeyPairInCommittee.PublicKey, paramsGet, signedDel, prevDel)
+		require.NoError(t, err)
+		require.False(t, accept)
+	})
+}
+
 func TestValidateStakeExpansion(t *testing.T) {
 	r := rand.New(rand.NewSource(time.Now().Unix()))
 
