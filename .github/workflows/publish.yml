@@ -24,7 +24,11 @@ jobs:
 
   docker_pipeline:
     needs: ["lint_test"]
+<<<<<<< HEAD
     uses: babylonlabs-io/.github/.github/workflows/reusable_docker_pipeline.yml@v0.13.3
+=======
+    uses: babylonlabs-io/.github/.github/workflows/reusable_docker_pipeline.yml@d2299e834fcbaca4bf2db043a2939798043d5951 # v0.16.1
+>>>>>>> 6df1211 (chore: update reusable docker pipeline to v0.16.1 (#178))
     secrets: inherit
     with:
       publish: true
@@ -55,10 +59,14 @@ jobs:
       - name: Run Gosec (covenant-signer)
         working-directory: ./covenant-signer
         run: gosec ./...
-  
+
   docker_pipeline_covenant_signer:
     needs: ["go_sec_covenant_signer"]
+<<<<<<< HEAD
     uses: babylonlabs-io/.github/.github/workflows/reusable_docker_pipeline.yml@v0.13.3
+=======
+    uses: babylonlabs-io/.github/.github/workflows/reusable_docker_pipeline.yml@d2299e834fcbaca4bf2db043a2939798043d5951 # v0.16.1
+>>>>>>> 6df1211 (chore: update reusable docker pipeline to v0.16.1 (#178))
     secrets: inherit
     with:
       publish: true

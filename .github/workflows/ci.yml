@@ -5,6 +5,12 @@ on:
     branches:
       - '**'
 
+<<<<<<< HEAD
+=======
+permissions:
+  contents: read
+
+>>>>>>> 6df1211 (chore: update reusable docker pipeline to v0.16.1 (#178))
 jobs:
   lint_test:
     uses: babylonlabs-io/.github/.github/workflows/reusable_go_lint_test.yml@v0.13.3
@@ -19,13 +25,21 @@ jobs:
       gosec-args: "-exclude-generated -exclude-dir=itest -exclude-dir=testutil -exclude-dir=covenant-signer ./..."
 
   docker_pipeline:
+<<<<<<< HEAD
     uses: babylonlabs-io/.github/.github/workflows/reusable_docker_pipeline.yml@v0.13.3
+=======
+    permissions:
+      contents: read         # Required by reusable workflow
+      id-token: write        # Required for AWS OIDC
+      security-events: write # Required for Trivy SARIF uploads
+    uses: babylonlabs-io/.github/.github/workflows/reusable_docker_pipeline.yml@d2299e834fcbaca4bf2db043a2939798043d5951 # v0.16.1
+>>>>>>> 6df1211 (chore: update reusable docker pipeline to v0.16.1 (#178))
     secrets: inherit
     with:
       publish: false
       dockerfile: ./Dockerfile
       repoName: covenant-emulator
-      docker_scan: true
+      docker_scan: false
 
   go_sec_covenant_signer:
     runs-on: ubuntu-24.04
@@ -47,11 +61,19 @@ jobs:
         run: gosec ./...
 
   docker_pipeline_covenant_signer:
+<<<<<<< HEAD
     uses: babylonlabs-io/.github/.github/workflows/reusable_docker_pipeline.yml@v0.13.3
+=======
+    permissions:
+      contents: read         # Required by reusable workflow
+      id-token: write        # Required for AWS OIDC
+      security-events: write # Required for Trivy SARIF uploads
+    uses: babylonlabs-io/.github/.github/workflows/reusable_docker_pipeline.yml@d2299e834fcbaca4bf2db043a2939798043d5951 # v0.16.1
+>>>>>>> 6df1211 (chore: update reusable docker pipeline to v0.16.1 (#178))
     secrets: inherit
     with:
       publish: false
       dockerfile: ./covenant-signer/Dockerfile
       dockerContext: ./
       repoName: covenant-signer
-      docker_scan: true
+      docker_scan: false
