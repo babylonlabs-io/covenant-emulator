@@ -40,7 +40,7 @@ jobs:
             needs.lint_test.result == 'success'
           )}}
     needs: ["lint_test"]
-    uses: babylonlabs-io/.github/.github/workflows/reusable_docker_pipeline.yml@22ae8ed7a2ea5c80331758914c4e0ea732eea1ad # v0.15.0
+    uses: babylonlabs-io/.github/.github/workflows/reusable_docker_pipeline.yml@d2299e834fcbaca4bf2db043a2939798043d5951 # v0.16.1
     secrets: inherit
     with:
       publish: true
@@ -73,10 +73,10 @@ jobs:
       - name: Run Gosec (covenant-signer)
         working-directory: ./covenant-signer
         run: gosec ./...
-  
+
   docker_pipeline_covenant_signer:
     needs: ["go_sec_covenant_signer"]
-    uses: babylonlabs-io/.github/.github/workflows/reusable_docker_pipeline.yml@22ae8ed7a2ea5c80331758914c4e0ea732eea1ad # v0.15.0
+    uses: babylonlabs-io/.github/.github/workflows/reusable_docker_pipeline.yml@d2299e834fcbaca4bf2db043a2939798043d5951 # v0.16.1
     secrets: inherit
     with:
       publish: true
