@@ -358,7 +358,7 @@ func (bc *BabylonController) queryDelegationsWithStatus(status btcstakingtypes.B
 }
 
 func getContextWithCancel(timeout time.Duration) (context.Context, context.CancelFunc) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout) // #nosec G118 -- cancel is returned to caller
 
 	return ctx, cancel
 }
