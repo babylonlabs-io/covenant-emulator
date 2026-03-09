@@ -39,6 +39,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Improvements
 
+* [#184](https://github.com/babylonlabs-io/covenant-emulator/pull/184) chore: bump reusable workflow to v0.16.1
 * [#171](https://github.com/babylonlabs-io/covenant-emulator/pull/171) chore: bump dependencies babylon v4.2.0
 * [#165](https://github.com/babylonlabs-io/covenant-emulator/pull/165) chore: add missing log detail of stk tx hex
 * [#180](https://github.com/babylonlabs-io/covenant-emulator/pull/180) fix: avoid err wrap in `ValidateStakeExpansion`
