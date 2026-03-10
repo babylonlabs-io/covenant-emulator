@@ -44,6 +44,7 @@ jobs:
     secrets: inherit
     with:
       publish: true
+      push_to_dockerhub: true
       dockerfile: ./Dockerfile
       repoName: covenant-emulator
       docker_scan: true
@@ -81,6 +82,7 @@ jobs:
     secrets: inherit
     with:
       publish: true
+      push_to_dockerhub: true
       dockerfile: ./covenant-signer/Dockerfile
       dockerContext: ./
       repoName: covenant-signer
