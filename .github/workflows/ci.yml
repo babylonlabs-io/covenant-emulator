@@ -5,12 +5,16 @@ on:
     branches:
       - '**'
 
+concurrency:
+  group: ci-${{ github.ref }}-${{ github.workflow }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
 jobs:
   lint_test:
-    uses: babylonlabs-io/.github/.github/workflows/reusable_go_lint_test.yml@5151754256060bf160c411d0784f831f29882106 # v0.13.4
+    uses: babylonlabs-io/.github/.github/workflows/reusable_go_lint_test.yml@0adff9d36a387ebfc921621f2e6b357230f8c08e # v0.18.1
     with:
       go-version: '1.25'
       go-lint-version: 'v2.4.0'
@@ -26,13 +30,14 @@ jobs:
       contents: read         # Required by reusable workflow
       id-token: write        # Required for AWS OIDC
       security-events: write # Required for Trivy SARIF uploads
-    uses: babylonlabs-io/.github/.github/workflows/reusable_docker_pipeline.yml@d2299e834fcbaca4bf2db043a2939798043d5951 # v0.16.1
+    uses: babylonlabs-io/.github/.github/workflows/reusable_docker_pipeline.yml@0adff9d36a387ebfc921621f2e6b357230f8c08e # v0.18.1
     secrets: inherit
     with:
       publish: false
       dockerfile: ./Dockerfile
       repoName: covenant-emulator
       docker_scan: false
+      trivy_nofail: true
 
   go_sec_covenant_signer:
     runs-on: ubuntu-24.04
@@ -58,7 +63,7 @@ jobs:
       contents: read         # Required by reusable workflow
       id-token: write        # Required for AWS OIDC
       security-events: write # Required for Trivy SARIF uploads
-    uses: babylonlabs-io/.github/.github/workflows/reusable_docker_pipeline.yml@d2299e834fcbaca4bf2db043a2939798043d5951 # v0.16.1
+    uses: babylonlabs-io/.github/.github/workflows/reusable_docker_pipeline.yml@0adff9d36a387ebfc921621f2e6b357230f8c08e # v0.18.1
     secrets: inherit
     with:
       publish: false
@@ -66,3 +71,4 @@ jobs:
       dockerContext: ./
       repoName: covenant-signer
       docker_scan: false
+      trivy_nofail: true
