@@ -37,6 +37,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## Unreleased
 
+## v0.16.1
+
 ### Improvements
 
 * [#184](https://github.com/babylonlabs-io/covenant-emulator/pull/184) chore: bump reusable workflow to v0.16.1
