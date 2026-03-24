@@ -11,7 +11,8 @@ on:
 
 jobs:
   lint_test:
-    uses: babylonlabs-io/.github/.github/workflows/reusable_go_lint_test.yml@v0.13.3
+    uses: babylonlabs-io/.github/.github/workflows/reusable_go_lint_test.yml@0adff9d36a387ebfc921621f2e6b357230f8c08e # v0.18.0 and up
+    if: ${{ !(github.event_name == 'workflow_dispatch' && inputs['skip-lint-test'] == true) }}
     with:
       go-version: '1.25'
       go-lint-version: 'v2.4.0'
@@ -24,13 +25,15 @@ jobs:
 
   docker_pipeline:
     needs: ["lint_test"]
-    uses: babylonlabs-io/.github/.github/workflows/reusable_docker_pipeline.yml@d2299e834fcbaca4bf2db043a2939798043d5951 # v0.16.1
+    uses: babylonlabs-io/.github/.github/workflows/reusable_docker_pipeline.yml@0adff9d36a387ebfc921621f2e6b357230f8c08e # v0.18.0 and up
     secrets: inherit
     with:
       publish: true
+      push_to_dockerhub: true
       dockerfile: ./Dockerfile
       repoName: covenant-emulator
       docker_scan: true
+      trivy_nofail: true
     permissions:
       # required for all workflows
       security-events: write
@@ -58,14 +61,16 @@ jobs:
 
   docker_pipeline_covenant_signer:
     needs: ["go_sec_covenant_signer"]
-    uses: babylonlabs-io/.github/.github/workflows/reusable_docker_pipeline.yml@d2299e834fcbaca4bf2db043a2939798043d5951 # v0.16.1
+    uses: babylonlabs-io/.github/.github/workflows/reusable_docker_pipeline.yml@0adff9d36a387ebfc921621f2e6b357230f8c08e # v0.18.0 and up
     secrets: inherit
     with:
       publish: true
+      push_to_dockerhub: true
       dockerfile: ./covenant-signer/Dockerfile
       dockerContext: ./
       repoName: covenant-signer
       docker_scan: true
+      trivy_nofail: true
     permissions:
       # required for all workflows
       security-events: write
