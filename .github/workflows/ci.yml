@@ -10,11 +10,7 @@ permissions:
 
 jobs:
   lint_test:
-<<<<<<< HEAD
-    uses: babylonlabs-io/.github/.github/workflows/reusable_go_lint_test.yml@v0.13.3
-=======
     uses: babylonlabs-io/.github/.github/workflows/reusable_go_lint_test.yml@0adff9d36a387ebfc921621f2e6b357230f8c08e # v0.18.0 and up
->>>>>>> 1da7d5c (chore: copy workflow from babylon (#184))
     with:
       go-version: '1.25'
       go-lint-version: 'v2.4.0'
