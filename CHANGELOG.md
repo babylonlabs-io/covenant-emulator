@@ -39,6 +39,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Improvements
 
+* [#190](https://github.com/babylonlabs-io/covenant-emulator/pull/190) chore: enable Trivy scanning, bump grpc to v1.79.3, fix Dockerfile hadolint warnings
 * [#186](https://github.com/babylonlabs-io/covenant-emulator/pull/186) chore(deps): bump go_modules group
   (edwards25519, cometbft, go-ethereum) with Docker SDK pinned below v29 for dockertest compatibility
 * [#184](https://github.com/babylonlabs-io/covenant-emulator/pull/184) chore: bump reusable workflow to v0.16.1
