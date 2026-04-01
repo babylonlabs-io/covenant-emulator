@@ -48,7 +48,6 @@ jobs:
       dockerfile: ./Dockerfile
       repoName: covenant-emulator
       docker_scan: true
-      trivy_nofail: true
     permissions:
       contents: read        # REQUIRED by reusable workflow
       id-token: write       # REQUIRED for AWS OIDC
@@ -87,7 +86,6 @@ jobs:
       dockerContext: ./
       repoName: covenant-signer
       docker_scan: true
-      trivy_nofail: true
     permissions:
       contents: read        # REQUIRED by reusable workflow
       id-token: write       # REQUIRED for AWS OIDC
