@@ -26,13 +26,14 @@ jobs:
       contents: read         # Required by reusable workflow
       id-token: write        # Required for AWS OIDC
       security-events: write # Required for Trivy SARIF uploads
+      packages: read         # Required to fetch internal or private CodeQL packs
     uses: babylonlabs-io/.github/.github/workflows/reusable_docker_pipeline.yml@0adff9d36a387ebfc921621f2e6b357230f8c08e # v0.18.0 and up
     secrets: inherit
     with:
       publish: false
       dockerfile: ./Dockerfile
       repoName: covenant-emulator
-      docker_scan: false
+      docker_scan: true
 
   go_sec_covenant_signer:
     runs-on: ubuntu-24.04
@@ -58,6 +59,7 @@ jobs:
       contents: read         # Required by reusable workflow
       id-token: write        # Required for AWS OIDC
       security-events: write # Required for Trivy SARIF uploads
+      packages: read         # Required to fetch internal or private CodeQL packs
     uses: babylonlabs-io/.github/.github/workflows/reusable_docker_pipeline.yml@0adff9d36a387ebfc921621f2e6b357230f8c08e # v0.18.0 and up
     secrets: inherit
     with:
@@ -65,4 +67,4 @@ jobs:
       dockerfile: ./covenant-signer/Dockerfile
       dockerContext: ./
       repoName: covenant-signer
-      docker_scan: false
+      docker_scan: true
