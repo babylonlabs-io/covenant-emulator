@@ -39,6 +39,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Improvements
 
+* [#196](https://github.com/babylonlabs-io/covenant-emulator/pull/196) chore(deps): bump go-getter to v1.8.6 (aws-sdk-go v1 to v2 migration)
 * [#195](https://github.com/babylonlabs-io/covenant-emulator/pull/195) chore(deps): bump edwards25519 to v1.1.1, cometbft to v0.38.21, and go-ethereum to v1.17.0
 * [#194](https://github.com/babylonlabs-io/covenant-emulator/pull/194) chore(deps): bump docker/cli to v29.2.0, go-jose/v4 to v4.1.4 (security fix), and otel/sdk to v1.40.0
 * [#190](https://github.com/babylonlabs-io/covenant-emulator/pull/190) chore: enable Trivy scanning, bump grpc to v1.79.3, fix Dockerfile hadolint warnings
