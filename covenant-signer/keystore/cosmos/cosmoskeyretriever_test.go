@@ -43,26 +43,40 @@ func TestPrivKeyConcurrentLockNoRace(t *testing.T) {
 	require.NoError(t, err)
 	pubKeyBefore := privKey.PubKey().SerializeCompressed()
 
-	var wg sync.WaitGroup
+	// Collect results in the workers and assert on the test goroutine:
+	// require.* calls t.FailNow(), which is only safe on the test goroutine.
+	var (
+		wg         sync.WaitGroup
+		signErr    error
+		signPubKey []byte
+		lockErr    error
+	)
 	wg.Add(2)
 
 	go func() {
 		defer wg.Done()
-		pk, pkErr := retriever.PrivKey(ctx)
-		require.NoError(t, pkErr)
+		pk, err := retriever.PrivKey(ctx)
+		if err != nil {
+			signErr = err
+			return
+		}
 		// Hold the copy across a window where Lock() runs, then read from it.
 		time.Sleep(10 * time.Millisecond)
-		require.Equal(t, pubKeyBefore, pk.PubKey().SerializeCompressed(),
-			"copy returned by PrivKey() must not be affected by a concurrent Lock()")
+		signPubKey = pk.PubKey().SerializeCompressed()
 	}()
 
 	go func() {
 		defer wg.Done()
 		time.Sleep(1 * time.Millisecond)
-		require.NoError(t, retriever.Lock(ctx))
+		lockErr = retriever.Lock(ctx)
 	}()
 
 	wg.Wait()
+
+	require.NoError(t, signErr)
+	require.NoError(t, lockErr)
+	require.Equal(t, pubKeyBefore, signPubKey,
+		"copy returned by PrivKey() must not be affected by a concurrent Lock()")
 
 	// After Lock(), the retriever has no key and must report it.
 	_, err = retriever.PrivKey(ctx)

@@ -37,6 +37,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## Unreleased
 
+### Bug Fixes
+
+* [#200](https://github.com/babylonlabs-io/covenant-emulator/pull/200) fix: race condition in covenant-signer `KeyringRetriever.PrivKey` where a concurrent `Lock()` could zero an in-use private key
+
 ### Improvements
 
 * [#196](https://github.com/babylonlabs-io/covenant-emulator/pull/196) chore(deps): bump go-getter to v1.8.6 (aws-sdk-go v1 to v2 migration)
