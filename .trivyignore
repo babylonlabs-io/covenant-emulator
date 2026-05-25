@@ -3,3 +3,25 @@ CVE-2024-27304
 GHSA-7jwh-3vrq-q3m8
 CVE-2024-27289
 CVE-2024-38359
+
+# Debian bookworm-slim base/tooling CVEs with no fixed version available
+# (status: will_not_fix / affected). Not reachable from covenant-emulator's
+# security paths (Go crypto is used, not these libs). Reviewed 2026-05-25.
+CVE-2023-45853  # zlib1g - minizip integer overflow, Debian will_not_fix
+CVE-2023-2953   # libldap-2.5-0 - openldap NULL pointer deref, no fix
+CVE-2025-69720  # ncurses (libtinfo6/ncurses-base/ncurses-bin), no fix
+CVE-2026-32316  # jq/libjq1, no fix
+CVE-2026-40164  # jq/libjq1, no fix
+CVE-2026-5773   # curl/libcurl4, no fix
+CVE-2026-6276   # curl/libcurl4, no fix
+CVE-2026-7598   # libssh2-1, no fix
+
+# gnutls CVEs fixed upstream in 3.7.9-2+deb12u7 but not yet in the
+# debian:bookworm-slim base image. Remove these once the base image ships
+# deb12u7 (hadolint DL3005 forbids `apt-get upgrade` to pull it early).
+# Reviewed 2026-05-25.
+CVE-2026-33845  # libgnutls30 CRITICAL, fixed in deb12u7
+CVE-2026-42010  # libgnutls30 CRITICAL, fixed in deb12u7
+CVE-2026-33846  # libgnutls30 HIGH, fixed in deb12u7
+CVE-2026-3833   # libgnutls30 HIGH, fixed in deb12u7
+CVE-2026-42009  # libgnutls30 HIGH, fixed in deb12u7
