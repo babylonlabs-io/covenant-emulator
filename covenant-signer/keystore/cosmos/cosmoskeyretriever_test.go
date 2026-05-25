@@ -53,21 +53,26 @@ func TestPrivKeyConcurrentLockNoRace(t *testing.T) {
 	)
 	wg.Add(2)
 
+	// gotKey guarantees the signer goroutine has obtained its key before Lock()
+	// runs, so the test exercises the "Lock while a key is held" path
+	// deterministically instead of relying on goroutine scheduling.
+	gotKey := make(chan struct{})
+
 	go func() {
 		defer wg.Done()
 		pk, err := retriever.PrivKey(ctx)
-		if err != nil {
-			signErr = err
-			return
+		close(gotKey)
+		signErr = err
+		if err == nil {
+			// Hold the copy across a window where Lock() runs, then read from it.
+			time.Sleep(10 * time.Millisecond)
+			signPubKey = pk.PubKey().SerializeCompressed()
 		}
-		// Hold the copy across a window where Lock() runs, then read from it.
-		time.Sleep(10 * time.Millisecond)
-		signPubKey = pk.PubKey().SerializeCompressed()
 	}()
 
 	go func() {
 		defer wg.Done()
-		time.Sleep(1 * time.Millisecond)
+		<-gotKey
 		lockErr = retriever.Lock(ctx)
 	}()
 
