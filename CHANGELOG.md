@@ -39,6 +39,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Improvements
 
+* [#203](https://github.com/babylonlabs-io/covenant-emulator/pull/203) chore(deps): bump github.com/opencontainers/runc to v1.3.6 (go_modules group)
 * [#202](https://github.com/babylonlabs-io/covenant-emulator/pull/202) chore(deps): bump go-chi/chi/v5 to v5.2.4 and shamaton/msgpack/v2 to v2.4.1 (go_modules group across / and /tools)
 * [#196](https://github.com/babylonlabs-io/covenant-emulator/pull/196) chore(deps): bump go-getter to v1.8.6 (aws-sdk-go v1 to v2 migration)
 * [#195](https://github.com/babylonlabs-io/covenant-emulator/pull/195) chore(deps): bump edwards25519 to v1.1.1, cometbft to v0.38.21, and go-ethereum to v1.17.0
