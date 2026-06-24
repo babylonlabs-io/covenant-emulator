@@ -37,6 +37,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## Unreleased
 
+### Bug Fixes
+
+* [#200](https://github.com/babylonlabs-io/covenant-emulator/pull/200) fix: race condition in covenant-signer `KeyringRetriever.PrivKey` where a concurrent `Lock()` could zero an in-use private key
+
 ### Improvements
 
 * [#202](https://github.com/babylonlabs-io/covenant-emulator/pull/202) chore(deps): bump go-chi/chi/v5 to v5.2.4 and shamaton/msgpack/v2 to v2.4.1 (go_modules group across / and /tools)

@@ -45,7 +45,13 @@ func (k *KeyringRetriever) PrivKey(_ context.Context) (*btcec.PrivateKey, error)
 		return nil, fmt.Errorf("private key is not unlocked. Please call Unlock() first")
 	}
 
-	return k.btcecPrivKey, nil
+	// Return an isolated copy so the caller does not hold a reference to the
+	// stored key. Otherwise a concurrent Lock() would zero the underlying
+	// memory while the caller is still signing with it.
+	keyBytes := k.btcecPrivKey.Serialize()
+	privKeyCopy, _ := btcec.PrivKeyFromBytes(keyBytes)
+
+	return privKeyCopy, nil
 }
 
 func (k *KeyringRetriever) Unlock(_ context.Context, passphrase string) error {
