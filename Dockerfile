@@ -1,4 +1,4 @@
-FROM golang:1.25-bookworm AS builder
+FROM golang:1.26.10-bookworm AS builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     jq=1.6-2.1+deb12u1 \

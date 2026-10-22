@@ -39,6 +39,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Improvements
 
+* [#206](https://github.com/babylonlabs-io/covenant-emulator/pull/206) fix: build with the Go 1.26.10 toolchain for the crypto/x509 CA-distrust fix (CVE-2026-111943, GO-2026-6809); bump sonic to v1.15.0 for Go 1.26 toolchain compatibility
 * [#203](https://github.com/babylonlabs-io/covenant-emulator/pull/203) chore(deps): bump github.com/opencontainers/runc to v1.3.6 (go_modules group)
 * [#202](https://github.com/babylonlabs-io/covenant-emulator/pull/202) chore(deps): bump go-chi/chi/v5 to v5.2.4 and shamaton/msgpack/v2 to v2.4.1 (go_modules group across / and /tools)
 * [#196](https://github.com/babylonlabs-io/covenant-emulator/pull/196) chore(deps): bump go-getter to v1.8.6 (aws-sdk-go v1 to v2 migration)

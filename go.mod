@@ -2,6 +2,8 @@ module github.com/babylonlabs-io/covenant-emulator
 
 go 1.25.8
 
+toolchain go1.26.10
+
 require (
 	cosmossdk.io/errors v1.0.2
 	cosmossdk.io/math v1.5.3
@@ -94,8 +96,9 @@ require (
 	github.com/bits-and-blooms/bitset v1.22.0 // indirect
 	github.com/boljen/go-bitmap v0.0.0-20151001105940-23cd2fb0ce7d // indirect
 	github.com/btcsuite/btclog v0.0.0-20170628155309-84c8d2346e9f // indirect
-	github.com/bytedance/sonic v1.14.0 // indirect
-	github.com/bytedance/sonic/loader v0.3.0 // indirect
+	github.com/bytedance/gopkg v0.1.3 // indirect
+	github.com/bytedance/sonic v1.15.0 // indirect
+	github.com/bytedance/sonic/loader v0.5.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/chzyer/readline v1.5.1 // indirect

@@ -27,8 +27,8 @@ func TestHMACAuthMiddleware(t *testing.T) {
 		}
 	})
 
-	makeRequestWithHMAC := func(_ *testing.T, body []byte, _, hmacHeader string) *http.Request {
-		req := httptest.NewRequest(http.MethodPost, "/test", bytes.NewReader(body))
+	makeRequestWithHMAC := func(t *testing.T, body []byte, _, hmacHeader string) *http.Request {
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/test", bytes.NewReader(body))
 		if hmacHeader != "" {
 			req.Header.Set(middlewares.HeaderCovenantHMAC, hmacHeader)
 		}
@@ -36,8 +36,8 @@ func TestHMACAuthMiddleware(t *testing.T) {
 		return req
 	}
 
-	makeRequestWithMethodAndHMAC := func(_ *testing.T, method string, body []byte, _, hmacHeader string) *http.Request {
-		req := httptest.NewRequest(method, "/test", bytes.NewReader(body))
+	makeRequestWithMethodAndHMAC := func(t *testing.T, method string, body []byte, _, hmacHeader string) *http.Request {
+		req := httptest.NewRequestWithContext(t.Context(), method, "/test", bytes.NewReader(body))
 		if hmacHeader != "" {
 			req.Header.Set(middlewares.HeaderCovenantHMAC, hmacHeader)
 		}
@@ -64,7 +64,7 @@ func TestHMACAuthMiddleware(t *testing.T) {
 	t.Run("HMAC key not configured, should skip verification", func(t *testing.T) {
 		middleware := middlewares.HMACAuthMiddleware("")
 
-		req := httptest.NewRequest(http.MethodPost, "/test", bytes.NewReader(testBody))
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/test", bytes.NewReader(testBody))
 
 		rr := executeMiddleware(t, middleware, req)
 
@@ -146,7 +146,7 @@ func TestHMACAuthMiddleware(t *testing.T) {
 		middleware := middlewares.HMACAuthMiddleware(testHMACKey)
 
 		brokenBodyReader := &brokenReader{}
-		req := httptest.NewRequest(http.MethodPost, "/test", brokenBodyReader)
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/test", brokenBodyReader)
 		req.Header.Set(middlewares.HeaderCovenantHMAC, "some-hmac")
 
 		rr := executeMiddleware(t, middleware, req)
@@ -195,7 +195,7 @@ func TestHMACAuthMiddleware(t *testing.T) {
 		middleware := middlewares.HMACAuthMiddleware(testHMACKey)
 
 		// Create request for public-key endpoint without HMAC header
-		req := httptest.NewRequest(http.MethodGet, "/v1/public-key", bytes.NewReader([]byte{}))
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/v1/public-key", bytes.NewReader([]byte{}))
 
 		// Execute middleware
 		rr := executeMiddleware(t, middleware, req)
@@ -219,7 +219,7 @@ func TestHMACAuthMiddleware(t *testing.T) {
 		validHMAC, err := middlewares.GenerateHMAC(testHMACKey, body)
 		require.NoError(t, err, "Failed to generate HMAC")
 
-		req := httptest.NewRequest(http.MethodGet, "/v1/public-key", bytes.NewReader(body))
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/v1/public-key", bytes.NewReader(body))
 		req.Header.Set(middlewares.HeaderCovenantHMAC, validHMAC)
 
 		// Execute middleware
