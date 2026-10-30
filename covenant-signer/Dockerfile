@@ -1,4 +1,4 @@
-FROM golang:1.25-alpine AS builder
+FROM golang:1.26.10-alpine AS builder
 
 # Use muslc for static libs
 ARG BUILD_TAGS="muslc"
@@ -34,7 +34,7 @@ FROM alpine:3.21 AS run
 
 RUN addgroup --gid 1138 -S covenant-signer && adduser --uid 1138 -S covenant-signer -G covenant-signer
 
-RUN apk add --no-cache bash=5.2.37-r0 curl=8.14.1-r2 jq=1.7.1-r0
+RUN apk add --no-cache bash=5.2.37-r0 curl=8.14.1-r3 jq=1.7.1-r0
 
 COPY --from=builder /go/src/github.com/babylonlabs-io/covenant-emulator/covenant-signer/build/covenant-signer /bin/covenant-signer
 

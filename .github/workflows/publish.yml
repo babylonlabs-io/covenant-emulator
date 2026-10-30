@@ -23,25 +23,25 @@ jobs:
     uses: babylonlabs-io/.github/.github/workflows/reusable_go_lint_test.yml@98e4de18638b3d0738c9cbf7e7dfc6e34524db54 # v0.19.1 https://github.com/babylonlabs-io/.github/releases/tag/v0.19.1
     if: ${{ !(github.event_name == 'workflow_dispatch' && inputs['skip-lint-test'] == true) }}
     with:
-      go-version: '1.25'
-      go-lint-version: 'v2.4.0'
+      go-version: '1.26.10'
+      go-lint-version: 'v2.11.4'
       run-unit-tests: true
       run-integration-tests: true
       run-lint: true
       run-build: true
-      run-gosec: true
-      gosec-args: "-exclude-generated -exclude-dir=itest -exclude-dir=testutil -exclude-dir=covenant-signer ./..."
 
   docker_pipeline:
     # Always evaluate, but only proceed if:
-    # - skip is enabled, or lint_test succeeded (normal path)
+    # - skip is enabled, or lint_test and gosec succeeded (normal path)
     if: ${{ always() && (
             (github.event_name == 'workflow_dispatch' && inputs['skip-lint-test'] == true) ||
-            needs.lint_test.result == 'success'
+            (needs.lint_test.result == 'success' && needs.go_sec_covenant_signer.result == 'success')
           )}}
-    needs: ["lint_test"]
-    uses: babylonlabs-io/.github/.github/workflows/reusable_docker_pipeline.yml@98e4de18638b3d0738c9cbf7e7dfc6e34524db54 # v0.19.1 https://github.com/babylonlabs-io/.github/releases/tag/v0.19.1
-    secrets: inherit
+    needs: ["lint_test", "go_sec_covenant_signer"]
+    uses: babylonlabs-io/.github/.github/workflows/reusable_docker_pipeline.yml@902082b8e5c0a1fed7be6980fa6a1b77fc005c06 # v0.23.0 https://github.com/babylonlabs-io/.github/releases/tag/v0.23.0
+    secrets:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
     with:
       publish: true
       push_to_dockerhub: true
@@ -66,19 +66,23 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0 https://github.com/actions/setup-go/releases/tag/v5.6.0
         with:
-          go-version: '^1.25.x'
+          go-version: '1.26.10'
           check-latest: true
           cache: false
+      - name: Run Gosec (covenant-emulator)
+        run: go run github.com/securego/gosec/v2/cmd/gosec@v2.24.7 -exclude-generated -exclude-dir=itest -exclude-dir=testutil -exclude-dir=covenant-signer ./...
       - name: Install Gosec
-        run: go install github.com/securego/gosec/v2/cmd/gosec@latest
+        run: go install github.com/securego/gosec/v2/cmd/gosec@v2.30.0
       - name: Run Gosec (covenant-signer)
         working-directory: ./covenant-signer
         run: gosec ./...
 
   docker_pipeline_covenant_signer:
     needs: ["go_sec_covenant_signer"]
-    uses: babylonlabs-io/.github/.github/workflows/reusable_docker_pipeline.yml@98e4de18638b3d0738c9cbf7e7dfc6e34524db54 # v0.19.1 https://github.com/babylonlabs-io/.github/releases/tag/v0.19.1
-    secrets: inherit
+    uses: babylonlabs-io/.github/.github/workflows/reusable_docker_pipeline.yml@902082b8e5c0a1fed7be6980fa6a1b77fc005c06 # v0.23.0 https://github.com/babylonlabs-io/.github/releases/tag/v0.23.0
+    secrets:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
     with:
       publish: true
       push_to_dockerhub: true

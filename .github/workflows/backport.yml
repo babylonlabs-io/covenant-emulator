@@ -12,7 +12,7 @@
 #       backported to both branches: `staging` and `production`.
 name: Backport
 on:
-  pull_request_target:
+  pull_request:
     types:
       - closed
       - labeled
@@ -24,17 +24,11 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-    # Only react to merged PRs for security reasons.
-    # See https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#pull_request_target.
+    # Only backport merged same-repository PRs; forks lack write tokens.
     if: >
       github.event.pull_request.merged
-      && (
-        github.event.action == 'closed'
-        || (
-          github.event.action == 'labeled'
-          && contains(github.event.label.name, 'backport')
-        )
-      )
+      && github.event.pull_request.head.repo.full_name == github.repository
+      && (github.event.action == 'closed' || contains(github.event.label.name, 'backport'))
     steps:
       - uses: tibdex/backport@9565281eda0731b1d20c4025c43339fb0a23812e # v2.0.4 https://github.com/tibdex/backport/releases/tag/v2.0.4
         with:
