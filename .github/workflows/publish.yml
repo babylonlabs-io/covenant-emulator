@@ -38,8 +38,10 @@ jobs:
             (needs.lint_test.result == 'success' && needs.go_sec_covenant_signer.result == 'success')
           )}}
     needs: ["lint_test", "go_sec_covenant_signer"]
-    uses: babylonlabs-io/.github/.github/workflows/reusable_docker_pipeline.yml@98e4de18638b3d0738c9cbf7e7dfc6e34524db54 # v0.19.1 https://github.com/babylonlabs-io/.github/releases/tag/v0.19.1
-    secrets: inherit
+    uses: babylonlabs-io/.github/.github/workflows/reusable_docker_pipeline.yml@902082b8e5c0a1fed7be6980fa6a1b77fc005c06 # v0.23.0 https://github.com/babylonlabs-io/.github/releases/tag/v0.23.0
+    secrets:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
     with:
       publish: true
       push_to_dockerhub: true
@@ -77,8 +79,10 @@ jobs:
 
   docker_pipeline_covenant_signer:
     needs: ["go_sec_covenant_signer"]
-    uses: babylonlabs-io/.github/.github/workflows/reusable_docker_pipeline.yml@98e4de18638b3d0738c9cbf7e7dfc6e34524db54 # v0.19.1 https://github.com/babylonlabs-io/.github/releases/tag/v0.19.1
-    secrets: inherit
+    uses: babylonlabs-io/.github/.github/workflows/reusable_docker_pipeline.yml@902082b8e5c0a1fed7be6980fa6a1b77fc005c06 # v0.23.0 https://github.com/babylonlabs-io/.github/releases/tag/v0.23.0
+    secrets:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
     with:
       publish: true
       push_to_dockerhub: true
