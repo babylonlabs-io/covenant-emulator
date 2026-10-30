@@ -71,7 +71,7 @@ history start with a space.
 
 ## 3. Installation
 
-If you haven't already, download [Golang 1.23](https://go.dev/dl).
+If you haven't already, download [Golang 1.26.10](https://go.dev/dl).
 
 Once installed, run:
 

@@ -1,8 +1,6 @@
 module github.com/babylonlabs-io/covenant-emulator
 
-go 1.25.8
-
-toolchain go1.26.10
+go 1.26.10
 
 require (
 	cosmossdk.io/errors v1.0.2

@@ -1,6 +1,6 @@
 module github.com/babylonlabs-io/covenant-emulator/tools
 
-go 1.25.8
+go 1.26.10
 
 require github.com/babylonlabs-io/babylon/v4 v4.2.0
 

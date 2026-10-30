@@ -1,7 +1,7 @@
 FROM golang:1.26.10-bookworm AS builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    jq=1.6-2.1+deb12u1 \
+    jq=1.6-2.1+deb12u3 \
     && rm -rf /var/lib/apt/lists/*
 
 # Build
@@ -22,9 +22,9 @@ FROM debian:bookworm-slim AS run
 RUN addgroup --gid 1138 --system covenant-emulator && adduser --uid 1138 --system --home /home/covenant-emulator covenant-emulator
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates=20230311+deb12u1 \
-    curl=7.88.1-10+deb12u14 \
-    jq=1.6-2.1+deb12u1 \
+    ca-certificates=20250419~deb12u2 \
+    curl=7.88.1-10+deb12u15 \
+    jq=1.6-2.1+deb12u3 \
     wget=1.21.3-1+deb12u1 \
     && rm -rf /var/lib/apt/lists/*
 

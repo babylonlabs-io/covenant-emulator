@@ -1,4 +1,5 @@
 project_name: covenant-emulator
+env: [GOTOOLCHAIN=go1.26.10]
 
 builds:
   - id: covd-linux-amd64
